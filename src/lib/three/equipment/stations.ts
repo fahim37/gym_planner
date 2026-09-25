@@ -88,7 +88,7 @@ export function preacherBench(): EquipmentModel {
     at(mesh(cyl(0.025, 0.2, 20), m.chrome, bar), 0, 0, s * 0.52, Math.PI / 2);
     at(mesh(cyl(0.04, 0.02, 20), m.chrome, bar), 0, 0, s * 0.41, Math.PI / 2);
   }
-  kit.spot("arm-pad", v3(-0.1, 1.025, 0.2));
+  kit.spot("arm-pad", v3(-0.11, 0.96, 0.3));
   kit.spot("seat", v3(0.3, 0.642, 0));
   kit.spot("bar-rest", v3(top.x + 0.09, top.y + 0.06, 0.34));
   return kit.finish();

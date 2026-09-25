@@ -134,7 +134,7 @@ export function elliptical(): EquipmentModel {
     fly.rotation.z = theta * 3;
   };
   pose(0);
-  kit.spot("pedals", v3(0.42, 0.075, 0), arms[0]);
+  kit.spot("pedals", v3(0.3, 0.066, 0.078), arms[0]);
   kit.spot("handles", v3(0.105, 0.56, 0.022), handles[0]);
   kit.spot("console", v3(0.022, 0.03, 0.08), cons.g);
   kit.spot("flywheel", v3(C.x + 0.06, C.y + 0.05, 0.1));
@@ -207,8 +207,8 @@ export function stairClimber(): EquipmentModel {
   }
   const cons = consoleHead(kit, -0.52, 1.6, 0.5, 0.6);
 
-  kit.spot("steps", v3(-0.1, 0.004, 0.15), steps[2]);
-  kit.spot("handrails", v3(-0.02, 1.296, 0.37));
+  kit.spot("steps", v3(-0.1, 0.004, -0.1), steps[2]);
+  kit.spot("handrails", v3(-0.02, 1.31, 0.37));
   kit.spot("console", v3(0.022, 0.03, 0.1), cons.g);
 
   const tick = new Ticker();
@@ -322,7 +322,7 @@ export function airBike(): EquipmentModel {
   kit.spot("fan", v3(F.x - 0.1, F.y + R - 0.02, 0.075));
   kit.spot("handles", v3(0.11, 0.5, 0.024), handles[0]);
   kit.spot("pedals", v3(0, 0.013, 0.02), pedals[0]);
-  kit.spot("seat", v3(0.38, 1.02, 0));
+  kit.spot("seat", v3(0.38, 1.03, 0));
 
   const tick = new Ticker();
   let theta = 0;

@@ -76,7 +76,7 @@ export function hackSquat(): EquipmentModel {
     lever.rotation.z = -0.6 * release;
   };
   pose(sRest, 0);
-  kit.spot("shoulder-pads", v3(-0.34, 0.25, 0.13), sled);
+  kit.spot("shoulder-pads", v3(-0.33, 0.3, 0.13), sled);
   kit.spot("platform", v3(0.52, 0.263, 0.24));
   kit.spot("sled", v3(0.33, 0.1, 0.19), sled);
   kit.spot("safety", v3(-0.02, 0.26, 0.04), lever);

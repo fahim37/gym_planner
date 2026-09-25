@@ -268,7 +268,7 @@ export function seatedLegCurl(): EquipmentModel {
     lift((rest - a) * 0.22);
   };
   pose(rest);
-  kit.spot("thigh-pad", v3(0.2, 0.795, 0.12));
+  kit.spot("thigh-pad", v3(0.3, 0.8, 0.12));
   kit.spot("ankle-pad", v3(0.44, 0.027, 0.1), lever);
   kit.spot("pivot", dot.position.clone().add(v3(0, 0, 0.004)));
   kit.spot("weight-stack", tower.stack.face.clone().add(tower.base));
