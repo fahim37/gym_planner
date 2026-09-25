@@ -1,7 +1,7 @@
 import { sculptBody } from "./anatomy";
 import { Chains, type BindInfo } from "./chains";
 import { polygonize, type Region, type RegionMesh } from "./mesher";
-import { L_SHORTS_FILL, MAT_HAIR, MAT_SHORTS, MAT_SKIN, OP_SUB, L_MUSCLE, type Detail, type Sculpt, type V3 } from "./sdf";
+import { L_SHORTS_FILL, MAT_EYE, MAT_HAIR, MAT_SHORTS, MAT_SKIN, OP_SUB, L_MUSCLE, type Detail, type Sculpt, type V3 } from "./sdf";
 import { A_HAND, BONE_COUNT, BoneSolver, B_HEAD, L_FOOT, armBone, bindFrames, legBone, mirrorBone, type BindFrame } from "./skeleton";
 import { MUSCLE_INDEX_GLUTES } from "./muscle-index";
 
@@ -24,6 +24,8 @@ export interface BodyData {
   fibre: Int8Array;
   /** Per vertex: ink-line field (cm), baked ambient occlusion, tone variation, curvature. */
   extra: Float32Array;
+  /** Per vertex: fibre surface coordinates (cm, along / across); x > 1e5 = none (shader projects). */
+  fuv: Float32Array;
   index: Uint32Array;
   /** Bind matrices (column-major, metres) of every bone. */
   bind: Float32Array;
@@ -52,6 +54,7 @@ interface Baked {
   info: Uint8Array;
   fibre: Int8Array;
   extra: Float32Array;
+  fuv: Float32Array;
   /** Whether this region is mirrored as a whole (side-0 regions) or as a midline half. */
 }
 
@@ -157,6 +160,7 @@ export function buildBodyData(opts: BuildOptions = {}): BodyData {
   const info = new Uint8Array(nv * 4);
   const fibre = new Int8Array(nv * 4);
   const extra = new Float32Array(nv * 4);
+  const fuv = new Float32Array(nv * 2);
   const index = new Uint32Array(nt);
   let vo = 0;
   let to = 0;
@@ -185,6 +189,8 @@ export function buildBodyData(opts: BuildOptions = {}): BodyData {
         fibre[dst * 4 + 1] = b.fibre[v * 4 + 1];
         fibre[dst * 4 + 2] = zs * b.fibre[v * 4 + 2];
         fibre[dst * 4 + 3] = b.fibre[v * 4 + 3];
+        fuv[dst * 2] = b.fuv[v * 2];
+        fuv[dst * 2 + 1] = b.fuv[v * 2 + 1];
       }
     }
     const tr = m.tris;
@@ -210,7 +216,7 @@ export function buildBodyData(opts: BuildOptions = {}): BodyData {
   stats.vertices = nv;
   stats.triangles = nt / 3;
   stats.ms = Math.round(now() - t0);
-  return { position, normal, bones, weights, info, fibre, extra, index: index.subarray(0, to), bind, stats };
+  return { position, normal, bones, weights, info, fibre, extra, fuv, index: index.subarray(0, to), bind, stats };
 }
 
 function add3(a: V3, b: V3): V3 {
@@ -272,6 +278,7 @@ class Baker {
     const info = new Uint8Array(n * 4);
     const fibre = new Int8Array(n * 4);
     const extra = new Float32Array(n * 4);
+    const fuv = new Float32Array(n * 2);
     const S = this.sculpt;
     const D = this.D;
     const meta = S.meta;
@@ -302,6 +309,10 @@ class Baker {
       let fibreSum = 0;
       let tendonSum = 0;
       let wSumF = 0;
+      let fibreW = 0;
+      let uvW = 0;
+      let uvU = 1e6;
+      let uvV = 0;
       for (let c = 0; c < D.count; c++) {
         const i = D.prims[c];
         if (S.opOf(i) === OP_SUB || S.layerOf(i) === L_SHORTS_FILL) continue;
@@ -349,6 +360,12 @@ class Baker {
               dz = D.dirs[c * 3 + 2];
             }
             const s = dx * fx + dy * fy + dz * fz < 0 ? -1 : 1;
+            fibreW += wf;
+            if (wf > uvW && !m.fibreTo && S.isBump(i)) {
+              uvW = wf;
+              uvU = D.uvs[c * 2];
+              uvV = D.uvs[c * 2 + 1];
+            }
             fx += s * wf * dx;
             fy += s * wf * dy;
             fz += s * wf * dz;
@@ -384,6 +401,13 @@ class Baker {
         }
       }
       let line = D.line;
+      // No anatomy-plate ink on the face (neck/trap lines would otherwise leak across the cheek).
+      if (y > 150 && this.chains.headCoord(x, y, z) > 6.5) line = 99;
+      // Signed distance to the hairline: the shader blends hair colour from its
+      // interpolated value, so the hairline is a smooth curve, not triangle edges.
+      const hb = S.hairBox;
+      let hairD = 3;
+      if (S.hairRegion && hb && y > hb.min[1] && y < hb.max[1] && x > hb.min[0] && x < hb.max[0]) hairD = Math.max(-3, Math.min(3, S.hairRegion(x, y, z)));
       if (D.surface === 1) {
         material = MAT_HAIR;
         muscle = 255;
@@ -396,6 +420,10 @@ class Baker {
       }
       const tendon = wSumF > 0 ? tendonSum / wSumF : 0;
       let fibreStrength = wSumF > 0 ? fibreSum / wSumF : 0;
+      // Where neighbouring muscles' fibres disagree (borders, fans), fade the striations
+      // instead of letting the texture swirl.
+      const coherence = fibreW > 0 ? Math.hypot(fx, fy, fz) / fibreW : 0;
+      fibreStrength *= smooth(0.55, 0.92, coherence);
       // Fibre direction projected onto the surface.
       const fd = fx * nx + fy * ny + fz * nz;
       fx -= nx * fd;
@@ -448,6 +476,9 @@ class Baker {
       fibre[v * 4 + 1] = Math.round(fy * 127);
       fibre[v * 4 + 2] = Math.round(fz * 127);
       fibre[v * 4 + 3] = material;
+      const useUv = material === MAT_SKIN && uvU < 1e5;
+      fuv[v * 2] = useUv ? uvU : 1e6;
+      fuv[v * 2 + 1] = useUv ? uvV : 0;
 
       // Ambient occlusion from the distance field along the normal.
       let occ = 0;
@@ -461,9 +492,22 @@ class Baker {
       extra[v * 4] = Math.max(-99, Math.min(99, line));
       extra[v * 4 + 1] = Math.max(0, 1 - occ * 1.25);
       extra[v * 4 + 2] = noise3(x * 0.09, y * 0.09, z * 0.09) * 0.7 + noise3(x * 0.3, y * 0.3, z * 0.3) * 0.3;
-      extra[v * 4 + 3] = 0;
+      // Skin around the eyes stays out of the iris band when interpolated against eye vertices.
+      if (material !== MAT_EYE) for (const e of S.eyes) if (Math.hypot(x - e[0], y - e[1], z - e[2]) < 2.2) hairD = 15;
+      if (material === MAT_EYE) {
+        // Eyes: the fibre slot carries the position relative to the eyeball centre
+        // (cm / 2), which interpolates exactly, so the shader draws a round iris at any mesh density.
+        for (const e of S.eyes) {
+          if ((e[2] > 0) !== (z > 0)) continue;
+          const q = (t: number) => Math.round(Math.max(-1, Math.min(1, t / 2)) * 127);
+          fibre[v * 4] = q(x - e[0]);
+          fibre[v * 4 + 1] = q(y - e[1]);
+          fibre[v * 4 + 2] = q(z - e[2]);
+        }
+      }
+      extra[v * 4 + 3] = hairD;
     }
-    return { mesh, bones, weights, info, fibre, extra };
+    return { mesh, bones, weights, info, fibre, extra, fuv };
   }
 }
 

@@ -129,6 +129,8 @@ export class Stage {
     this.figure = opts.figure ?? true;
     if (this.figure) {
       this.scene.add(this.rig.group);
+      // Sharp fibres at grazing angles (no shimmer while rotating).
+      this.rig.uniforms.uFibreMap.value.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
       this.contact = new ContactShadow();
       this.scene.add(this.contact.mesh);
     }

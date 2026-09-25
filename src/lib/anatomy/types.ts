@@ -96,9 +96,13 @@ export interface Keyframe {
   ease?: "smooth" | "linear";
 }
 
+/** How a hand holds a handle: palm down/back, palm up/forward, or palms facing. */
+export type GripStyle = "overhand" | "underhand" | "neutral";
+
 export type Prop =
-  | { type: "barbell"; at?: "hands" | "back"; plate?: "large" | "small" }
-  | { type: "dumbbell"; hands?: "both" | "near" | "shared" }
+  | { type: "barbell"; at?: "hands" | "back"; plate?: "large" | "small"; grip?: GripStyle }
+  /** `grip`: palm orientation on the handle (default neutral; curls use "underhand"). */
+  | { type: "dumbbell"; hands?: "both" | "near" | "shared"; grip?: GripStyle }
   | { type: "kettlebell" }
   | {
       type: "bench";

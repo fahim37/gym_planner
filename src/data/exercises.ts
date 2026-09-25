@@ -709,7 +709,7 @@ const FOUNDATION_EXERCISES: Exercise[] = [
     breathing: "Exhale as you curl, inhale as you lower.",
     prescription: { sets: "3", reps: "10–12 each arm", rest: "60 s" },
     animation: {
-      props: [{ type: "dumbbell" }],
+      props: [{ type: "dumbbell", grip: "underhand" }],
       frames: (() => {
         const down = { angles: [2, 4], spread: [9, 5] } as LimbSpec;
         const up = { angles: [-6, 148], spread: [9, 4] } as LimbSpec;

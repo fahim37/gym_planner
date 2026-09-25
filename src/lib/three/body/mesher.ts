@@ -80,7 +80,7 @@ export function polygonize(sculpt: Sculpt, r: Region): RegionMesh {
   for (let k = kStart; k < nz - 1; k += top) for (let j = 0; j < ny - 1; j += top) for (let i = 0; i < nx - 1; i += top) cells.push(i, j, k);
   for (let size = top; size >= 2; size >>= 1) {
     const next: number[] = [];
-    const lim = size * h * 0.866 * 1.9 + 0.3;
+    const lim = size * h * 0.866 * 2.3 + 0.4;
     const half = size / 2;
     for (let c = 0; c < cells.length; c += 3) {
       const i = cells[c];

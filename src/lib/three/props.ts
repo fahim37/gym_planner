@@ -134,7 +134,7 @@ export class PropSet {
   private add(p: Prop) {
     switch (p.type) {
       case "barbell": {
-        this.grip(barGrip(0.014));
+        this.grip(p.grip ? { ...barGrip(0.014), style: p.grip } : barGrip(0.014));
         const bar = barbell(p.plate ?? "large");
         this.group.add(bar);
         this.followers.push((rig) => {
@@ -153,8 +153,8 @@ export class PropSet {
       case "dumbbell": {
         const count = p.hands === "near" || p.hands === "shared" ? 1 : 2;
         if (p.hands === "shared") this.grip(handle(0.045));
-        else if (p.hands === "near") this.grip(handle(0.014), null);
-        else this.grip(handle(0.014));
+        else if (p.hands === "near") this.grip(handle(0.014, p.grip ?? "neutral"), null);
+        else this.grip(handle(0.014, p.grip ?? "neutral"));
         const bells = Array.from({ length: count }, () => dumbbell());
         bells.forEach((b) => this.group.add(b));
         this.followers.push((rig) => {
@@ -277,8 +277,13 @@ export class PropSet {
         if (!built) break;
         if (built.grip) {
           const spec: GripSpec = { radius: built.grip.radius ?? 0.014, style: built.grip.style };
-          this.grips[0] = built.grip.hands === "far" ? this.grips[0] : spec;
-          this.grips[1] = built.grip.hands === "near" ? this.grips[1] : spec;
+          // The plug-in's own grip wins over the defaults table.
+          if (g) {
+            this.grips[0] = null;
+            this.grips[1] = null;
+          }
+          if (built.grip.hands !== "far") this.grips[0] = spec;
+          if (built.grip.hands !== "near") this.grips[1] = spec;
         }
         built.object.userData.external = true;
         this.group.add(built.object);

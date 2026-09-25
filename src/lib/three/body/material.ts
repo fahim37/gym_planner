@@ -26,6 +26,8 @@ export interface BodyUniforms {
   uHair: { value: THREE.Color };
   uLine: { value: number };
   uFade: { value: number };
+  /** Per (muscle, side) centre in bind space (cm): the local origin of the fibre projection. */
+  uAnchor: { value: THREE.Vector3[] };
 }
 
 const DQ_PARS = /* glsl */ `
@@ -75,17 +77,21 @@ vec3 dqPos(vec3 p) {
 const BODY_VERT_PARS = /* glsl */ `
 ${DQ_PARS}
 uniform float uMuscle[${MUSCLE_COUNT}];
+uniform vec3 uAnchor[${(MUSCLE_COUNT + 1) * 2}];
 uniform float uHover;
 attribute vec4 aInfo;
 attribute vec4 aFibre;
 attribute vec4 aExtra;
+attribute vec2 aFibreUv;
 varying vec3 vHi;
 varying vec4 vMat;
 varying float vLip;
 varying vec4 vSurf;
 varying float vTone;
+varying float vHairD;
 varying vec2 vFibreUv;
 varying vec3 vFibreView;
+varying vec3 vEye;
 `;
 
 const BODY_FRAG_PARS = /* glsl */ `
@@ -105,17 +111,20 @@ varying vec4 vMat;
 varying float vLip;
 varying vec4 vSurf;
 varying float vTone;
+varying float vHairD;
 varying vec2 vFibreUv;
 varying vec3 vFibreView;
+varying vec3 vEye;
 vec4 gFibre;
 `;
 
 /** Material ids (see sdf.ts MAT_*): skin, shorts, hair, eye, nail, lip. */
 const MATERIAL_FN = /* glsl */ `
+float hairAmt() { return 1.0 - smoothstep( 0.0, 0.26, vHairD ); }
 float matIs(float id) {
-  if (id < 0.5) return clamp(1.0 - vMat.x - vMat.y - vMat.z - vMat.w - vLip, 0.0, 1.0);
+  if (id < 0.5) return clamp(1.0 - vMat.x - vMat.z - vMat.w - vLip - hairAmt(), 0.0, 1.0);
   if (id < 1.5) return vMat.x;
-  if (id < 2.5) return vMat.y;
+  if (id < 2.5) return hairAmt();
   if (id < 3.5) return vMat.z;
   if (id < 4.5) return vMat.w;
   return vLip;
@@ -153,11 +162,16 @@ export function createBodyMaterial(u: BodyUniforms) {
 		vLip = aInfo.y == 5.0 ? 1.0 : 0.0;
 		vSurf = vec4( aInfo.z / 255.0, aInfo.w / 255.0, aExtra.x, aExtra.y );
 		vTone = aExtra.z;
+		vHairD = aExtra.w;
+		vEye = aFibre.xyz * 2.0;
 		vec3 fib = aFibre.xyz;
-		vec3 pcm = position * 100.0;
+		// Project the fibre pattern about the muscle's own centre: a short lever arm keeps the
+		// striations straight where the fibre direction turns (no swirling "wood grain").
+		int slot = ( mid < ${MUSCLE_COUNT} ? mid : ${MUSCLE_COUNT} ) * 2 + ( position.z > 0.0 ? 1 : 0 );
+		vec3 pcm = position * 100.0 - uAnchor[ slot ];
 		vec3 bn = normalize( cross( normal, fib ) + 1e-5 );
 		float sc = aInfo.y > 1.5 && aInfo.y < 2.5 ? 2.6 : ( aInfo.y > 0.5 && aInfo.y < 1.5 ? 3.0 : 1.0 );
-		vFibreUv = vec2( dot( pcm, fib ) / 12.0, dot( pcm, bn ) / 4.5 ) * sc;
+		vFibreUv = ( aFibreUv.x < 1e5 ? aFibreUv / vec2( 12.0, 4.5 ) : vec2( dot( pcm, fib ) / 12.0, dot( pcm, bn ) / 4.5 ) ) * sc;
 		vFibreView = normalize( normalMatrix * dqRot( fib ) );
 	}`,
       );
@@ -181,6 +195,19 @@ export function createBodyMaterial(u: BodyUniforms) {
 		base = mix( base, uSkin * 1.12 + 0.04, nail + eye );
 		base = mix( base, uShorts, shorts );
 		base = mix( base, uHair, hair );
+		// Iris and pupil from the eye-local position (exact under interpolation → always round).
+		{
+			float ir = length( vEye.yz );
+			float aa = max( fwidth( ir ), 0.01 );
+			float front = smoothstep( 0.2, 0.5, vEye.x );
+			float iris = step( 0.999, eye ) * front * ( 1.0 - smoothstep( 0.55 - aa, 0.55 + aa, ir ) );
+			float pupil = 1.0 - smoothstep( 0.21 - aa, 0.21 + aa, ir );
+			float fleck = texture2D( uFibreMap, vec2( atan( vEye.z, vEye.y ) * 1.3, ir * 3.0 ) ).a;
+			vec3 irisCol = mix( vec3( 0.25, 0.18, 0.13 ), vec3( 0.08, 0.06, 0.05 ), smoothstep( 0.3, 0.55, ir ) ) * ( 0.8 + 0.4 * fleck );
+			base = mix( base, mix( irisCol, vec3( 0.012 ), pupil ), iris );
+			// Sclera: slightly warm, darker towards the corners.
+			base = mix( base, base * mix( 0.8, 1.0, front ), eye );
+		}
 		base *= 1.0 + vTone * 0.06;
 		float muscle = skin + lip;
 		float hi = clamp( vHi.x + vHi.y, 0.0, 1.0 ) * ( muscle + shorts );
@@ -207,7 +234,7 @@ export function createBodyMaterial(u: BodyUniforms) {
         "#include <normal_fragment_maps>",
         `{
 		vec3 mapN = gFibre.xyz * 2.0 - 1.0;
-		float k = vSurf.x * uDetail * ( 1.0 - matIs( 3.0 ) - matIs( 4.0 ) );
+		float k = vSurf.x * uDetail * clamp( 1.0 - matIs( 3.0 ) - matIs( 4.0 ), 0.0, 1.0 );
 		k *= 1.0 - 0.45 * matIs( 1.0 );
 		mapN.xy *= k;
 		vec3 T = vFibreView - normal * dot( normal, vFibreView );
@@ -245,6 +272,9 @@ export function createBodyMaterial(u: BodyUniforms) {
 		float ink = 1.0 - smoothstep( 0.35, 1.35, px );
 		// Only near real boundaries, and fading out where the field is too coarse to resolve.
 		ink *= 1.0 - smoothstep( 0.25, 0.6, abs( lv ) );
+		// …and where the field jumps (the nearest pair of groups switches), which would draw stair-steps.
+		float slope = fwidth( lv ) / max( length( fwidth( vViewPosition ) ) * 100.0, 1e-4 );
+		ink *= 1.0 - smoothstep( 2.5, 5.0, slope );
 		ink *= uLine * matIs( 0.0 );
 		outgoingLight = mix( outgoingLight, outgoingLight * 0.5, ink );
 		// Soft contour at the silhouette.

@@ -198,6 +198,8 @@ export interface Detail {
   ts: Float64Array;
   /** Fibre / axis direction per candidate. */
   dirs: Float64Array;
+  /** Surface coordinates (cm) along / across the fibres, for loft-bump candidates only. */
+  uvs: Float64Array;
   /** Which derived layer produced the surface: 0 body, 1 hair, 2 shorts. */
   surface: number;
   /** Signed distance to the boundary between the two nearest muscle groups. */
@@ -228,6 +230,8 @@ export class Sculpt {
   hairRegion: ((x: number, y: number, z: number) => number) | null = null;
   hairThickness = 0.5;
   hairBox: Bounds | null = null;
+  /** Eyeball centres (cm); the baker writes iris coordinates around them. */
+  eyes: V3[] = [];
   shortsRegion: ((x: number, y: number, z: number) => number) | null = null;
   shortsThickness = 0.5;
   shortsBox: Bounds | null = null;
@@ -774,6 +778,12 @@ export class Sculpt {
         const e = 1 - qd * qd;
         const p = P[bg + 2];
         tb = bh * (p === 1 ? e : p === 2 ? e * e : Math.pow(e, p));
+        // Ease the rim to zero slope so bump edges are C1: no creases that alias at mesh
+        // resolution, and grooves between bumps get a wider, cleaner footprint.
+        if (qd > 0.62) {
+          const r = (1 - qd) / 0.38;
+          tb *= r * r * (3 - 2 * r);
+        }
       }
       if (out) {
         // Report the bump as its own candidate: distance to its own swelling.
@@ -798,6 +808,10 @@ export class Sculpt {
         out.dirs[c * 3] = fx;
         out.dirs[c * 3 + 1] = fy;
         out.dirs[c * 3 + 2] = fz;
+        // Exact surface parameterisation of the bump: (angle × radius, along) rotated into
+        // the fibre frame. Interpolates linearly, so striations stay straight and evenly spaced.
+        out.uvs[c * 2] = qx * bdx + along * bdy;
+        out.uvs[c * 2 + 1] = along * bdx - qx * bdy;
       }
       if (tb <= 0) continue;
       T = T > 0 ? smax(T, tb, 0.18) : tb;
@@ -938,11 +952,10 @@ export class Sculpt {
     let result = body;
     const hb = this.hairBox;
     if (this.hairRegion && hb && x > hb.min[0] && y > hb.min[1] && z > hb.min[2] && x < hb.max[0] && y < hb.max[1] && z < hb.max[2]) {
-      const h = smax(body - this.hairThickness, this.hairRegion(x, y, z), 0.9);
-      if (h < result) {
-        result = h;
-        surface = 1;
-      }
+      const h = smax(body - this.hairThickness, this.hairRegion(x, y, z), 1.2);
+      if (h < result) surface = 1;
+      // Soft union so the rim of the crop ramps into the scalp instead of a stepped ledge.
+      result = smin(result, h, 0.35);
     }
     const sb = this.shortsBox;
     if (this.shortsRegion && sb && x > sb.min[0] && y > sb.min[1] && z > sb.min[2] && x < sb.max[0] && y < sb.max[1] && z < sb.max[2]) {
@@ -1022,6 +1035,7 @@ export class Sculpt {
       dists: new Float64Array(max),
       ts: new Float64Array(max),
       dirs: new Float64Array(max * 3),
+      uvs: new Float64Array(max * 2),
       surface: 0,
       line: 99,
     };
@@ -1029,6 +1043,10 @@ export class Sculpt {
 
   layerOf(i: number) {
     return this.P[i * STRIDE + P_LAYER];
+  }
+
+  isBump(i: number) {
+    return this.P[i * STRIDE + P_TYPE] === T_BUMP;
   }
 
   opOf(i: number) {

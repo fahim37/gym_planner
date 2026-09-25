@@ -68,10 +68,17 @@ export default function CharacterLab() {
           focus === "foot" ? side.ankle.clone().lerp(side.toe, 0.4) :
           focus === "legs" ? side.knee.clone().lerp(j.pelvis, 0.3) :
           j.chest.clone().lerp(j.pelvis, 0.35);
-        const dist = focus === "head" ? 0.75 : focus === "hand" ? 0.45 : focus === "foot" ? 0.6 : 1.5;
+        const dist = q.get("dist") ? Number(q.get("dist")) : focus === "head" ? 0.75 : focus === "hand" ? 0.45 : focus === "foot" ? 0.6 : 1.5;
         const dir = s.camera.position.clone().sub(s.controls!.target).normalize();
         const az = Number(q.get("az") ?? 0) * (Math.PI / 180);
         dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), az);
+        const el = q.get("el");
+        if (el !== null) {
+          const e = Number(el) * (Math.PI / 180);
+          const hz = Math.hypot(dir.x, dir.z) || 1;
+          dir.set((dir.x / hz) * Math.cos(e), Math.sin(e), (dir.z / hz) * Math.cos(e));
+        }
+        target.y += Number(q.get("dy") ?? 0);
         s.controls!.target.copy(target);
         s.camera.position.copy(target).addScaledVector(dir, dist);
         s.camera.lookAt(target);
