@@ -3,7 +3,7 @@ import { buildBodyData, type BodyData, type BuildOptions } from "./build";
 export type { BodyData };
 
 /** Bump when the sculpt or baked attributes change, to invalidate cached meshes. */
-const VERSION = "body-v36";
+const VERSION = "body-v45";
 const DB = "ironform-body";
 const KEYS = ["position", "normal", "bones", "weights", "info", "fibre", "extra", "index", "bind"] as const;
 

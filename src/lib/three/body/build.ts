@@ -26,6 +26,8 @@ export interface BodyData {
   extra: Float32Array;
   /** Per vertex: fibre surface coordinates (cm, along / across); x > 1e5 = none (shader projects). */
   fuv: Float32Array;
+  /** Per vertex: second-nearest muscle index (255 = none) and dominance margin (0..255). */
+  seg: Uint8Array;
   index: Uint32Array;
   /** Bind matrices (column-major, metres) of every bone. */
   bind: Float32Array;
@@ -45,7 +47,7 @@ const DEFAULTS: Required<BuildOptions> = { body: 0.72, head: 0.34, hand: 0.25, f
 const HAND_SEAM = 1.5;
 const HEAD_SEAM = -3.2;
 const FOOT_SEAM = 7;
-const OVERLAP = 0.7;
+const OVERLAP = 1.2;
 
 interface Baked {
   mesh: RegionMesh;
@@ -55,6 +57,7 @@ interface Baked {
   fibre: Int8Array;
   extra: Float32Array;
   fuv: Float32Array;
+  seg: Uint8Array;
   /** Whether this region is mirrored as a whole (side-0 regions) or as a midline half. */
 }
 
@@ -161,6 +164,7 @@ export function buildBodyData(opts: BuildOptions = {}): BodyData {
   const fibre = new Int8Array(nv * 4);
   const extra = new Float32Array(nv * 4);
   const fuv = new Float32Array(nv * 2);
+  const seg = new Uint8Array(nv * 2);
   const index = new Uint32Array(nt);
   let vo = 0;
   let to = 0;
@@ -191,6 +195,8 @@ export function buildBodyData(opts: BuildOptions = {}): BodyData {
         fibre[dst * 4 + 3] = b.fibre[v * 4 + 3];
         fuv[dst * 2] = b.fuv[v * 2];
         fuv[dst * 2 + 1] = b.fuv[v * 2 + 1];
+        seg[dst * 2] = b.seg[v * 2];
+        seg[dst * 2 + 1] = b.seg[v * 2 + 1];
       }
     }
     const tr = m.tris;
@@ -216,7 +222,7 @@ export function buildBodyData(opts: BuildOptions = {}): BodyData {
   stats.vertices = nv;
   stats.triangles = nt / 3;
   stats.ms = Math.round(now() - t0);
-  return { position, normal, bones, weights, info, fibre, extra, fuv, index: index.subarray(0, to), bind, stats };
+  return { position, normal, bones, weights, info, fibre, extra, fuv, seg, index: index.subarray(0, to), bind, stats };
 }
 
 function add3(a: V3, b: V3): V3 {
@@ -279,6 +285,7 @@ class Baker {
     const fibre = new Int8Array(n * 4);
     const extra = new Float32Array(n * 4);
     const fuv = new Float32Array(n * 2);
+    const seg = new Uint8Array(n * 2);
     const S = this.sculpt;
     const D = this.D;
     const meta = S.meta;
@@ -386,12 +393,30 @@ class Baker {
       // Identity.
       let muscle = 255;
       let best = noneW;
+      let muscle2 = 255;
+      let best2 = 0;
       for (let mi = 0; mi < this.muscleW.length; mi++) {
-        if (this.muscleW[mi] > best) {
-          best = this.muscleW[mi];
+        const w = this.muscleW[mi];
+        if (w > best) {
+          if (muscle !== 255 || best > 0) {
+            best2 = best;
+            muscle2 = muscle;
+          }
+          best = w;
           muscle = mi;
+        } else if (w > best2) {
+          best2 = w;
+          muscle2 = mi;
         }
       }
+      if (muscle !== 255 && noneW > best2) {
+        best2 = noneW;
+        muscle2 = 255;
+      }
+      // Dominance margin (0 on the border between the two nearest groups, 1 inside): the
+      // shader blends the two groups' highlight states with it, so region edges follow the
+      // smooth distance field instead of the triangle grid.
+      let margin = best + best2 > 0 ? (best - best2) / (best + best2) : 1;
       let material = MAT_SKIN;
       let bm = 0;
       for (let k = 0; k < this.matW.length; k++) {
@@ -403,6 +428,8 @@ class Baker {
       let line = D.line;
       // No anatomy-plate ink on the face (neck/trap lines would otherwise leak across the cheek).
       if (y > 150 && this.chains.headCoord(x, y, z) > 6.5) line = 99;
+      // …nor on the sternal notch, where three small groups meet in a knot of lines.
+      if (y > 147 && y < 160 && Math.abs(z) < 3.5 && x > 0) line = 99;
       // Signed distance to the hairline: the shader blends hair colour from its
       // interpolated value, so the hairline is a smooth curve, not triangle edges.
       const hb = S.hairBox;
@@ -411,12 +438,16 @@ class Baker {
       if (D.surface === 1) {
         material = MAT_HAIR;
         muscle = 255;
+        muscle2 = 255;
+        margin = 1;
         line = 99;
       } else if (D.surface === 2) {
         material = MAT_SHORTS;
         // The seat of the shorts shows the glutes (clean region, not per-vertex dominance).
         muscle = x < -2.5 && y > 79 ? MUSCLE_INDEX_GLUTES : 255;
         line = 99;
+        muscle2 = 255;
+        margin = 1;
       }
       const tendon = wSumF > 0 ? tendonSum / wSumF : 0;
       let fibreStrength = wSumF > 0 ? fibreSum / wSumF : 0;
@@ -469,6 +500,8 @@ class Baker {
         fz /= l2;
       }
       info[v * 4] = muscle;
+      seg[v * 2] = muscle2;
+      seg[v * 2 + 1] = Math.round(Math.min(1, Math.max(0, margin)) * 255);
       info[v * 4 + 1] = material;
       info[v * 4 + 2] = Math.round(Math.min(1, Math.max(0, fibreStrength)) * 255);
       info[v * 4 + 3] = Math.round(Math.min(1, Math.max(0, tendon)) * 255);
@@ -507,7 +540,7 @@ class Baker {
       }
       extra[v * 4 + 3] = hairD;
     }
-    return { mesh, bones, weights, info, fibre, extra, fuv };
+    return { mesh, bones, weights, info, fibre, extra, fuv, seg };
   }
 }
 
@@ -542,3 +575,4 @@ function writeTop4(acc: Float64Array, bones: Uint8Array, weights: Uint8Array, o:
 }
 
 export type { BindFrame };
+

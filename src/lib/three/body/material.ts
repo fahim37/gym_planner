@@ -83,6 +83,7 @@ attribute vec4 aInfo;
 attribute vec4 aFibre;
 attribute vec4 aExtra;
 attribute vec2 aFibreUv;
+attribute vec2 aSeg;
 varying vec3 vHi;
 varying vec4 vMat;
 varying float vLip;
@@ -116,6 +117,7 @@ varying vec2 vFibreUv;
 varying vec3 vFibreView;
 varying vec3 vEye;
 vec4 gFibre;
+vec3 gHi;
 `;
 
 /** Material ids (see sdf.ts MAT_*): skin, shorts, hair, eye, nail, lip. */
@@ -157,7 +159,14 @@ export function createBodyMaterial(u: BodyUniforms) {
 		int mid = int( aInfo.x + 0.5 );
 		float st = mid < ${MUSCLE_COUNT} ? uMuscle[ mid ] : 0.0;
 		float prim = step( 1.5, st );
-		vHi = vec3( prim, step( 0.5, st ) * ( 1.0 - prim ), ( mid < ${MUSCLE_COUNT} && abs( float( mid ) - uHover ) < 0.5 ) ? 1.0 : 0.0 );
+		vec3 h1 = vec3( prim, step( 0.5, st ) * ( 1.0 - prim ), ( mid < ${MUSCLE_COUNT} && abs( float( mid ) - uHover ) < 0.5 ) ? 1.0 : 0.0 );
+		int mid2 = int( aSeg.x + 0.5 );
+		float st2 = mid2 < ${MUSCLE_COUNT} ? uMuscle[ mid2 ] : 0.0;
+		float prim2 = step( 1.5, st2 );
+		vec3 h2 = vec3( prim2, step( 0.5, st2 ) * ( 1.0 - prim2 ), ( mid2 < ${MUSCLE_COUNT} && abs( float( mid2 ) - uHover ) < 0.5 ) ? 1.0 : 0.0 );
+		// Blend towards the neighbouring group by the dominance margin: the 0.5 isoline of the
+		// interpolated result is the true (smooth) border between the two groups.
+		vHi = mix( h2, h1, 0.5 + 0.5 * aSeg.y / 255.0 );
 		vMat = vec4( aInfo.y == 1.0 ? 1.0 : 0.0, aInfo.y == 2.0 ? 1.0 : 0.0, aInfo.y == 3.0 ? 1.0 : 0.0, aInfo.y == 4.0 ? 1.0 : 0.0 );
 		vLip = aInfo.y == 5.0 ? 1.0 : 0.0;
 		vSurf = vec4( aInfo.z / 255.0, aInfo.w / 255.0, aExtra.x, aExtra.y );
@@ -182,6 +191,13 @@ export function createBodyMaterial(u: BodyUniforms) {
         "#include <color_fragment>",
         `#include <color_fragment>
 	gFibre = texture2D( uFibreMap, vFibreUv );
+	// Highlight membership is per vertex; resolve it at its interpolated 0.5 isoline with a
+	// pixel-wide antialiased edge, so region borders run through edge midpoints instead of
+	// following the triangle stair-steps.
+	{
+		vec3 hw = max( fwidth( vHi ), vec3( 1e-3 ) ) * 0.7;
+		gHi = smoothstep( vec3( 0.5 ) - hw, vec3( 0.5 ) + hw, vHi );
+	}
 	{
 		float skin = matIs( 0.0 );
 		float shorts = matIs( 1.0 );
@@ -210,10 +226,10 @@ export function createBodyMaterial(u: BodyUniforms) {
 		}
 		base *= 1.0 + vTone * 0.06;
 		float muscle = skin + lip;
-		float hi = clamp( vHi.x + vHi.y, 0.0, 1.0 ) * ( muscle + shorts );
-		vec3 hiCol = ( uPrimary * vHi.x + uSecondary * vHi.y ) / max( vHi.x + vHi.y, 1e-3 );
+		float hi = clamp( gHi.x + gHi.y, 0.0, 1.0 ) * ( muscle + shorts );
+		vec3 hiCol = ( uPrimary * gHi.x + uSecondary * gHi.y ) / max( gHi.x + gHi.y, 1e-3 );
 		base = mix( base, hiCol, hi );
-		base = mix( base, uHoverColor, vHi.z * ( muscle + shorts ) );
+		base = mix( base, uHoverColor, gHi.z * ( muscle + shorts ) );
 		// Grooves between fibres read slightly darker.
 		float f = vSurf.x * uDetail * ( muscle + hair * 0.6 + shorts * 0.4 );
 		base *= mix( 1.0, 0.72 + 0.28 * gFibre.a, f );
@@ -228,7 +244,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 	roughnessFactor = mix( roughnessFactor, 0.62, matIs( 2.0 ) );
 	roughnessFactor = mix( roughnessFactor, 0.12, matIs( 3.0 ) );
 	roughnessFactor = mix( roughnessFactor, 0.3, matIs( 4.0 ) );
-	roughnessFactor = mix( roughnessFactor, 0.42, clamp( vHi.x + vHi.y, 0.0, 1.0 ) * ( 1.0 - matIs( 1.0 ) ) );`,
+	roughnessFactor = mix( roughnessFactor, 0.42, clamp( gHi.x + gHi.y, 0.0, 1.0 ) * ( 1.0 - matIs( 1.0 ) ) );`,
       )
       .replace(
         "#include <normal_fragment_maps>",
@@ -249,8 +265,14 @@ export function createBodyMaterial(u: BodyUniforms) {
       .replace(
         "#include <emissivemap_fragment>",
         `#include <emissivemap_fragment>
-	totalEmissiveRadiance += uPrimary * vHi.x * ( 0.05 + 0.09 * uPulse ) * ( 1.0 - matIs( 1.0 ) * 0.5 );
-	totalEmissiveRadiance += uHoverColor * vHi.z * 0.12;`,
+	totalEmissiveRadiance += uPrimary * gHi.x * ( 0.05 + 0.09 * uPulse ) * ( 1.0 - matIs( 1.0 ) * 0.5 );
+	totalEmissiveRadiance += uHoverColor * gHi.z * 0.12;
+	// Catchlight: a small soft highlight on the cornea, up and to the side.
+	{
+		vec2 cl = vEye.yz - vec2( 0.22, -0.16 );
+		float c = step( 0.999, matIs( 3.0 ) ) * smoothstep( 0.2, 0.5, vEye.x ) * ( 1.0 - smoothstep( 0.05, 0.11, length( cl ) ) );
+		totalEmissiveRadiance += vec3( 0.9 ) * c;
+	}`,
       )
       .replace(
         "#include <aomap_fragment>",
