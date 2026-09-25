@@ -775,7 +775,7 @@ const CARDIO: Exercise[] = [
     region: "Legs",
     primary: ["calves"],
     secondary: ["quads", "forearms", "front-delts", "abs"],
-    equipment: ["Bodyweight"],
+    equipment: ["Jump rope"],
     level: "Beginner",
     mechanics: "Compound",
     category: "Cardio",

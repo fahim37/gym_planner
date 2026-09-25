@@ -71,12 +71,11 @@ function block(geos: Geos, parent: THREE.Object3D, c: THREE.Vector3, w: number, 
 /** Authoring cm → world metres. */
 const W = (x: number, y: number, z = 0) => toWorld([x, y, z]);
 
-/** Midpoint of the two palms (a little back from the fingertips toward the wrists). */
-function palms(rig: Parameters<NonNullable<ReturnType<ExtraPropBuilder>["update"]>>[0], out: THREE.Vector3, tmp: THREE.Vector3) {
+/** Midpoint of the two hands' grip centres (where held handles sit). */
+function palms(rig: BodyRig, out: THREE.Vector3, tmp: THREE.Vector3) {
   const [a, b] = rig.joints!.sides;
-  out.copy(a.hand).lerp(a.wrist, 0.35);
-  tmp.copy(b.hand).lerp(b.wrist, 0.35);
-  return out.add(tmp).multiplyScalar(0.5);
+  tmp.copy(b.grip);
+  return out.copy(a.grip).add(tmp).multiplyScalar(0.5);
 }
 
 // ───────────────────────── medicine ball ─────────────────────────
@@ -99,7 +98,10 @@ const medicineBall: ExtraPropBuilder = (params) => {
     object: group,
     update(rig) {
       if (!rig.joints) return;
-      palms(rig, group.position, tmp);
+      const [a, b] = rig.joints.sides;
+      group.position.copy(a.hand).lerp(a.wrist, 0.35);
+      tmp.copy(b.hand).lerp(b.wrist, 0.35);
+      group.position.add(tmp).multiplyScalar(0.5);
       // Never sink into the floor (e.g. a slam at the bottom).
       group.position.y = Math.max(group.position.y, radius);
     },
@@ -135,6 +137,7 @@ const abWheel: ExtraPropBuilder = (params) => {
   const tmp = new THREE.Vector3();
   return {
     object: group,
+    grip: { hands: "both", radius: 0.017 },
     update(rig) {
       if (!rig.joints) return;
       palms(rig, tmp, group.position);
@@ -246,6 +249,7 @@ const sideCable: ExtraPropBuilder = (params) => {
   const down = new THREE.Vector3(0, -1, 0);
   return {
     object: group,
+    grip: { hands: "both", radius: 0.016, style: "neutral" },
     update(rig) {
       if (!rig.joints) return;
       const [a, b] = rig.joints.sides;
@@ -368,6 +372,7 @@ const jumpRope: ExtraPropBuilder = (params) => {
   let rising = true;
   return {
     object: group,
+    grip: { hands: "both", radius: 0.014, style: "neutral" },
     update(rig) {
       const j = rig.joints;
       if (!j) return;
@@ -379,7 +384,7 @@ const jumpRope: ExtraPropBuilder = (params) => {
       const phi = rising ? Math.PI * (1 - h) : -Math.PI * (1 - h);
       j.sides.forEach((s, i) => {
         // Upright handle in the fist, the rope leaving from its lower end.
-        handles[i].position.copy(s.hand).lerp(s.wrist, 0.3);
+        handles[i].position.copy(s.grip);
         tips[i].copy(handles[i].position).y -= 0.07;
       });
       mid.copy(tips[0]).add(tips[1]).multiplyScalar(0.5);
@@ -436,13 +441,16 @@ const battleRopes: ExtraPropBuilder = (params) => {
   };
   return {
     object: group,
+    grip: { hands: "both", radius: 0.019, style: "neutral" },
     update(rig) {
       const j = rig.joints;
       if (!j) return;
       const now = performance.now() / 1000;
       j.sides.forEach((s, i) => {
-        hand.copy(s.hand).lerp(s.wrist, 0.4);
+        hand.copy(s.grip);
         const hist = history[i];
+        // Several updates at the same instant (camera framing poses every keyframe): start the record afresh.
+        if (hist.length && now - hist[hist.length - 1].t < 0.004) hist.length = 0;
         hist.push({ t: now, y: hand.y });
         while (hist.length > 2 && now - hist[0].t > 1.2) hist.shift();
         mean[i] = hist.length === 1 ? hand.y : mean[i] + (hand.y - mean[i]) * 0.05;
@@ -524,6 +532,7 @@ const rower: ExtraPropBuilder = (params) => {
   let last = performance.now();
   return {
     object: group,
+    grip: { hands: "both", radius: 0.018 },
     update(rig: BodyRig) {
       const j = rig.joints;
       if (!j) return;
@@ -563,6 +572,7 @@ const bike: ExtraPropBuilder = (params) => {
   const p = new THREE.Vector3();
   return {
     object: group,
+    grip: { hands: "both", radius: 0.019, style: "neutral" },
     update(rig: BodyRig) {
       const j = rig.joints;
       if (!j || !crank) return;
