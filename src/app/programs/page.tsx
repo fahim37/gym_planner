@@ -7,16 +7,16 @@ export const metadata: Metadata = { title: "Programs" };
 
 export default function ProgramsPage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
+    <div className="mx-auto max-w-6xl px-4 pb-10 pt-6 md:py-10">
       <SectionTitle kicker="Follow a plan" title="Programs" />
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:gap-5 md:grid-cols-2">
         {PROGRAMS.map((p) => {
           const moves = new Set(p.days.flatMap((d) => d.exercises.map((e) => e.slug))).size;
           return (
             <Link
               key={p.slug}
               href={`/programs/${p.slug}`}
-              className="group relative overflow-hidden rounded-3xl bg-zinc-900 p-6 ring-1 ring-white/10 transition hover:ring-white/30"
+              className="surface animate-rise group relative overflow-hidden rounded-[1.75rem] p-5 transition-transform duration-300 ease-spring hover:bg-white/[0.07] active:scale-[0.97] sm:p-6"
             >
               <div className={`absolute inset-x-0 top-0 h-2 bg-gradient-to-r ${p.accent}`} />
               <div className="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider text-zinc-400">

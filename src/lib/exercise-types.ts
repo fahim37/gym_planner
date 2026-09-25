@@ -2,26 +2,31 @@ import type { Animation } from "@/lib/anatomy/types";
 import type { EquipmentSlug } from "@/lib/equipment-catalog";
 import type { BodyRegion, MuscleId } from "@/lib/muscles";
 
-export type Equipment =
-  | "Barbell"
-  | "Dumbbell"
-  | "Bodyweight"
-  | "Kettlebell"
-  | "Cable"
-  | "Pull-up bar"
-  | "Bench"
-  | "Machine"
-  | "EZ bar"
-  | "Trap bar"
-  | "Dip bars"
-  | "Plyo box"
-  | "Medicine ball"
-  | "Resistance band"
-  | "Ab wheel"
-  | "Battle ropes"
-  | "Landmine";
+export const EQUIPMENT_TYPES = [
+  "Barbell",
+  "Dumbbell",
+  "Bodyweight",
+  "Kettlebell",
+  "Cable",
+  "Pull-up bar",
+  "Bench",
+  "Machine",
+  "EZ bar",
+  "Trap bar",
+  "Dip bars",
+  "Plyo box",
+  "Medicine ball",
+  "Resistance band",
+  "Ab wheel",
+  "Battle ropes",
+  "Landmine",
+] as const;
 
-export type Level = "Beginner" | "Intermediate" | "Advanced";
+export type Equipment = (typeof EQUIPMENT_TYPES)[number];
+
+export const LEVELS = ["Beginner", "Intermediate", "Advanced"] as const;
+
+export type Level = (typeof LEVELS)[number];
 
 /** Training style; strength is the default when omitted. */
 export type ExerciseCategory = "Strength" | "Cardio" | "Plyometric" | "Mobility";

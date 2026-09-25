@@ -61,3 +61,20 @@ export function useProgress(program: string) {
   }, [program]);
   return { done, markDone, reset };
 }
+
+const EMPTY_MAP: Record<string, number[]> = {};
+const maps = new Map<string, { values: number[][]; value: Record<string, number[]> }>();
+
+/** Completed days for several programs at once (e.g. a "continue where you left off" card). */
+export function useProgressMap(programs: readonly string[]) {
+  const id = programs.join("|");
+  const get = () => {
+    const values = programs.map(read);
+    const cached = maps.get(id);
+    if (cached && cached.values.every((v, i) => v === values[i])) return cached.value;
+    const value = Object.fromEntries(programs.map((p, i) => [p, values[i]]));
+    maps.set(id, { values, value });
+    return value;
+  };
+  return useSyncExternalStore(subscribe, get, () => EMPTY_MAP);
+}

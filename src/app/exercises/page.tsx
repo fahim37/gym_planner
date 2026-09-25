@@ -9,7 +9,7 @@ export default async function ExercisesPage({ searchParams }: PageProps<"/exerci
   const { region } = await searchParams;
   const initialRegion = REGIONS.find((r) => r === region) as BodyRegion | undefined;
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
+    <div className="mx-auto max-w-6xl px-4 pb-10 pt-6 md:py-10">
       <SectionTitle kicker="Exercise library" title="Every move, animated" />
       <ExerciseBrowser key={initialRegion ?? "all"} initialRegion={initialRegion} />
     </div>

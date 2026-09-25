@@ -15,6 +15,13 @@ export interface StageOptions {
   interactive?: boolean;
   /** Keep the drawing buffer so the canvas can be exported (thumbnails). */
   preserveDrawingBuffer?: boolean;
+  /** Show the anatomy figure (default true); off for equipment-only scenes. */
+  figure?: boolean;
+}
+
+export interface FrameOptions {
+  /** View direction: a preset, or a vector from the target towards the camera. Defaults to the current view. */
+  direction?: CameraPreset | THREE.Vector3;
 }
 
 export class Stage {
@@ -28,6 +35,9 @@ export class Stage {
   private readonly bounds = new THREE.Box3(new THREE.Vector3(-0.5, 0, -0.4), new THREE.Vector3(0.5, 1.9, 0.4));
   private readonly target = new THREE.Vector3(0, 0.9, 0);
   private preset: CameraPreset = "front";
+  /** Custom view direction set by frame(); overrides the preset while set. */
+  private viewDir: THREE.Vector3 | null = null;
+  private readonly key: THREE.DirectionalLight;
 
   constructor(canvas: HTMLCanvasElement, opts: StageOptions = {}) {
     this.renderer = new THREE.WebGLRenderer({
@@ -44,7 +54,7 @@ export class Stage {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x9ca3af, 1.6));
-    const key = new THREE.DirectionalLight(0xffffff, 2.4);
+    const key = (this.key = new THREE.DirectionalLight(0xffffff, 2.4));
     key.position.set(2.5, 4, 3);
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
@@ -70,7 +80,7 @@ export class Stage {
     floor.receiveShadow = true;
     this.scene.add(floor);
 
-    this.scene.add(this.rig.group);
+    if (opts.figure ?? true) this.scene.add(this.rig.group);
 
     if (opts.interactive) {
       const controls = new OrbitControls(this.camera, canvas);
@@ -131,22 +141,64 @@ export class Stage {
     return dist * 1.08;
   }
 
-  setPreset(preset: CameraPreset) {
-    this.preset = preset;
-    const dir = PRESETS[preset].clone().normalize();
-    this.camera.position.copy(this.target).addScaledVector(dir, this.fitDistance(dir));
+  /** Places the camera along `dir` at the distance that fits the bounds. */
+  private lookFrom(dir: THREE.Vector3) {
+    const d = dir.clone().normalize();
+    const dist = this.fitDistance(d);
+    this.camera.position.copy(this.target).addScaledVector(d, dist);
     this.camera.lookAt(this.target);
     if (this.controls) {
       this.controls.target.copy(this.target);
       this.controls.update();
     }
+    return dist;
+  }
+
+  setPreset(preset: CameraPreset) {
+    this.preset = preset;
+    this.viewDir = null;
+    this.lookFrom(PRESETS[preset]);
+  }
+
+  /**
+   * Frames the camera tightly on any object or box (e.g. a piece of
+   * equipment). Also scales the orbit zoom range and the key light's shadow
+   * to the subject's size. Returns the camera distance used.
+   */
+  frame(subject: THREE.Object3D | THREE.Box3, opts: FrameOptions = {}): number {
+    const box = subject instanceof THREE.Box3 ? subject.clone() : new THREE.Box3().setFromObject(subject);
+    if (box.isEmpty()) return this.camera.position.distanceTo(this.target);
+    this.bounds.copy(box);
+    box.getCenter(this.target);
+    if (typeof opts.direction === "string") {
+      this.preset = opts.direction;
+      this.viewDir = null;
+    } else if (opts.direction) {
+      this.viewDir = opts.direction.clone().normalize();
+    }
+    const dir = this.viewDir ?? PRESETS[this.preset].clone().normalize();
+    const sphere = box.getBoundingSphere(new THREE.Sphere());
+    if (this.controls) {
+      // Set before placing the camera: OrbitControls clamps to these on update.
+      this.controls.minDistance = Math.max(0.1, sphere.radius * 0.35);
+      this.controls.maxDistance = Math.max(this.fitDistance(dir) * 2.5, this.controls.minDistance * 2);
+    }
+    // Grow (never shrink below the default) the shadow frustum to cover the subject.
+    const reach = Math.max(2, sphere.center.length() + sphere.radius);
+    const shadow = this.key.shadow.camera;
+    shadow.left = -reach;
+    shadow.right = reach;
+    shadow.top = Math.max(2.5, reach);
+    shadow.bottom = -Math.max(1, reach);
+    shadow.updateProjectionMatrix();
+    return this.lookFrom(dir);
   }
 
   resize(width: number, height: number) {
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / Math.max(1, height);
     this.camera.updateProjectionMatrix();
-    this.setPreset(this.preset);
+    this.lookFrom(this.viewDir ?? PRESETS[this.preset]);
   }
 
   pose(p: Pose) {
