@@ -1,0 +1,959 @@
+import type { Keyframe, LimbSpec, Pose } from "@/lib/anatomy/types";
+import type { Exercise } from "@/lib/exercise-types";
+import { armsDown, hand, handLocal, planted, standing, STAND_Y } from "./poses";
+
+// Shared poses ---------------------------------------------------------------
+
+/** Lying face-up on the floor or a bench, head towards -x, knees bent. */
+const lyingOnBack = (pelvisY: number, torso: number, arms: [LimbSpec] | [LimbSpec, LimbSpec], pelvisX = 160): Pose => ({
+  hip: [pelvisX, pelvisY],
+  torso,
+  arms,
+  legs: [{ ik: { x: 205, y: 245, z: 13 }, pole: [0.2, -1, 0.1] }],
+});
+
+/** High plank: straight body from toes to shoulders, hands under shoulders. */
+const HIGH_PLANK = { hip: [150, 204] as [number, number], torso: 72 };
+const plankHands: LimbSpec = { ik: { x: 209, y: 243, z: 24 }, pole: [-0.6, -1, 0.5] };
+const straightLegBack = (angle: number, foot = 72): LimbSpec => ({ angles: [angle, angle], foot });
+
+/**
+ * One repetition as two keyframes. `go` is the time from start to end,
+ * `hold` the pause at the end, `back` the return; the rep counts on return.
+ */
+function repFrames(
+  start: Pose,
+  end: Pose,
+  opts: { go?: number; back?: number; hold?: number; cues?: [string, string] } = {},
+): Keyframe[] {
+  return [
+    { pose: start, dur: opts.go ?? 1.3, cue: opts.cues?.[0], rep: true },
+    { pose: end, dur: opts.back ?? 1, hold: opts.hold ?? 0.15, cue: opts.cues?.[1] },
+  ];
+}
+
+export const EXERCISES: Exercise[] = [
+  // ───────────────────────────── LEGS ─────────────────────────────
+  {
+    slug: "barbell-back-squat",
+    name: "Barbell Back Squat",
+    region: "Legs",
+    primary: ["quads", "glutes"],
+    secondary: ["adductors", "hamstrings", "lower-back", "abs"],
+    equipment: ["Barbell"],
+    level: "Intermediate",
+    mechanics: "Compound",
+    summary: "The king of leg exercises. Builds quads, glutes and total-body strength.",
+    steps: [
+      "Set the bar on your upper traps (not your neck) and grip it just outside shoulder width.",
+      "Step back, feet shoulder-width apart, toes turned out 15–30°.",
+      "Brace your core hard, then sit down and back between your heels.",
+      "Keep your knees tracking over your toes and your chest up.",
+      "Descend until your hip crease is at or below knee height.",
+      "Drive through your whole foot to stand up, squeezing your glutes at the top.",
+    ],
+    tips: [
+      "Take a big breath into your belly before each rep and hold it on the way down.",
+      "Think “spread the floor” with your feet to keep your knees out.",
+      "Keep the bar over mid-foot the whole time.",
+    ],
+    mistakes: ["Knees caving inward", "Heels lifting off the floor", "Rounding the lower back at the bottom"],
+    breathing: "Inhale and brace at the top, hold on the way down, exhale as you pass the sticking point.",
+    prescription: { sets: "3–5", reps: "5–10", rest: "2–3 min" },
+    animation: {
+      props: [{ type: "barbell", at: "back" }],
+      frames: repFrames(
+        { hip: [158, STAND_Y], torso: 6, arms: [handLocal(-8, -2, 40, [-0.4, 1, 0.5])], legs: [planted(163, 16, [1, -0.1, 0.35])] },
+        { hip: [124, 211], torso: 42, head: -18, arms: [handLocal(-8, -2, 40, [-0.4, 1, 0.5])], legs: [planted(163, 16, [1, -0.1, 0.35])] },
+        { go: 1.4, cues: ["Sit down and back", "Drive up through your feet"] },
+      ),
+    },
+  },
+  {
+    slug: "dumbbell-forward-lunge",
+    name: "Dumbbell Forward Lunge",
+    region: "Legs",
+    primary: ["quads", "glutes"],
+    secondary: ["hamstrings", "adductors", "calves"],
+    equipment: ["Dumbbell"],
+    level: "Beginner",
+    mechanics: "Compound",
+    summary: "Single-leg strength and balance for stronger, more even legs.",
+    steps: [
+      "Stand tall with a dumbbell in each hand at your sides.",
+      "Take a long step forward with one leg.",
+      "Lower until both knees are bent about 90°, back knee just above the floor.",
+      "Push through the front heel to step back to standing.",
+      "Alternate legs each rep.",
+    ],
+    tips: ["Keep your torso upright and your front knee in line with your toes.", "A longer step works the glutes more; a shorter step hits the quads."],
+    mistakes: ["Front knee collapsing inward", "Slamming the back knee into the floor", "Leaning far forward"],
+    breathing: "Inhale as you step and lower, exhale as you push back.",
+    prescription: { sets: "3", reps: "10–12 each leg", rest: "90 s" },
+    animation: {
+      props: [{ type: "dumbbell" }],
+      frames: (() => {
+        const stand = standing({ legs: [planted(162), planted(160)] });
+        const stepA: Pose = { ...stand, hip: [163, 164], legs: [{ ik: { x: 186, y: 226, z: 11 }, pole: [1, -0.2, 0.1] }, planted(158)] };
+        const lowA: Pose = {
+          ...stand,
+          hip: [158, 196],
+          torso: 4,
+          legs: [{ ik: { x: 205, y: 245, z: 11 }, pole: [1, -0.1, 0.1] }, { ik: { x: 112, y: 236, z: 10 }, pole: [0.2, 1, 0], foot: 50 }],
+        };
+        const stepB: Pose = { ...stepA, legs: [stepA.legs[1]!, stepA.legs[0]] };
+        const lowB: Pose = { ...lowA, legs: [lowA.legs[1]!, lowA.legs[0]] };
+        return [
+          { pose: stand, dur: 0.5, cue: "Step forward", rep: true },
+          { pose: stepA, dur: 0.7 },
+          { pose: lowA, dur: 0.6, hold: 0.2, cue: "Push back to standing" },
+          { pose: stepA, dur: 0.5 },
+          { pose: stand, dur: 0.5, cue: "Other leg", rep: true },
+          { pose: stepB, dur: 0.7 },
+          { pose: lowB, dur: 0.6, hold: 0.2, cue: "Push back to standing" },
+          { pose: stepB, dur: 0.5 },
+        ];
+      })(),
+    },
+  },
+  {
+    slug: "barbell-romanian-deadlift",
+    name: "Barbell Romanian Deadlift",
+    region: "Legs",
+    primary: ["hamstrings", "glutes"],
+    secondary: ["lower-back", "forearms", "traps"],
+    equipment: ["Barbell"],
+    level: "Intermediate",
+    mechanics: "Compound",
+    summary: "The best hinge for hamstring size and a stronger posterior chain.",
+    steps: [
+      "Stand holding the bar at hip height with an overhand grip, feet hip-width.",
+      "Soften your knees slightly and keep them there.",
+      "Push your hips straight back, sliding the bar down your thighs.",
+      "Lower until you feel a strong hamstring stretch (usually mid-shin).",
+      "Drive your hips forward to stand tall and squeeze your glutes.",
+    ],
+    tips: ["Keep the bar in contact with your legs.", "Think “hips back”, not “chest down”."],
+    mistakes: ["Rounding the back to reach lower", "Squatting the weight down", "Letting the bar drift away from the legs"],
+    breathing: "Inhale and brace before lowering, exhale as you lock out.",
+    prescription: { sets: "3–4", reps: "8–12", rest: "2 min" },
+    animation: {
+      props: [{ type: "barbell" }],
+      frames: repFrames(
+        { hip: [160, STAND_Y], torso: 2, arms: [{ ik: { x: 166, y: 151, z: 22 }, pole: [-1, 0, 0.2] }], legs: [planted(162)] },
+        { hip: [126, 168], torso: 60, head: -12, arms: [{ ik: { x: 176, y: 196, z: 22 }, pole: [-1, 0, 0.2] }], legs: [planted(162)] },
+        { go: 1.6, cues: ["Hips back, bar close", "Drive hips forward"] },
+      ),
+    },
+  },
+  {
+    slug: "dumbbell-bulgarian-split-squat",
+    name: "Bulgarian Split Squat",
+    region: "Legs",
+    primary: ["quads", "glutes"],
+    secondary: ["adductors", "hamstrings"],
+    equipment: ["Dumbbell", "Bench"],
+    level: "Intermediate",
+    mechanics: "Compound",
+    summary: "A brutal single-leg squat that builds quads and glutes without a heavy bar.",
+    steps: [
+      "Stand in front of a bench and rest the top of your back foot on it.",
+      "Hop the front foot forward so your knee stays roughly over your toes at the bottom.",
+      "Lower straight down until your back knee nearly touches the floor.",
+      "Drive through the front foot to stand back up.",
+      "Finish all reps, then switch legs.",
+    ],
+    tips: ["Lean slightly forward to bias the glutes, stay upright for quads.", "Start with bodyweight to find your foot position."],
+    mistakes: ["Front foot too close to the bench", "Pushing off the back leg", "Wobbling knee"],
+    breathing: "Inhale on the way down, exhale on the way up.",
+    prescription: { sets: "3", reps: "8–12 each leg", rest: "90 s" },
+    animation: {
+      props: [{ type: "bench", from: 50, to: 112, top: 205 }, { type: "dumbbell" }],
+      frames: repFrames(
+        {
+          hip: [152, 168],
+          torso: 6,
+          arms: [armsDown],
+          legs: [{ ik: { x: 190, y: 245, z: 11 }, pole: [1, -0.1, 0.1] }, { ik: { x: 92, y: 199, z: 10 }, pole: [0.2, 1, 0], foot: 165 }],
+        },
+        {
+          hip: [150, 202],
+          torso: 14,
+          arms: [armsDown],
+          legs: [{ ik: { x: 190, y: 245, z: 11 }, pole: [1, -0.1, 0.1] }, { ik: { x: 92, y: 199, z: 10 }, pole: [0.2, 1, 0], foot: 165 }],
+        },
+        { go: 1.4, cues: ["Lower straight down", "Drive through the front foot"] },
+      ),
+    },
+  },
+  {
+    slug: "glute-bridge",
+    name: "Glute Bridge",
+    region: "Legs",
+    primary: ["glutes"],
+    secondary: ["hamstrings", "abs", "lower-back"],
+    equipment: ["Bodyweight"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    summary: "Wakes up and strengthens the glutes — great for beginners and as a warm-up.",
+    steps: [
+      "Lie on your back with knees bent and feet flat, hip-width apart.",
+      "Rest your arms on the floor by your sides.",
+      "Press through your heels and lift your hips until knees, hips and shoulders line up.",
+      "Squeeze your glutes hard for a second at the top.",
+      "Lower slowly back to the floor.",
+    ],
+    tips: ["Tuck your pelvis slightly so you feel it in your glutes, not your lower back.", "Add a dumbbell on your hips to progress."],
+    mistakes: ["Over-arching the lower back", "Pushing through the toes", "Rushing the squeeze"],
+    breathing: "Exhale as you lift, inhale as you lower.",
+    prescription: { sets: "3", reps: "12–20", rest: "60 s" },
+    animation: {
+      props: [{ type: "mat" }],
+      frames: repFrames(
+        lyingOnBack(239, -90, [{ ik: { x: 150, y: 246, z: 24 }, pole: [0, -1, 0.3] }]),
+        lyingOnBack(210, -115.8, [{ ik: { x: 150, y: 246, z: 24 }, pole: [0, -1, 0.3] }], 156),
+        { go: 0.9, back: 1.2, hold: 0.6, cues: ["Drive hips up", "Squeeze, then lower"] },
+      ),
+    },
+  },
+  {
+    slug: "standing-dumbbell-calf-raise",
+    name: "Standing Calf Raise",
+    region: "Legs",
+    primary: ["calves"],
+    secondary: [],
+    equipment: ["Dumbbell"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    summary: "Simple, effective calf builder you can do anywhere.",
+    steps: [
+      "Stand tall holding dumbbells at your sides, feet hip-width.",
+      "Rise onto the balls of your feet as high as you can.",
+      "Pause for a second at the top.",
+      "Lower your heels slowly all the way down.",
+    ],
+    tips: ["Stand on a step to get a deeper stretch at the bottom.", "Keep your knees straight but not locked."],
+    mistakes: ["Bouncing", "Partial range of motion", "Rolling onto the outside of the foot"],
+    breathing: "Exhale up, inhale down.",
+    prescription: { sets: "3–4", reps: "12–20", rest: "45 s" },
+    animation: {
+      props: [{ type: "dumbbell" }],
+      frames: repFrames(
+        standing(),
+        standing({ hip: [162, 146], legs: [{ ik: { x: 164, y: 235, z: 11 }, pole: [1, 0, 0.1], foot: 52 }] }),
+        { go: 0.8, back: 1.1, hold: 0.5, cues: ["Rise onto your toes", "Lower slowly"] },
+      ),
+    },
+  },
+
+  // ───────────────────────────── BACK ─────────────────────────────
+  {
+    slug: "bent-over-barbell-row",
+    name: "Bent-Over Barbell Row",
+    region: "Back",
+    primary: ["lats", "upper-back"],
+    secondary: ["rear-delts", "biceps", "traps", "lower-back", "forearms"],
+    equipment: ["Barbell"],
+    level: "Intermediate",
+    mechanics: "Compound",
+    summary: "A heavy horizontal pull that thickens the whole back.",
+    steps: [
+      "Hold the bar with an overhand grip slightly wider than shoulder width.",
+      "Soften your knees and hinge at the hips until your torso is at about 45° or lower.",
+      "Let the bar hang at arm's length below your shoulders with a flat back.",
+      "Pull the bar to your lower ribs, driving your elbows back.",
+      "Squeeze your shoulder blades together at the top, then lower under control.",
+    ],
+    tips: ["Keep your neck neutral — look at the floor a metre in front of you.", "Imagine your hands are hooks; pull with your elbows."],
+    mistakes: ["Standing up as the weight gets heavy", "Jerking the bar with the lower back", "Rounding the spine"],
+    breathing: "Exhale as you row, inhale as you lower.",
+    prescription: { sets: "3–4", reps: "8–12", rest: "90 s" },
+    animation: {
+      camera: "back",
+      props: [{ type: "barbell" }],
+      frames: repFrames(
+        { hip: [146, 160], torso: 68, head: -18, arms: [hand(-2, 56, 24, [-1, 0, 0.3])], legs: [planted(160, 12)] },
+        { hip: [146, 160], torso: 68, head: -18, arms: [hand(-24, 30, 25, [-0.5, -1, 0.35])], legs: [planted(160, 12)] },
+        { go: 0.8, back: 1.3, hold: 0.3, cues: ["Pull to your lower ribs", "Lower with control"] },
+      ),
+    },
+  },
+  {
+    slug: "bent-over-dumbbell-row",
+    name: "Bent-Over Dumbbell Row",
+    region: "Back",
+    primary: ["lats", "upper-back"],
+    secondary: ["rear-delts", "biceps", "lower-back", "forearms"],
+    equipment: ["Dumbbell"],
+    level: "Beginner",
+    mechanics: "Compound",
+    summary: "Row with a neutral grip for a longer range of motion and a big lat squeeze.",
+    steps: [
+      "Hold a dumbbell in each hand, palms facing each other.",
+      "Hinge forward to about 45°, knees soft, back flat.",
+      "Row both dumbbells toward your hips, elbows close to your body.",
+      "Squeeze your back at the top, then lower until your arms are straight.",
+    ],
+    tips: ["Pull toward your hip pockets to hit the lats more.", "Keep your chest proud and your shoulders away from your ears."],
+    mistakes: ["Shrugging the weight up", "Using momentum from the legs", "Rounded back"],
+    breathing: "Exhale on the pull, inhale on the way down.",
+    prescription: { sets: "3–4", reps: "10–12", rest: "90 s" },
+    animation: {
+      camera: "back",
+      props: [{ type: "dumbbell" }],
+      frames: repFrames(
+        { hip: [140, 164], torso: 62, head: -18, arms: [hand(0, 56, 20, [-1, 0, 0.1])], legs: [planted(160, 12)] },
+        { hip: [140, 164], torso: 62, head: -18, arms: [hand(-28, 26, 21, [-0.6, -1, 0.15])], legs: [planted(160, 12)] },
+        { go: 0.8, back: 1.3, hold: 0.3, cues: ["Row to your hips", "Lower with control"] },
+      ),
+    },
+  },
+  {
+    slug: "single-arm-dumbbell-row",
+    name: "Single-Arm Dumbbell Row",
+    region: "Back",
+    primary: ["lats", "upper-back"],
+    secondary: ["rear-delts", "biceps", "obliques"],
+    equipment: ["Dumbbell", "Bench"],
+    level: "Beginner",
+    mechanics: "Compound",
+    summary: "Supported one-arm row — heavy, strict and easy on the lower back.",
+    steps: [
+      "Put one knee and the same-side hand on a flat bench.",
+      "Plant your other foot on the floor and hold a dumbbell with a straight arm.",
+      "Keep your back flat and parallel to the floor.",
+      "Row the dumbbell toward your hip, leading with the elbow.",
+      "Lower until your arm is straight and feel the lat stretch.",
+    ],
+    tips: ["Let the shoulder blade move — reach down at the bottom, squeeze back at the top.", "Don't twist your torso open to lift more."],
+    mistakes: ["Rotating the torso", "Pulling toward the chest instead of the hip", "Short range of motion"],
+    breathing: "Exhale on the pull, inhale on the way down.",
+    prescription: { sets: "3", reps: "10–12 each arm", rest: "60 s" },
+    animation: {
+      camera: "front",
+      props: [
+        { type: "bench", from: 92, to: 232, top: 208, z: -20 },
+        { type: "dumbbell", hands: "near" },
+      ],
+      frames: (() => {
+        const base = (arm: LimbSpec, twist: number): Pose => ({
+          hip: [142, 157],
+          torso: 78,
+          twist,
+          head: -10,
+          arms: [arm, { ik: { x: 214, y: 204, z: 18 }, pole: [-1, 0, 0.2] }],
+          legs: [
+            { ik: { x: 150, y: 245, z: 18 }, pole: [1, 0, 0.3] },
+            { ik: { x: 104, y: 201, z: 12 }, pole: [0.3, 1, 0], foot: 182 },
+          ],
+        });
+        return repFrames(base(hand(0, 57, 22, [-1, 0, 0.2]), 0), base(hand(-28, 22, 22, [-0.5, -1, 0.2]), 10), {
+          go: 0.8,
+          back: 1.3,
+          hold: 0.3,
+          cues: ["Row to your hip", "Lower and stretch"],
+        });
+      })(),
+    },
+  },
+  {
+    slug: "pull-up",
+    name: "Pull-Up",
+    region: "Back",
+    primary: ["lats"],
+    secondary: ["biceps", "upper-back", "rear-delts", "forearms", "abs"],
+    equipment: ["Pull-up bar"],
+    level: "Intermediate",
+    mechanics: "Compound",
+    summary: "The ultimate bodyweight back builder for a wide V-taper.",
+    steps: [
+      "Hang from the bar with an overhand grip slightly wider than your shoulders.",
+      "Pull your shoulder blades down and back to start the movement.",
+      "Drive your elbows down toward your ribs until your chin clears the bar.",
+      "Lower all the way to a dead hang under control.",
+    ],
+    tips: ["Squeeze your glutes and cross your ankles to stop swinging.", "Can't do one yet? Use a band or do slow negatives."],
+    mistakes: ["Kipping or swinging", "Half reps", "Shrugging the shoulders up to the ears"],
+    breathing: "Exhale as you pull up, inhale as you lower.",
+    prescription: { sets: "3–4", reps: "5–10", rest: "2 min" },
+    animation: {
+      props: [{ type: "pullupBar", x: 165, y: 40 }],
+      frames: repFrames(
+        {
+          hip: [167, 163],
+          torso: -5,
+          arms: [{ ik: { x: 165, y: 45, z: 36 }, pole: [0.2, 1, 0.7] }],
+          legs: [{ angles: [8, -32], spread: [2, 0], footFollowsShin: true }],
+        },
+        {
+          hip: [171, 116],
+          torso: -12,
+          head: -12,
+          arms: [{ ik: { x: 165, y: 45, z: 36 }, pole: [0.2, 1, 0.7] }],
+          legs: [{ angles: [14, -30], spread: [2, 0], footFollowsShin: true }],
+        },
+        { go: 1, back: 1.5, hold: 0.3, cues: ["Pull your elbows down", "Lower to a dead hang"] },
+      ),
+    },
+  },
+  {
+    slug: "lat-pulldown",
+    name: "Lat Pulldown",
+    region: "Back",
+    primary: ["lats"],
+    secondary: ["biceps", "upper-back", "rear-delts"],
+    equipment: ["Cable"],
+    level: "Beginner",
+    mechanics: "Compound",
+    summary: "Machine pull-down that builds the lats and works toward your first pull-up.",
+    steps: [
+      "Sit with your thighs locked under the pads and grab the bar wider than shoulder width.",
+      "Lean back slightly and lift your chest.",
+      "Pull the bar to your upper chest, driving your elbows down and back.",
+      "Squeeze your lats, then let the bar rise until your arms are straight.",
+    ],
+    tips: ["Lead with your elbows, not your hands.", "Keep the lean small — this isn't a row."],
+    mistakes: ["Pulling the bar behind the neck", "Leaning way back and yanking", "Letting the weight stack slam"],
+    breathing: "Exhale as you pull down, inhale as the bar rises.",
+    prescription: { sets: "3–4", reps: "10–12", rest: "90 s" },
+    animation: {
+      camera: "back",
+      props: [
+        { type: "box", from: 128, to: 174, top: 200, width: 40 },
+        { type: "cable", pulley: [165, 22], handle: "bar" },
+      ],
+      frames: repFrames(
+        {
+          hip: [150, 191],
+          torso: -8,
+          arms: [{ ik: { x: 162, y: 76, z: 40 }, pole: [0, 1, 0.8] }],
+          legs: [{ ik: { x: 200, y: 245, z: 13 }, pole: [1, -1, 0.1] }],
+        },
+        {
+          hip: [150, 191],
+          torso: -16,
+          head: -8,
+          arms: [{ ik: { x: 154, y: 130, z: 36 }, pole: [-0.3, 1, 0.8] }],
+          legs: [{ ik: { x: 200, y: 245, z: 13 }, pole: [1, -1, 0.1] }],
+        },
+        { go: 0.9, back: 1.4, hold: 0.3, cues: ["Pull to your upper chest", "Control it up"] },
+      ),
+    },
+  },
+  {
+    slug: "cable-face-pull",
+    name: "Cable Face Pull",
+    region: "Back",
+    primary: ["rear-delts", "upper-back"],
+    secondary: ["traps", "side-delts"],
+    equipment: ["Cable"],
+    level: "Beginner",
+    mechanics: "Compound",
+    summary: "Builds rear delts and fixes rounded shoulders — the posture exercise.",
+    steps: [
+      "Set a rope attachment at upper-chest to face height.",
+      "Grab the rope with palms facing each other and step back until your arms are straight.",
+      "Pull the rope toward your face, splitting the ends apart.",
+      "Finish with your hands beside your ears and elbows high.",
+      "Return slowly until your arms are straight.",
+    ],
+    tips: ["Think “show your biceps” at the end — like a double-biceps pose.", "Use a light weight and pause at the end of every rep."],
+    mistakes: ["Going too heavy and leaning back", "Elbows dropping below the hands", "Shrugging"],
+    breathing: "Exhale as you pull, inhale as you return.",
+    prescription: { sets: "3–4", reps: "12–15", rest: "60 s" },
+    animation: {
+      camera: "back",
+      props: [{ type: "cable", pulley: [240, 88], handle: "rope" }],
+      frames: repFrames(
+        standing({ torso: -3, arms: [{ ik: { x: 214, y: 99, z: 10 }, pole: [0, 1, 0.6] }], legs: [planted(160, 13)] }),
+        standing({ torso: -5, arms: [{ ik: { x: 170, y: 82, z: 22 }, pole: [-0.5, -0.1, 1] }], legs: [planted(160, 13)] }),
+        { go: 0.9, back: 1.2, hold: 0.4, cues: ["Pull to your face, split the rope", "Return slowly"] },
+      ),
+    },
+  },
+  {
+    slug: "conventional-deadlift",
+    name: "Conventional Deadlift",
+    region: "Back",
+    primary: ["glutes", "hamstrings", "lower-back"],
+    secondary: ["quads", "traps", "forearms", "lats", "abs"],
+    equipment: ["Barbell"],
+    level: "Advanced",
+    mechanics: "Compound",
+    summary: "Lift the most weight of any exercise and build a powerful back and hips.",
+    steps: [
+      "Stand with mid-foot under the bar, feet hip-width.",
+      "Hinge down and grip the bar just outside your legs.",
+      "Drop your hips until your shins touch the bar, chest up, back flat.",
+      "Take the slack out of the bar, brace, then push the floor away.",
+      "Stand tall with hips and knees locked, then lower the bar the same way.",
+    ],
+    tips: ["Keep the bar dragging up your shins and thighs.", "Pull your lats down as if squeezing oranges in your armpits."],
+    mistakes: ["Rounding the lower back", "Hips shooting up first", "Hyper-extending at the top"],
+    breathing: "Big breath and brace before each rep; exhale at lockout.",
+    prescription: { sets: "3–5", reps: "3–6", rest: "3 min" },
+    animation: {
+      props: [{ type: "barbell" }],
+      frames: (() => {
+        const floor: Pose = { hip: [128, 196], torso: 58, head: -20, arms: [{ ik: { x: 170, y: 223, z: 24 }, pole: [-1, 0, 0.2] }], legs: [planted(160, 13, [1, 0, 0.3])] };
+        const knee: Pose = { hip: [140, 172], torso: 40, head: -12, arms: [{ ik: { x: 169, y: 181, z: 24 }, pole: [-1, 0, 0.2] }], legs: [planted(160, 13, [1, 0, 0.3])] };
+        const top: Pose = { hip: [162, STAND_Y], torso: -2, arms: [{ ik: { x: 164, y: 151, z: 24 }, pole: [-1, 0, 0.2] }], legs: [planted(160, 13, [1, 0, 0.3])] };
+        return [
+          { pose: floor, dur: 0.8, hold: 0.3, cue: "Push the floor away", rep: true },
+          { pose: knee, dur: 0.6 },
+          { pose: top, dur: 0.7, hold: 0.4, cue: "Lower the same way" },
+          { pose: knee, dur: 0.7 },
+        ];
+      })(),
+    },
+  },
+
+  // ───────────────────────────── CHEST ─────────────────────────────
+  {
+    slug: "barbell-bench-press",
+    name: "Barbell Bench Press",
+    region: "Chest",
+    primary: ["chest"],
+    secondary: ["front-delts", "triceps"],
+    equipment: ["Barbell", "Bench"],
+    level: "Intermediate",
+    mechanics: "Compound",
+    summary: "The classic upper-body strength builder for chest, shoulders and triceps.",
+    steps: [
+      "Lie on the bench with eyes under the bar and feet flat on the floor.",
+      "Grip the bar a little wider than shoulder width and squeeze your shoulder blades together.",
+      "Unrack and hold the bar over your shoulders with straight arms.",
+      "Lower the bar to your mid-chest, elbows about 45° from your body.",
+      "Press the bar back up and slightly back over your shoulders.",
+    ],
+    tips: ["Keep a slight arch and your glutes on the bench.", "Always use a spotter or safety pins for heavy sets."],
+    mistakes: ["Bouncing the bar off the chest", "Elbows flared at 90°", "Feet floating off the floor"],
+    breathing: "Inhale as you lower, exhale as you press.",
+    prescription: { sets: "3–5", reps: "5–10", rest: "2–3 min" },
+    animation: {
+      props: [{ type: "bench", from: 56, to: 190, top: 200 }, { type: "barbell" }],
+      frames: repFrames(
+        lyingOnBack(190, -90, [{ ik: { x: 100, y: 134, z: 30 }, pole: [0.2, 1, 0.8] }]),
+        lyingOnBack(190, -90, [{ ik: { x: 110, y: 176, z: 32 }, pole: [0.3, 1, 0.8] }]),
+        { go: 1.4, back: 0.9, cues: ["Lower to mid-chest", "Press up"] },
+      ),
+    },
+  },
+  {
+    slug: "push-up",
+    name: "Push-Up",
+    region: "Chest",
+    primary: ["chest"],
+    secondary: ["front-delts", "triceps", "abs"],
+    equipment: ["Bodyweight"],
+    level: "Beginner",
+    mechanics: "Compound",
+    summary: "No equipment needed — builds chest, shoulders, triceps and core stability.",
+    steps: [
+      "Start in a high plank with hands slightly wider than your shoulders.",
+      "Make a straight line from head to heels by squeezing your glutes and abs.",
+      "Lower your chest toward the floor, elbows about 45° from your body.",
+      "Push the floor away until your arms are straight.",
+    ],
+    tips: ["Too hard? Elevate your hands on a bench.", "Too easy? Elevate your feet or slow down the lowering."],
+    mistakes: ["Hips sagging", "Head poking forward", "Elbows flared straight out"],
+    breathing: "Inhale on the way down, exhale as you push up.",
+    prescription: { sets: "3", reps: "10–20", rest: "60 s" },
+    animation: {
+      props: [{ type: "mat" }],
+      frames: repFrames(
+        { ...HIGH_PLANK, arms: [plankHands], legs: [straightLegBack(-72)] },
+        { hip: [154.2, 226.1], torso: 86.1, arms: [plankHands], legs: [straightLegBack(-86.1, 74)] },
+        { go: 1.2, back: 0.8, hold: 0.1, cues: ["Lower your chest", "Push the floor away"] },
+      ),
+    },
+  },
+  {
+    slug: "dumbbell-fly",
+    name: "Dumbbell Fly",
+    region: "Chest",
+    primary: ["chest"],
+    secondary: ["front-delts"],
+    equipment: ["Dumbbell", "Bench"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    summary: "A deep stretch and squeeze for the chest with no triceps taking over.",
+    steps: [
+      "Lie on a flat bench holding dumbbells above your chest, palms facing each other.",
+      "Keep a slight, fixed bend in your elbows.",
+      "Open your arms in a wide arc until you feel a stretch across your chest.",
+      "Bring the dumbbells back together over your chest as if hugging a tree.",
+    ],
+    tips: ["Use lighter weights than you'd press.", "Stop the stretch at chest level to protect your shoulders."],
+    mistakes: ["Bending the elbows more to turn it into a press", "Going too deep", "Clanking the dumbbells at the top"],
+    breathing: "Inhale as you open, exhale as you squeeze together.",
+    prescription: { sets: "3", reps: "10–15", rest: "60 s" },
+    animation: {
+      props: [{ type: "bench", from: 56, to: 190, top: 200 }, { type: "dumbbell" }],
+      frames: repFrames(
+        lyingOnBack(190, -90, [{ ik: { x: 104, y: 136, z: 13 }, pole: [0, 0.3, 1] }]),
+        lyingOnBack(190, -90, [{ ik: { x: 104, y: 184, z: 72 }, pole: [0, 0.6, 0.4] }]),
+        { go: 1.5, back: 1, hold: 0.2, cues: ["Open wide", "Hug it back together"] },
+      ),
+    },
+  },
+  {
+    slug: "incline-dumbbell-press",
+    name: "Incline Dumbbell Press",
+    region: "Chest",
+    primary: ["chest", "front-delts"],
+    secondary: ["triceps"],
+    equipment: ["Dumbbell", "Bench"],
+    level: "Intermediate",
+    mechanics: "Compound",
+    summary: "Targets the upper chest for a fuller, more balanced look.",
+    steps: [
+      "Set a bench to 30–45° and sit back with a dumbbell on each thigh.",
+      "Kick the dumbbells up and hold them at shoulder level.",
+      "Press them up over your upper chest until your arms are straight.",
+      "Lower slowly back to the sides of your chest.",
+    ],
+    tips: ["Keep your shoulder blades pinned to the bench.", "A lower incline (30°) keeps more focus on the chest."],
+    mistakes: ["Bench set too steep (turns into a shoulder press)", "Arching off the bench", "Dumbbells drifting forward"],
+    breathing: "Inhale down, exhale up.",
+    prescription: { sets: "3–4", reps: "8–12", rest: "90 s" },
+    animation: {
+      props: [
+        { type: "bench", from: 140, to: 200, top: 200, incline: { at: 150, length: 85, angle: 35 } },
+        { type: "dumbbell" },
+      ],
+      frames: repFrames(
+        {
+          hip: [156, 191],
+          torso: -55,
+          arms: [{ ik: { x: 112, y: 100, z: 22 }, pole: [0, 1, 0.8] }],
+          legs: [{ ik: { x: 215, y: 245, z: 14 }, pole: [0.3, -1, 0.1] }],
+        },
+        {
+          hip: [156, 191],
+          torso: -55,
+          arms: [{ ik: { x: 116, y: 150, z: 36 }, pole: [-0.2, 1, 0.8] }],
+          legs: [{ ik: { x: 215, y: 245, z: 14 }, pole: [0.3, -1, 0.1] }],
+        },
+        { go: 1.4, back: 0.9, cues: ["Lower to your chest", "Press up"] },
+      ),
+    },
+  },
+
+  // ─────────────────────────── SHOULDERS ───────────────────────────
+  {
+    slug: "barbell-overhead-press",
+    name: "Barbell Overhead Press",
+    region: "Shoulders",
+    primary: ["front-delts", "side-delts"],
+    secondary: ["triceps", "traps", "abs", "upper-back"],
+    equipment: ["Barbell"],
+    level: "Intermediate",
+    mechanics: "Compound",
+    summary: "Standing strict press for strong, broad shoulders and a solid core.",
+    steps: [
+      "Hold the bar on the front of your shoulders, hands just outside shoulder width.",
+      "Squeeze your glutes and brace your abs.",
+      "Press the bar straight up, moving your head back slightly to let it pass.",
+      "Lock out overhead with the bar over your mid-foot, then lower to your shoulders.",
+    ],
+    tips: ["Push your head “through the window” once the bar passes your forehead.", "Keep your ribs down — no leaning back."],
+    mistakes: ["Leaning back into a standing incline press", "Pressing the bar forward instead of up", "Flared ribs"],
+    breathing: "Breathe in at the bottom, brace, exhale at lockout.",
+    prescription: { sets: "3–5", reps: "5–10", rest: "2 min" },
+    animation: {
+      props: [{ type: "barbell", plate: "large" }],
+      frames: repFrames(
+        standing({ arms: [{ ik: { x: 172, y: 99, z: 26 }, pole: [0.8, 1, 0.3] }], legs: [planted(162, 12)] }),
+        standing({ arms: [{ ik: { x: 162, y: 39, z: 27 }, pole: [0.3, 0.3, 1] }], legs: [planted(162, 12)] }),
+        { go: 1, back: 1.3, hold: 0.25, cues: ["Press straight up", "Lower to your shoulders"] },
+      ),
+    },
+  },
+  {
+    slug: "dumbbell-lateral-raise",
+    name: "Dumbbell Lateral Raise",
+    region: "Shoulders",
+    primary: ["side-delts"],
+    secondary: ["front-delts", "traps"],
+    equipment: ["Dumbbell"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    summary: "The go-to move for wider, capped shoulders.",
+    steps: [
+      "Stand with a light dumbbell in each hand at your sides.",
+      "With a slight bend in the elbows, raise your arms out to the sides.",
+      "Stop at shoulder height, leading with your elbows.",
+      "Lower slowly — take about three seconds.",
+    ],
+    tips: ["Imagine pushing the dumbbells out to the walls, not up to the ceiling.", "Lean forward slightly to keep tension on the side delt."],
+    mistakes: ["Swinging the weights", "Shrugging (turns it into a trap exercise)", "Going too heavy"],
+    breathing: "Exhale as you raise, inhale as you lower.",
+    prescription: { sets: "3–4", reps: "12–20", rest: "60 s" },
+    animation: {
+      props: [{ type: "dumbbell" }],
+      frames: repFrames(
+        standing({ torso: 4, arms: [{ angles: [4, 8], spread: [10, 8] }] }),
+        standing({ torso: 4, arms: [{ angles: [8, 22], spread: [82, 72] }] }),
+        { go: 1, back: 1.6, hold: 0.25, cues: ["Raise out to the sides", "Lower slowly"] },
+      ),
+    },
+  },
+
+  // ───────────────────────────── ARMS ─────────────────────────────
+  {
+    slug: "dumbbell-alternate-biceps-curl",
+    name: "Dumbbell Alternate Biceps Curl",
+    region: "Arms",
+    primary: ["biceps"],
+    secondary: ["forearms", "front-delts"],
+    equipment: ["Dumbbell"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    summary: "Classic biceps builder — one arm at a time for full focus and a strong squeeze.",
+    steps: [
+      "Stand tall holding a dumbbell in each hand, palms facing forward.",
+      "Pin your elbows to your sides.",
+      "Curl one dumbbell up toward your shoulder, keeping the upper arm still.",
+      "Squeeze the biceps at the top, then lower slowly to full extension.",
+      "Repeat with the other arm.",
+    ],
+    tips: ["Lower the weight for 2–3 seconds — that's where much of the growth happens.", "Keep your wrists straight."],
+    mistakes: ["Swinging the body to lift the weight", "Letting the elbows drift forward", "Half reps"],
+    breathing: "Exhale as you curl, inhale as you lower.",
+    prescription: { sets: "3", reps: "10–12 each arm", rest: "60 s" },
+    animation: {
+      props: [{ type: "dumbbell" }],
+      frames: (() => {
+        const down = { angles: [2, 4], spread: [9, 5] } as LimbSpec;
+        const up = { angles: [-6, 148], spread: [9, 4] } as LimbSpec;
+        return [
+          { pose: standing({ arms: [down] }), dur: 0.9, cue: "Curl the right arm", rep: true },
+          { pose: standing({ arms: [up, down] }), dur: 1.2, hold: 0.2, cue: "Lower slowly" },
+          { pose: standing({ arms: [down] }), dur: 0.9, cue: "Curl the left arm", rep: true },
+          { pose: standing({ arms: [down, up] }), dur: 1.2, hold: 0.2, cue: "Lower slowly" },
+        ];
+      })(),
+    },
+  },
+  {
+    slug: "dumbbell-standing-triceps-extension",
+    name: "Dumbbell Standing Triceps Extension",
+    region: "Arms",
+    primary: ["triceps"],
+    secondary: ["abs", "front-delts"],
+    equipment: ["Dumbbell"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    summary: "Overhead stretch on the long head of the triceps for bigger arms.",
+    steps: [
+      "Hold one dumbbell with both hands under the top plate.",
+      "Press it overhead, arms straight, elbows close to your head.",
+      "Lower the dumbbell behind your head by bending only at the elbows.",
+      "Go until you feel a deep stretch in the back of the arms.",
+      "Extend back to the top without flaring the elbows.",
+    ],
+    tips: ["Squeeze your glutes and abs so your lower back doesn't arch.", "Keep your upper arms pointing at the ceiling."],
+    mistakes: ["Elbows flaring wide", "Arching the lower back", "Moving the upper arms"],
+    breathing: "Inhale as you lower, exhale as you press up.",
+    prescription: { sets: "3", reps: "10–15", rest: "60 s" },
+    animation: {
+      props: [{ type: "dumbbell", hands: "shared" }],
+      frames: repFrames(
+        standing({ arms: [{ angles: [172, -176], spread: [6, -28] }] }),
+        standing({ arms: [{ angles: [168, -24], spread: [6, -30] }], head: 6 }),
+        { cues: ["Lower behind your head", "Extend to the top"] },
+      ),
+    },
+  },
+  {
+    slug: "cable-triceps-pushdown",
+    name: "Cable Triceps Pushdown",
+    region: "Arms",
+    primary: ["triceps"],
+    secondary: ["forearms"],
+    equipment: ["Cable"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    summary: "Constant cable tension for a strong triceps squeeze at lockout.",
+    steps: [
+      "Attach a rope or bar to a high pulley and grab it with elbows at your sides.",
+      "Lean forward slightly and brace.",
+      "Push the handle down until your arms are fully straight.",
+      "Squeeze the triceps, then let your forearms rise to just past 90°.",
+    ],
+    tips: ["Only your forearms should move.", "With a rope, spread the ends apart at the bottom."],
+    mistakes: ["Elbows drifting forward", "Leaning over the weight", "Using the shoulders to push"],
+    breathing: "Exhale as you push down, inhale on the way up.",
+    prescription: { sets: "3", reps: "12–15", rest: "60 s" },
+    animation: {
+      camera: "back",
+      props: [{ type: "cable", pulley: [196, 26], handle: "rope" }],
+      frames: repFrames(
+        standing({ torso: 10, arms: [{ angles: [-10, 118], spread: [5, -16] }], legs: [planted(162, 12)] }),
+        standing({ torso: 10, arms: [{ angles: [-6, 4], spread: [5, -8] }], legs: [planted(162, 12)] }),
+        { go: 0.9, back: 1.2, hold: 0.3, cues: ["Push down to lockout", "Let it rise slowly"] },
+      ),
+    },
+  },
+
+  // ───────────────────────────── CORE ─────────────────────────────
+  {
+    slug: "crunch",
+    name: "Crunch",
+    region: "Core",
+    primary: ["abs"],
+    secondary: ["obliques"],
+    equipment: ["Bodyweight"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    summary: "Short-range ab contraction — simple and effective for the six-pack muscles.",
+    steps: [
+      "Lie on your back with knees bent and feet flat.",
+      "Rest your fingertips lightly at your temples, elbows wide.",
+      "Curl your shoulders off the floor by shortening the distance between ribs and hips.",
+      "Pause and squeeze, then lower slowly.",
+    ],
+    tips: ["Think about curling your spine, not sitting up.", "Keep your lower back pressed into the floor."],
+    mistakes: ["Pulling on the neck", "Using momentum", "Coming all the way up (hip flexors take over)"],
+    breathing: "Exhale fully as you crunch, inhale as you lower.",
+    prescription: { sets: "3", reps: "15–25", rest: "45 s" },
+    animation: {
+      props: [{ type: "mat" }],
+      frames: repFrames(
+        lyingOnBack(239, -90, [handLocal(4, -17, 11, [0.1, -0.3, 1])]),
+        { ...lyingOnBack(239, -62, [handLocal(4, -17, 11, [0.1, -0.3, 1])]), head: 14 },
+        { go: 0.8, back: 1.1, hold: 0.4, cues: ["Curl up", "Lower slowly"] },
+      ),
+    },
+  },
+  {
+    slug: "forearm-plank",
+    name: "Forearm Plank",
+    region: "Core",
+    primary: ["abs"],
+    secondary: ["obliques", "front-delts", "glutes", "quads"],
+    equipment: ["Bodyweight"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    hold: true,
+    summary: "Builds a rock-solid core that protects your back in every other lift.",
+    steps: [
+      "Place your forearms on the floor, elbows under your shoulders.",
+      "Step your feet back and lift your hips so your body forms a straight line.",
+      "Squeeze your glutes and pull your belly button toward your spine.",
+      "Hold without letting your hips sag or pike up.",
+    ],
+    tips: ["Push the floor away with your forearms.", "Quality beats time — stop when your form breaks."],
+    mistakes: ["Hips sagging", "Butt in the air", "Holding your breath"],
+    breathing: "Breathe slowly and steadily while keeping your abs braced.",
+    prescription: { sets: "3", reps: "30–60 s hold", rest: "45 s" },
+    animation: {
+      props: [{ type: "mat" }],
+      frames: (() => {
+        const arms: LimbSpec = { angles: [0, 90], spread: [0, -10] };
+        const legs = straightLegBack(-82.9);
+        return [
+          { pose: { hip: [143.5, 221.7], torso: 82.9, arms: [arms], legs: [legs] }, dur: 2, cue: "Brace and breathe", rep: true },
+          { pose: { hip: [143.5, 220.7], torso: 82.4, arms: [arms], legs: [straightLegBack(-82.4)] }, dur: 2, cue: "Squeeze your glutes" },
+        ];
+      })(),
+    },
+  },
+  {
+    slug: "hanging-leg-raise",
+    name: "Hanging Leg Raise",
+    region: "Core",
+    primary: ["abs"],
+    secondary: ["obliques", "forearms", "lats"],
+    equipment: ["Pull-up bar"],
+    level: "Advanced",
+    mechanics: "Isolation",
+    summary: "One of the hardest ab exercises — hits the lower abs and builds grip.",
+    steps: [
+      "Hang from a bar with straight arms and legs together.",
+      "Brace your core to stop swinging.",
+      "Raise your straight legs until they're parallel to the floor or higher.",
+      "Lower them slowly without swinging.",
+    ],
+    tips: ["Bend your knees to make it easier.", "Tilt your pelvis up at the top for full ab contraction."],
+    mistakes: ["Swinging for momentum", "Dropping the legs quickly", "Only lifting with the hip flexors"],
+    breathing: "Exhale as you raise, inhale as you lower.",
+    prescription: { sets: "3", reps: "8–15", rest: "60 s" },
+    animation: {
+      props: [{ type: "pullupBar", x: 165, y: 40 }],
+      frames: repFrames(
+        { hip: [165, 163], torso: -2, arms: [{ ik: { x: 165, y: 45, z: 28 }, pole: [0, 1, 0.5] }], legs: [{ angles: [4, 4], footFollowsShin: true }] },
+        { hip: [155, 162], torso: 9, arms: [{ ik: { x: 165, y: 45, z: 28 }, pole: [0, 1, 0.5] }], legs: [{ angles: [90, 88], footFollowsShin: true }] },
+        { go: 1.1, back: 1.6, hold: 0.3, cues: ["Raise your legs", "Lower with control"] },
+      ),
+    },
+  },
+  {
+    slug: "mountain-climber",
+    name: "Mountain Climber",
+    region: "Core",
+    primary: ["abs"],
+    secondary: ["front-delts", "quads", "obliques", "chest"],
+    equipment: ["Bodyweight"],
+    level: "Beginner",
+    mechanics: "Compound",
+    summary: "Fast core-and-cardio drill that gets your heart rate up.",
+    steps: [
+      "Start in a high plank with your hands under your shoulders.",
+      "Drive one knee toward your chest.",
+      "Switch legs quickly, like running in place.",
+      "Keep your hips low and your shoulders over your hands.",
+    ],
+    tips: ["Start slow and in control, then speed up.", "Keep your back flat throughout."],
+    mistakes: ["Hips bouncing high", "Shoulders drifting behind the hands", "Toes not touching down"],
+    breathing: "Breathe rhythmically — don't hold your breath.",
+    prescription: { sets: "3", reps: "20–40 total", rest: "45 s" },
+    animation: {
+      props: [{ type: "mat" }],
+      frames: (() => {
+        const knee: LimbSpec = { angles: [55, -95], foot: 30 };
+        const back = straightLegBack(-72);
+        return [
+          { pose: { ...HIGH_PLANK, arms: [plankHands], legs: [knee, back] }, dur: 0.45, cue: "Drive your knees", rep: true },
+          { pose: { ...HIGH_PLANK, arms: [plankHands], legs: [back, knee] }, dur: 0.45, rep: true },
+        ];
+      })(),
+    },
+  },
+
+  // ─────────────────────────── FULL BODY ───────────────────────────
+  {
+    slug: "kettlebell-swing",
+    name: "Kettlebell Swing",
+    region: "Legs",
+    primary: ["glutes", "hamstrings"],
+    secondary: ["lower-back", "abs", "front-delts", "forearms"],
+    equipment: ["Kettlebell"],
+    level: "Intermediate",
+    mechanics: "Compound",
+    summary: "Explosive hip hinge that builds power and conditioning at the same time.",
+    steps: [
+      "Stand with feet a little wider than shoulder width, kettlebell in both hands.",
+      "Hike the bell back between your legs by hinging at the hips.",
+      "Snap your hips forward hard to float the bell to chest height.",
+      "Let it fall back and hinge again, absorbing it with your hips.",
+    ],
+    tips: ["Your arms are ropes — the hips do all the work.", "Squeeze your glutes and abs hard at the top."],
+    mistakes: ["Squatting instead of hinging", "Lifting with the arms", "Leaning back at the top"],
+    breathing: "Sharp exhale at the top of each swing, inhale on the way down.",
+    prescription: { sets: "4–5", reps: "15–20", rest: "60 s" },
+    animation: {
+      props: [{ type: "kettlebell" }],
+      frames: repFrames(
+        { hip: [138, 165], torso: 68, head: -18, arms: [{ angles: [-25, -25], spread: [2, -6] }], legs: [planted(160, 16, [1, 0, 0.3])] },
+        { hip: [161, STAND_Y], torso: -2, arms: [{ angles: [86, 88], spread: [2, -6] }], legs: [planted(160, 16, [1, 0, 0.3])] },
+        { go: 0.7, back: 0.7, hold: 0.05, cues: ["Snap your hips", "Hinge and hike"] },
+      ),
+    },
+  },
+];
+
+export function getExercise(slug: string) {
+  return EXERCISES.find((e) => e.slug === slug);
+}
