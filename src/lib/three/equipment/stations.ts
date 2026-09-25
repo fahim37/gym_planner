@@ -48,7 +48,7 @@ export function dipStation(): EquipmentModel {
   }
   kit.spot("dip-bars", v3(0.36, 1.137, 0.245));
   kit.spot("back-pad", v3(ux + 0.047 + 0.087, 1.28, 0));
-  kit.spot("arm-pads", v3(0.0, 1.31 + 0.077, 0.29));
+  kit.spot("arm-pads", v3(0.08, 1.31 + 0.077, 0.29));
   kit.spot("pull-up-bar", v3(-0.1, py + 0.017, 0.15));
   return kit.finish();
 }
@@ -88,9 +88,9 @@ export function preacherBench(): EquipmentModel {
     at(mesh(cyl(0.025, 0.2, 20), m.chrome, bar), 0, 0, s * 0.52, Math.PI / 2);
     at(mesh(cyl(0.04, 0.02, 20), m.chrome, bar), 0, 0, s * 0.41, Math.PI / 2);
   }
-  kit.spot("arm-pad", v3(-0.09 - 0.064, 0.9 + 0.064, 0.12));
+  kit.spot("arm-pad", v3(-0.1, 1.025, 0.2));
   kit.spot("seat", v3(0.3, 0.642, 0));
-  kit.spot("bar-rest", v3(top.x + 0.05, top.y + 0.09, 0.34));
+  kit.spot("bar-rest", v3(top.x + 0.09, top.y + 0.06, 0.34));
   return kit.finish();
 }
 
@@ -113,7 +113,7 @@ export function hyperextensionBench(): EquipmentModel {
   // Footplate across the lower end.
   const fp = node(root);
   fp.position.copy(B).addScaledVector(u, 0.12).addScaledVector(n, 0.06);
-  fp.rotation.z = 0.75 - Math.PI / 2;
+  fp.rotation.z = 0.75;
   block(fp, 0, 0, 0, 0.02, 0.26, 0.4, m.frameDark, 0.004);
   block(fp, 0.013, 0, 0, 0.006, 0.23, 0.36, m.grip, 0.003);
   // Ankle rollers on a short post.
@@ -132,7 +132,7 @@ export function hyperextensionBench(): EquipmentModel {
     mesh(bentTube([v3(T.x - 0.05, T.y - 0.05, s * 0.2), v3(T.x + 0.02, T.y + 0.08, s * 0.3), v3(T.x + 0.12, T.y + 0.1, s * 0.3)], 0.014, 0.04), m.frame, root);
     at(mesh(cyl(0.019, 0.1, 16), m.grip, root), T.x + 0.1, T.y + 0.1, s * 0.3, 0, 0, Math.PI / 2);
   }
-  kit.spot("hip-pad", hp.clone().addScaledVector(n, 0.087).setZ(0.12));
+  kit.spot("hip-pad", hp.clone().addScaledVector(u, 0.155).addScaledVector(n, 0.05).setZ(0.12));
   kit.spot("ankle-rollers", v3(ar.x, ar.y + 0.051, 0.1));
   kit.spot("footplate", fp.position.clone().addScaledVector(u, 0.017).add(v3(0, 0, 0.1)));
   return kit.finish();
