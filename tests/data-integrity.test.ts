@@ -43,6 +43,7 @@ const EQUIPMENT_VALUES: Record<Equipment, true> = {
   "Ab wheel": true,
   "Battle ropes": true,
   Landmine: true,
+  "Jump rope": true,
 };
 const LEVELS: Record<Level, true> = { Beginner: true, Intermediate: true, Advanced: true };
 const CATEGORIES: Record<ExerciseCategory, true> = { Strength: true, Cardio: true, Plyometric: true, Mobility: true };
