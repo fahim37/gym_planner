@@ -87,6 +87,7 @@ const html = `<title>IronForm Gym Guide</title>
 <style>
 :root{--font-geist-sans:"Geist",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--font-geist-mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;color-scheme:dark;background:#09090b}
 ${css}
+html,body{background:#09090b!important;color:#fafafa;color-scheme:dark}
 </style>
 <div id="root"></div>
 <script>${script}</script>
