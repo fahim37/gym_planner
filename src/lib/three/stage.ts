@@ -194,7 +194,7 @@ export class Stage {
   /** Dev-only frame-rate readout (append ?fps to the URL). */
   private showFps(canvas: HTMLCanvasElement) {
     const el = document.createElement("div");
-    el.style.cssText = "position:absolute;left:6px;bottom:6px;z-index:50;font:11px ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.65);padding:3px 6px;border-radius:6px;pointer-events:none;white-space:pre";
+    el.style.cssText = "position:absolute;left:6px;top:56px;z-index:50;font:11px ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.65);padding:3px 6px;border-radius:6px;pointer-events:none;white-space:pre";
     canvas.parentElement?.appendChild(el);
     this.fpsEl = el;
     this.cleanup.push(() => el.remove());

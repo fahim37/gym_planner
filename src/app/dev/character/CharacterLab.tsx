@@ -28,11 +28,13 @@ export default function CharacterLab() {
     let stage: Stage | null = null;
     let props: PropSet | null = null;
     let disposed = false;
-    import("@/lib/three/stage").then(({ Stage }) => {
+    import("@/lib/three/stage").then(async ({ Stage }) => {
       if (disposed) return;
       const t0 = performance.now();
       const s = new Stage(canvas, { interactive: true });
       stage = s;
+      await s.rig.ready;
+      if (disposed) return;
       const built = performance.now() - t0;
       const ex = EXERCISES.find((e) => e.slug === q.get("ex"));
       const h: Highlights = {};

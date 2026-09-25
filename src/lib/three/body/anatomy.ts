@@ -7,6 +7,7 @@ import {
   L_OVERLAY,
   L_SHORTS_FILL,
   MAT_EYE,
+  MAT_HAIR,
   MAT_LIP,
   MAT_NAIL,
   OP_SUB,
@@ -348,10 +349,10 @@ export function sculptBody(frames: Frames): Sculpt {
       // y, front, back, side, exponent, centre offset forward
       [5.5, 8.7, 9.7, 7.45, 2.1, -0.4],
       [3.2, 9.3, 9.9, 7.75, 2.2, -0.2],
-      [0.5, 8.8, 9.7, 7.55, 2.4, 0],
-      [-2.4, 8.6, 8.9, 7.15, 2.5, 0],
-      [-5.0, 8.9, 5.8, 6.7, 2.5, 0],
-      [-7.5, 8.7, 3.6, 6.2, 2.4, 0],
+      [0.5, 8.8, 9.7, 7.55, 2.2, 0],
+      [-2.4, 8.7, 8.9, 7.2, 2.25, 0],
+      [-5.0, 8.9, 5.8, 6.7, 2.25, 0],
+      [-7.5, 8.6, 3.6, 6.2, 2.2, 0],
       [-10.0, 5.9, 2.6, 4.4, 2.3, 2.5],
       [-11.7, 3.0, 2.0, 2.4, 2.2, 5.0],
     ];
@@ -381,11 +382,14 @@ export function sculptBody(frames: Frames): Sculpt {
     A.ellipsoid({ center: HL(9.45, -6.62, 0), axes: ID, radii: [0.6, 0.12, 2.0] }, H({ op: OP_SUB, k: 0.3 }));
   });
   // Eye socket, eyeball, lids.
-  A.ellipsoid({ center: HL(8.9, 0.1, 3.2), axes: axes([1, 0, 0.3], Y), radii: [1.5, 1.05, 1.45] }, base({ op: OP_SUB, k: 1.0 }));
-  A.ellipsoid({ center: HL(7.45, -0.05, 3.2), axes: ID, radii: [1.2, 1.2, 1.2] }, { layer: L_OVERLAY, k: 0.15, meta: { chainA: T, material: MAT_EYE } });
-  A.spindle({ pts: curve(HL(7.95, 0.35, 2.1), HL(8.65, 0.9, 3.25), HL(7.95, 0.35, 4.35), 4), radius: belly(0.2, 0.4, 0.2, 0.5, 1.4), flat: 0.55, flatDir: [0.6, 1, 0] }, { layer: L_OVERLAY, k: 0.25, meta: { chainA: T } });
-  A.spindle({ pts: curve(HL(7.95, -0.5, 2.2), HL(8.4, -0.9, 3.25), HL(7.9, -0.45, 4.3), 4), radius: belly(0.16, 0.28, 0.16, 0.5, 1.4), flat: 0.7, flatDir: [0.5, -1, 0] }, { layer: L_OVERLAY, k: 0.25, meta: { chainA: T } });
-  // Cheekbone, cheek.
+  A.ellipsoid({ center: HL(9.0, 0.1, 3.2), axes: axes([1, 0, 0.3], Y), radii: [1.3, 1.15, 1.4] }, base({ op: OP_SUB, k: 1.1 }));
+  A.ellipsoid({ center: HL(9.0, 1.75, 3.3), axes: axes([1, 0.1, 0.3], Y), radii: [0.7, 0.45, 1.9] }, base({ k: 1.1 }));
+  A.ellipsoid({ center: HL(6.9, -3.2, 4.3), axes: ID, radii: [1.6, 1.6, 1.5] }, base({ k: 2.5 }));
+  A.ellipsoid({ center: HL(7.65, -0.05, 3.2), axes: ID, radii: [1.15, 1.15, 1.15] }, { layer: L_OVERLAY, k: 0.15, meta: { chainA: T, material: MAT_EYE } });
+  A.spindle({ pts: curve(HL(8.05, 0.55, 2.1), HL(8.75, 1.2, 3.25), HL(8.05, 0.55, 4.35), 4), radius: belly(0.18, 0.34, 0.18, 0.5, 1.4), flat: 0.55, flatDir: [0.6, 1, 0] }, { layer: L_OVERLAY, k: 0.25, meta: { chainA: T } });
+  // Iris (dark, so the eyes read at phone size).
+  A.ellipsoid({ center: HL(8.72, -0.05, 3.15), axes: ID, radii: [0.12, 0.55, 0.55] }, { layer: L_OVERLAY, k: 0.05, meta: { chainA: T, material: MAT_HAIR } });
+    // Cheekbone, cheek.
   A.ellipsoid({ center: HL(6.0, -1.7, 5.1), axes: axes([0.8, 0, 0.6], Y), radii: [1.8, 1.0, 1.3] }, base({ k: 2 }));
   // Jaw line (mandible) and masseter.
   A.spindle({ pts: curve(HL(7.4, -10.0, 1.9), HL(3.8, -9.7, 5.2), HL(0.4, -7.4, 5.8), 5), radius: belly(1.0, 1.25, 1.1, 0.5, 1.2), flat: 0.75, flatDir: [0, 1, 0.4] }, base({ k: 1.4 }));
@@ -416,11 +420,11 @@ export function sculptBody(frames: Frames): Sculpt {
     const head = (name: string, id: number, c: V3, out: V3, r: V3) =>
       A.ellipsoid(
         { center: c, axes: axes(along, out), radii: r },
-        { layer: L_MUSCLE, k: 1.4, group: A.group(name), groove: 0.25, meta: { name, muscle: id, chainA: ARM, fibre: 1, fibreDir: along } },
+        { layer: L_MUSCLE, k: 1.8, group: A.group(name), groove: 0.25, meta: { name, muscle: id, chainA: ARM, fibre: 1, fibreDir: along } },
       );
-    head("delt-front", M["front-delts"], U(ua, 2.4, 4.5, 1.2), fr.x, [5.6, 2.6, 3.0]);
-    head("delt-side", M["side-delts"], U(ua, 0, 4.2, 3.0), scale(fr.z, -1), [5.8, 2.8, 3.3]);
-    head("delt-rear", M["rear-delts"], U(ua, -2.5, 4.5, 1.2), scale(fr.x, -1), [5.4, 2.5, 3.0]);
+    head("delt-front", M["front-delts"], U(ua, 2.2, 6.2, 1.0), fr.x, [5.0, 2.2, 2.8]);
+    head("delt-side", M["side-delts"], U(ua, 0, 6.0, 2.7), scale(fr.z, -1), [5.2, 2.4, 3.1]);
+    head("delt-rear", M["rear-delts"], U(ua, -2.3, 6.2, 1.0), scale(fr.x, -1), [4.8, 2.2, 2.8]);
   }
   // ───────────────────────────── ARM (one loft: shoulder → wrist) ─────────────────────────────
   {
@@ -668,7 +672,7 @@ export function sculptBody(frames: Frames): Sculpt {
     const ly = y - head.o[1];
     const lz = Math.abs(z - head.o[2]);
     // Hairline height: temples recede a little at the sides.
-    const line = (lx > 0 ? 2.4 + 0.46 * lx : 2.4 + 0.78 * lx) - (lx > 2 ? Math.max(0, lz - 4) * 0.35 : 0);
+    const line = (lx > 0 ? 2.1 + 0.42 * lx : 2.1 + 0.78 * lx) - (lx > 2 ? Math.max(0, lz - 4) * 0.35 : 0);
     return (line - ly) * 0.8;
   };
   sculpt.hairBox = { min: [head.o[0] - 14, head.o[1] - 6, -12], max: [head.o[0] + 12, head.o[1] + 14, 12] };

@@ -284,7 +284,7 @@ export class BoneSolver {
   private compute(sk: Skeleton, bind: boolean) {
     const j = fillJoints(sk, this.joints);
     const M = this.matrices;
-    const { x, y, z, o } = this;
+    const { x, y, o } = this;
 
     // --- Torso ---
     frame(M[B_PELVIS], j.pelvis, j.forward, j.up);

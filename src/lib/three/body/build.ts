@@ -41,7 +41,7 @@ export interface BuildOptions {
 const DEFAULTS: Required<BuildOptions> = { body: 0.72, head: 0.34, hand: 0.25, foot: 0.34 };
 
 const HAND_SEAM = 1.5;
-const HEAD_SEAM = -0.5;
+const HEAD_SEAM = -3.2;
 const FOOT_SEAM = 7;
 const OVERLAP = 0.7;
 
@@ -390,7 +390,8 @@ class Baker {
         line = 99;
       } else if (D.surface === 2) {
         material = MAT_SHORTS;
-        muscle = muscle === MUSCLE_INDEX_GLUTES ? muscle : 255;
+        // The seat of the shorts shows the glutes (clean region, not per-vertex dominance).
+        muscle = x < -2.5 && y > 79 ? MUSCLE_INDEX_GLUTES : 255;
         line = 99;
       }
       const tendon = wSumF > 0 ? tendonSum / wSumF : 0;

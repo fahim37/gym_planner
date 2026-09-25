@@ -18,7 +18,7 @@ export class ContactShadow {
     this.material = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
-      uniforms: { uA: { value: this.a }, uB: { value: this.b }, uStrength: { value: 0.55 } },
+      uniforms: { uA: { value: this.a }, uB: { value: this.b }, uStrength: { value: 0.42 } },
       vertexShader: /* glsl */ `
 varying vec3 vWorld;
 void main() {
@@ -45,7 +45,7 @@ void main() {
     float l = length(d);
     // Sphere occlusion (cosine-weighted) with a soft falloff.
     float o = (r * r) / (l * l + 1e-4) * max(d.y / l, 0.0);
-    occ += o * smoothstep(r * 5.0, r * 0.6, l);
+    occ += o * smoothstep(r * 6.0, r * 0.4, l);
   }
   float a = uStrength * (1.0 - exp(-occ * 1.6));
   gl_FragColor = vec4(0.0, 0.0, 0.0, a);

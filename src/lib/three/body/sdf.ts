@@ -873,7 +873,6 @@ export class Sculpt {
     let d1 = BIG;
     let d2 = BIG;
     let g1 = -1;
-    let g2 = -1;
     let groove1 = 0;
     let groove2 = 0;
     let l1 = BIG;
@@ -913,7 +912,6 @@ export class Sculpt {
         if (d < d1) {
           if (g !== g1) {
             d2 = d1;
-            g2 = g1;
             groove2 = groove1;
           }
           d1 = d;
@@ -921,7 +919,6 @@ export class Sculpt {
           groove1 = P[o + P_GROOVE];
         } else if (d < d2 && g !== g1) {
           d2 = d;
-          g2 = g;
           groove2 = P[o + P_GROOVE];
         }
         if (out) this.trackLine(g, d);
@@ -941,7 +938,7 @@ export class Sculpt {
     let result = body;
     const hb = this.hairBox;
     if (this.hairRegion && hb && x > hb.min[0] && y > hb.min[1] && z > hb.min[2] && x < hb.max[0] && y < hb.max[1] && z < hb.max[2]) {
-      const h = smax(body - this.hairThickness, this.hairRegion(x, y, z), 0.4);
+      const h = smax(body - this.hairThickness, this.hairRegion(x, y, z), 0.9);
       if (h < result) {
         result = h;
         surface = 1;

@@ -304,12 +304,12 @@ function clip(m: RegionMesh, keep: Region["keep"]) {
   const mid = filter(m.midTris);
   const remap = new Int32Array(n).fill(-1);
   let count = 0;
-  const use = (i: number) => {
+  const mark = (i: number) => {
     const b = i >= n ? i - n : i;
     if (remap[b] < 0) remap[b] = count++;
   };
-  for (const i of tris) use(i);
-  for (const i of mid) use(i);
+  for (const i of tris) mark(i);
+  for (const i of mid) mark(i);
   const pos = new Float32Array(count * 3);
   const nrm = new Float32Array(count * 3);
   for (let v = 0; v < n; v++) {

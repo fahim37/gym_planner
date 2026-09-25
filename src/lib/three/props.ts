@@ -275,6 +275,11 @@ export class PropSet {
         if (g) this.grip(g[0], g[1]);
         const built = buildExtraProp(p.kind, p.params ?? {});
         if (!built) break;
+        if (built.grip) {
+          const spec: GripSpec = { radius: built.grip.radius ?? 0.014, style: built.grip.style };
+          this.grips[0] = built.grip.hands === "far" ? this.grips[0] : spec;
+          this.grips[1] = built.grip.hands === "near" ? this.grips[1] : spec;
+        }
         built.object.userData.external = true;
         this.group.add(built.object);
         if (built.update) this.followers.push(built.update);
