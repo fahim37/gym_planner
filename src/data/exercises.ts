@@ -1,38 +1,24 @@
-import type { Keyframe, LimbSpec, Pose } from "@/lib/anatomy/types";
+import type { LimbSpec, Pose } from "@/lib/anatomy/types";
 import type { Exercise } from "@/lib/exercise-types";
-import { armsDown, hand, handLocal, planted, standing, STAND_Y } from "./poses";
+import { CORE_CARDIO_EXERCISES } from "./library/core-cardio";
+import { LOWER_BODY_EXERCISES } from "./library/lower-body";
+import { UPPER_BODY_EXERCISES } from "./library/upper-body";
+import {
+  armsDown,
+  hand,
+  handLocal,
+  HIGH_PLANK,
+  lyingOnBack,
+  planted,
+  plankHands,
+  repFrames,
+  standing,
+  STAND_Y,
+  straightLegBack,
+} from "./poses";
 
-// Shared poses ---------------------------------------------------------------
-
-/** Lying face-up on the floor or a bench, head towards -x, knees bent. */
-const lyingOnBack = (pelvisY: number, torso: number, arms: [LimbSpec] | [LimbSpec, LimbSpec], pelvisX = 160): Pose => ({
-  hip: [pelvisX, pelvisY],
-  torso,
-  arms,
-  legs: [{ ik: { x: 205, y: 245, z: 13 }, pole: [0.2, -1, 0.1] }],
-});
-
-/** High plank: straight body from toes to shoulders, hands under shoulders. */
-const HIGH_PLANK = { hip: [150, 204] as [number, number], torso: 72 };
-const plankHands: LimbSpec = { ik: { x: 209, y: 243, z: 24 }, pole: [-0.6, -1, 0.5] };
-const straightLegBack = (angle: number, foot = 72): LimbSpec => ({ angles: [angle, angle], foot });
-
-/**
- * One repetition as two keyframes. `go` is the time from start to end,
- * `hold` the pause at the end, `back` the return; the rep counts on return.
- */
-function repFrames(
-  start: Pose,
-  end: Pose,
-  opts: { go?: number; back?: number; hold?: number; cues?: [string, string] } = {},
-): Keyframe[] {
-  return [
-    { pose: start, dur: opts.go ?? 1.3, cue: opts.cues?.[0], rep: true },
-    { pose: end, dur: opts.back ?? 1, hold: opts.hold ?? 0.15, cue: opts.cues?.[1] },
-  ];
-}
-
-export const EXERCISES: Exercise[] = [
+/** The original hand-tuned set; the larger library lives in ./library. */
+const FOUNDATION_EXERCISES: Exercise[] = [
   // ───────────────────────────── LEGS ─────────────────────────────
   {
     slug: "barbell-back-squat",
@@ -952,6 +938,13 @@ export const EXERCISES: Exercise[] = [
       ),
     },
   },
+];
+
+export const EXERCISES: Exercise[] = [
+  ...FOUNDATION_EXERCISES,
+  ...LOWER_BODY_EXERCISES,
+  ...UPPER_BODY_EXERCISES,
+  ...CORE_CARDIO_EXERCISES,
 ];
 
 export function getExercise(slug: string) {

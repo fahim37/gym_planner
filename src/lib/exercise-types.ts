@@ -1,4 +1,5 @@
 import type { Animation } from "@/lib/anatomy/types";
+import type { EquipmentSlug } from "@/lib/equipment-catalog";
 import type { BodyRegion, MuscleId } from "@/lib/muscles";
 
 export type Equipment =
@@ -8,7 +9,17 @@ export type Equipment =
   | "Kettlebell"
   | "Cable"
   | "Pull-up bar"
-  | "Bench";
+  | "Bench"
+  | "Machine"
+  | "EZ bar"
+  | "Trap bar"
+  | "Dip bars"
+  | "Plyo box"
+  | "Medicine ball"
+  | "Resistance band"
+  | "Ab wheel"
+  | "Battle ropes"
+  | "Landmine";
 
 export type Level = "Beginner" | "Intermediate" | "Advanced";
 
@@ -35,6 +46,8 @@ export interface Exercise {
   prescription: Prescription;
   /** Timed hold instead of reps (e.g. "30–60 s"). */
   hold?: boolean;
+  /** Gym equipment (catalogue slugs) this exercise uses, shown as "You'll need" links. */
+  gear?: EquipmentSlug[];
   animation: Animation;
 }
 

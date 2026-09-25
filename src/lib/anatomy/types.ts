@@ -100,7 +100,11 @@ export type Prop =
   | { type: "box"; from: number; to: number; top: number; bottom?: number; width?: number; z?: number }
   | { type: "pullupBar"; y: number; x: number }
   | { type: "cable"; pulley: [number, number]; handle: "bar" | "rope" | "single" }
-  | { type: "mat" };
+  | { type: "mat" }
+  /** Plug-in prop registered in src/lib/three/extra-props (EZ bar, dip bars, medicine ball…). */
+  | { type: "extra"; kind: string; params?: Record<string, number | string | boolean> }
+  /** A detailed equipment model from src/lib/three/equipment, placed on the floor at (x, z). */
+  | { type: "equipment"; slug: string; x: number; z?: number; y?: number; rotate?: number; scale?: number };
 
 export type CameraPreset = "front" | "back" | "side";
 

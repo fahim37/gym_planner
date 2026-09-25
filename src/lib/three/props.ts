@@ -1,5 +1,8 @@
 import * as THREE from "three";
 import type { Prop } from "@/lib/anatomy/types";
+import { isEquipmentSlug } from "@/lib/equipment-catalog";
+import { buildEquipmentModel, type EquipmentModel } from "./equipment";
+import { buildExtraProp } from "./extra-props";
 import { toWorld, type BodyRig } from "./rig";
 
 const iron = new THREE.MeshStandardMaterial({ color: 0x1f1f23, roughness: 0.55, metalness: 0.35 });
@@ -82,6 +85,7 @@ type Follower = (rig: BodyRig) => void;
 export class PropSet {
   readonly group = new THREE.Group();
   private readonly followers: Follower[] = [];
+  private readonly disposers: (() => void)[] = [];
 
   constructor(props: Prop[]) {
     for (const p of props) this.add(p);
@@ -218,6 +222,26 @@ export class PropSet {
         this.group.add(m);
         break;
       }
+      case "extra": {
+        const built = buildExtraProp(p.kind, p.params ?? {});
+        if (!built) break;
+        built.object.userData.external = true;
+        this.group.add(built.object);
+        if (built.update) this.followers.push(built.update);
+        if (built.dispose) this.disposers.push(built.dispose);
+        break;
+      }
+      case "equipment": {
+        if (!isEquipmentSlug(p.slug)) break;
+        const model: EquipmentModel = buildEquipmentModel(p.slug);
+        model.group.position.copy(toWorld([p.x, p.y ?? 250, p.z ?? 0]));
+        model.group.rotation.y = ((p.rotate ?? 0) * Math.PI) / 180;
+        model.group.scale.setScalar(p.scale ?? 1);
+        model.group.userData.external = true;
+        this.group.add(model.group);
+        this.disposers.push(() => model.dispose());
+        break;
+      }
     }
   }
 
@@ -226,8 +250,14 @@ export class PropSet {
   }
 
   dispose() {
-    this.group.traverse((o) => {
+    this.disposers.forEach((d) => d());
+    // Plug-in props and equipment models free their own (possibly shared) resources.
+    const free = (o: THREE.Object3D) => {
+      if (o.userData.external) return;
       if (o instanceof THREE.Mesh) o.geometry.dispose();
-    });
+      o.children.forEach(free);
+    };
+    free(this.group);
   }
+
 }

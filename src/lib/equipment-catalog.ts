@@ -4,6 +4,8 @@
  * and the pages. Slugs and part ids here must match the model hotspots.
  */
 
+import { EXERCISES, getExercise } from "@/data/exercises";
+
 export type EquipmentCategory = "Free weights" | "Benches & racks" | "Machines" | "Cardio" | "Accessories";
 
 export interface EquipmentPartRef {
@@ -174,7 +176,15 @@ export function isEquipmentSlug(slug: string): slug is EquipmentSlug {
   return EQUIPMENT_CATALOG.some((e) => e.slug === slug);
 }
 
-/** Equipment used by an exercise, for "you'll need" chips on exercise pages. */
+/** Equipment used by an exercise (catalogue lists plus the exercise's own `gear`), for "You'll need" links. */
 export function equipmentForExercise(exerciseSlug: string): EquipmentEntry[] {
-  return EQUIPMENT_CATALOG.filter((e) => (e.exercises as readonly string[]).includes(exerciseSlug));
+  const gear: readonly string[] = getExercise(exerciseSlug)?.gear ?? [];
+  return EQUIPMENT_CATALOG.filter((e) => (e.exercises as readonly string[]).includes(exerciseSlug) || gear.includes(e.slug));
+}
+
+/** Exercise slugs that use a piece of equipment (catalogue list plus every exercise that declares it as `gear`). */
+export function exercisesForEquipment(slug: string): string[] {
+  const listed: readonly string[] = getEquipmentEntry(slug)?.exercises ?? [];
+  const declared = EXERCISES.filter((e) => (e.gear as readonly string[] | undefined)?.includes(slug)).map((e) => e.slug);
+  return [...new Set([...listed, ...declared])];
 }
