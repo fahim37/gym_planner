@@ -67,6 +67,14 @@ export interface Pose {
   head?: number;
   /** Rotation of the shoulders around the spine, degrees (single-arm moves). */
   twist?: number;
+  /**
+   * Whole-body orientation in degrees, applied after solving as a rigid
+   * rotation of every joint and frame vector about the pelvis centre: first
+   * `roll` about the world x axis (positive brings the near side, +z, down
+   * toward the floor), then `yaw` about the vertical axis (positive turns the
+   * facing direction from +x toward +z). Omitted = no rotation.
+   */
+  orient?: { roll?: number; yaw?: number };
   arms: [LimbSpec] | [LimbSpec, LimbSpec];
   legs: [LimbSpec] | [LimbSpec, LimbSpec];
 }
@@ -81,6 +89,11 @@ export interface Keyframe {
   cue?: string;
   /** Marks the keyframe that completes a repetition. */
   rep?: boolean;
+  /**
+   * Blend from this keyframe to the next: "smooth" (default) eases in and out;
+   * "linear" keeps a constant speed, for cyclic motion (pedalling, rowing, running).
+   */
+  ease?: "smooth" | "linear";
 }
 
 export type Prop =
@@ -138,6 +151,8 @@ export interface Skeleton {
   /** Unit vectors of the torso frame (pelvis). */
   up: Vec3;
   forward: Vec3;
+  /** Pelvis side axis, towards side 0 (world +z unless the pose sets `orient`). */
+  side: Vec3;
   /** Chest frame, which differs from the pelvis frame when the torso twists. */
   chestForward: Vec3;
   chestSide: Vec3;

@@ -1,29 +1,47 @@
-import type { Animation, Keyframe, Pose } from "./types";
+import type { Animation, Keyframe, LimbSpec, Pose } from "./types";
 
 const DEFAULT_DUR = 1.1;
 
-/** Fills in the mirrored second limb so every pose has the same shape. */
+/** Gives a limb spec the defaults of its optional fields, so they interpolate instead of snapping. */
+function limb(spec: LimbSpec): LimbSpec {
+  if ("angles" in spec) return { ...spec, spread: spec.spread ?? [0, 0], foot: spec.foot ?? 0, footFollowsShin: spec.footFollowsShin ?? false };
+  return { ...spec, foot: spec.foot ?? 0 };
+}
+
+/** Fills in the mirrored second limb and every optional value, so every pose has the same shape. */
 function normalize(pose: Pose): Pose {
+  const arm = limb(pose.arms[0]);
+  const leg = limb(pose.legs[0]);
   return {
     ...pose,
     head: pose.head ?? 0,
     twist: pose.twist ?? 0,
-    arms: [pose.arms[0], pose.arms[1] ?? pose.arms[0]],
-    legs: [pose.legs[0], pose.legs[1] ?? pose.legs[0]],
+    orient: { roll: pose.orient?.roll ?? 0, yaw: pose.orient?.yaw ?? 0 },
+    arms: [arm, pose.arms[1] ? limb(pose.arms[1]) : arm],
+    legs: [leg, pose.legs[1] ? limb(pose.legs[1]) : leg],
   };
 }
 
-/** Recursively interpolates numbers; non-numbers are taken from `a`. */
+const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+
+/**
+ * Recursively interpolates numbers over the union of both sides' keys; a key
+ * present on one side only keeps that side's value, and other non-numbers
+ * are taken from `a`. Limb specs of different kinds (IK vs angles) are not
+ * blended: `a` is kept until the next keyframe.
+ */
 function lerpDeep<T>(a: T, b: T, k: number): T {
   if (typeof a === "number" && typeof b === "number") return (a + (b - a) * k) as T;
-  if (Array.isArray(a) && Array.isArray(b)) return a.map((v, i) => lerpDeep(v, b[i], k)) as T;
-  if (a && b && typeof a === "object" && typeof b === "object") {
+  if (Array.isArray(a) && Array.isArray(b)) return a.map((v, i) => (i < b.length ? lerpDeep(v, b[i], k) : v)) as T;
+  if (isObject(a) && isObject(b)) {
+    if (("ik" in a && "angles" in b) || ("angles" in a && "ik" in b)) return a;
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(a)) {
-      const av = (a as Record<string, unknown>)[key];
-      const bv = (b as Record<string, unknown>)[key];
+      const av = a[key];
+      const bv = b[key];
       out[key] = bv === undefined ? av : lerpDeep(av, bv, k);
     }
+    for (const key of Object.keys(b)) if (!(key in out)) out[key] = b[key];
     return out as T;
   }
   return a;
@@ -66,7 +84,8 @@ export class Timeline {
     const frame = this.frames[i];
     const next = this.frames[(i + 1) % this.frames.length];
     const local = t - this.starts[i] - (frame.hold ?? 0);
-    const k = local <= 0 ? 0 : ease(Math.min(1, local / (frame.dur ?? DEFAULT_DUR)));
+    const progress = local <= 0 ? 0 : Math.min(1, local / (frame.dur ?? DEFAULT_DUR));
+    const k = frame.ease === "linear" ? progress : ease(progress);
 
     let reps = loops * this.repsPerLoop;
     for (let j = 0; j <= i; j++) {
