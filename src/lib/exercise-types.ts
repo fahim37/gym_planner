@@ -23,6 +23,9 @@ export type Equipment =
 
 export type Level = "Beginner" | "Intermediate" | "Advanced";
 
+/** Training style; strength is the default when omitted. */
+export type ExerciseCategory = "Strength" | "Cardio" | "Plyometric" | "Mobility";
+
 export interface Prescription {
   sets: string;
   reps: string;
@@ -38,6 +41,7 @@ export interface Exercise {
   equipment: Equipment[];
   level: Level;
   mechanics: "Compound" | "Isolation";
+  category?: ExerciseCategory;
   summary: string;
   steps: string[];
   tips: string[];
