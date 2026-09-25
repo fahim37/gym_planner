@@ -67,7 +67,7 @@ export function SiteHeader() {
               {parent.label}
             </Link>
           )}
-          <Link href="/" className={`shrink-0 items-center gap-2 ${parent ? "hidden md:flex" : "flex"}`}>
+          <Link href="/" className={`min-h-11 shrink-0 items-center gap-2 ${parent ? "hidden md:flex" : "flex"}`}>
             <span className="grid h-8 w-8 place-items-center rounded-[0.7rem] bg-amber-300 text-lg font-black text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,.6),0_4px_14px_-4px_rgba(252,211,77,.6)]">
               {SITE.name[0]}
             </span>

@@ -8,7 +8,7 @@ export function MuscleChip({ id, emphasis }: { id: MuscleId; emphasis: "primary"
   return (
     <Link
       href={`/muscles/${id}`}
-      className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-transform duration-300 ease-spring hover:brightness-110 active:scale-90 ${
+      className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-transform duration-300 ease-spring hover:brightness-110 active:scale-90 ${
         emphasis === "primary" ? "bg-red-600 text-white" : "bg-orange-300/20 text-orange-200 ring-1 ring-orange-300/40"
       }`}
     >

@@ -390,7 +390,7 @@ export default function ExerciseViewer({
           onClick={() => changeView(v)}
           aria-pressed={view === v}
           className={`rounded-full font-semibold capitalize transition-transform duration-300 ease-spring active:scale-90 ${
-            size === "sm" ? "h-9 px-2.5 text-[11px]" : "h-9 px-3.5 text-xs"
+            size === "sm" ? "h-10 px-2.5 text-[11px]" : "h-11 px-3.5 text-xs"
           } ${view === v ? "bg-white text-zinc-900 shadow-[0_2px_8px_rgba(0,0,0,0.3)]" : "text-white hover:bg-white/10"}`}
         >
           {v}

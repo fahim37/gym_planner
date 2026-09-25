@@ -50,7 +50,7 @@ export default async function EquipmentDetailPage({ params }: PageProps<"/equipm
   return (
     <EquipmentFocusProvider key={e.slug}>
       <div className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
-        <nav className="mb-4 text-sm text-zinc-400">
+        <nav className="mb-4 hidden text-sm text-zinc-400 md:block">
           <Link href="/equipment" className="hover:text-white">
             Equipment
           </Link>{" "}
@@ -63,7 +63,7 @@ export default async function EquipmentDetailPage({ params }: PageProps<"/equipm
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-x-10">
           <header className="lg:col-start-2 lg:row-start-1">
             <div className="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider">
-              <Link href={`/equipment?category=${e.categorySlug}`} className={`rounded-full px-2.5 py-1 ${GLASS_CHIP}`}>
+              <Link href={`/equipment?category=${e.categorySlug}`} className={`inline-flex min-h-10 items-center rounded-full px-3 ${GLASS_CHIP}`}>
                 {e.category}
               </Link>
               <span className={`rounded-full px-2.5 py-1 ${GLASS_CHIP}`}>{e.parts.length} parts</span>

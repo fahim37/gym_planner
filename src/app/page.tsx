@@ -73,7 +73,7 @@ export default function Home() {
 
       <section className="mx-auto max-w-6xl px-4 py-6 md:py-10">
         <SectionTitle kicker="Follow a plan" title="Programs">
-          <Link href="/programs" className="flex h-10 items-center gap-0.5 text-sm font-semibold text-amber-300 hover:underline">
+          <Link href="/programs" className="-mr-2 flex h-11 min-w-11 items-center justify-center gap-0.5 px-2 text-sm font-semibold text-amber-300 hover:underline">
             All <ChevronRight size={16} />
           </Link>
         </SectionTitle>
@@ -100,7 +100,7 @@ export default function Home() {
 
       <section className="mx-auto max-w-6xl px-4 py-6 md:py-10">
         <SectionTitle kicker="Most popular" title="Master the basics">
-          <Link href="/exercises" className="flex h-10 items-center gap-0.5 text-sm font-semibold text-amber-300 hover:underline">
+          <Link href="/exercises" className="-mr-2 flex h-11 min-w-11 items-center justify-center gap-0.5 px-2 text-sm font-semibold text-amber-300 hover:underline">
             All <ChevronRight size={16} />
           </Link>
         </SectionTitle>
