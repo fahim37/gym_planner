@@ -54,7 +54,6 @@ function stretchRod(radius: number, mat: THREE.Material) {
 
 const _a = new THREE.Vector3();
 const _b = new THREE.Vector3();
-const _c = new THREE.Vector3();
 const _d = new THREE.Vector3();
 const _e = new THREE.Vector3();
 
@@ -67,9 +66,10 @@ function aim(m: THREE.Object3D, from: THREE.Vector3, to: THREE.Vector3) {
 }
 
 /** Wraps a static or animated object so every geometry it owns is freed on dispose. */
-function owned(object: THREE.Object3D, update?: (rig: BodyRig) => void): ExtraProp {
+function owned(object: THREE.Object3D, update?: (rig: BodyRig) => void, grip?: ExtraProp["grip"]): ExtraProp {
   return {
     object,
+    grip,
     update: update && ((rig) => rig.joints && update(rig)),
     dispose: () =>
       object.traverse((o) => {
@@ -86,18 +86,21 @@ function benchLegs(g: THREE.Group, xs: number[], top: number, depth: number, z =
   }
 }
 
-/** Midpoint of both grips (between hand and wrist), world metres. */
+/** Midpoint of both hands' grip centres (inside the closed fists), world metres. */
 function gripMid(rig: BodyRig, out: THREE.Vector3) {
   const j = rig.joints!;
-  out.copy(j.sides[0].hand).add(j.sides[1].hand).multiplyScalar(0.5);
-  _c.copy(j.sides[0].wrist).add(j.sides[1].wrist).multiplyScalar(0.5);
-  return out.lerp(_c, 0.35);
+  return out.copy(j.sides[0].grip).add(j.sides[1].grip).multiplyScalar(0.5);
 }
 
 function grip(rig: BodyRig, side: number, out: THREE.Vector3) {
-  const s = rig.joints!.sides[side];
-  return out.copy(s.hand).lerp(s.wrist, 0.3);
+  return out.copy(rig.joints!.sides[side].grip);
 }
+
+type GripStyle = NonNullable<ExtraProp["grip"]>["style"];
+const style = (p: ExtraPropParams, fallback: NonNullable<GripStyle>): GripStyle => {
+  const v = str(p, "style", fallback);
+  return v === "overhand" || v === "underhand" || v === "neutral" ? v : fallback;
+};
 
 /** Dumbbell with its handle along local z. */
 function dumbbell() {
@@ -147,34 +150,72 @@ const ezBar: ExtraPropBuilder = (p) => {
     _d.z = 0;
     if (_d.lengthSq() < 1e-6) _d.set(0, -1, 0);
     bar.rotation.set(0, 0, Math.atan2(_d.y, _d.x));
-  });
+  }, { hands: "both", radius: 0.014, style: style(p, "underhand") });
 };
 
 /**
- * Dumbbells held with a neutral (hammer) grip: the handle stays perpendicular
- * to the forearm in the side-view plane, or along the torso axis when `grip`
- * is "torso" (bent-over work with the arms out to the side).
- * Params: hands ("both" | "near"), grip ("sagittal" | "torso").
+ * Straight barbell held in both hands with a chosen grip (curls, reverse curls).
+ * Params: style ("underhand" | "overhand"), plate ("small" | "large").
  */
-const neutralDumbbells: ExtraPropBuilder = (p) => {
+const straightBar: ExtraPropBuilder = (p) => {
+  const bar = new THREE.Group();
+  const plateR = str(p, "plate", "small") === "large" ? 0.225 : 0.13;
+  bar.add(rod(new THREE.Vector3(0, 0, -0.9), new THREE.Vector3(0, 0, 0.9), 0.014, chrome));
+  for (const s of [1, -1]) {
+    for (let k = 0; k < 2; k++) {
+      const z = s * (0.6 + k * 0.045);
+      bar.add(rod(new THREE.Vector3(0, 0, z - 0.02), new THREE.Vector3(0, 0, z + 0.02), plateR - k * 0.03, iron));
+    }
+    bar.add(rod(new THREE.Vector3(0, 0, s * 0.54), new THREE.Vector3(0, 0, s * 0.57), 0.03, chrome));
+  }
+  return owned(
+    bar,
+    (rig) => {
+      gripMid(rig, bar.position);
+      bar.position.z = 0;
+    },
+    { hands: "both", radius: 0.014, style: style(p, "underhand") },
+  );
+};
+
+/**
+ * Dumbbells that sit in the closed fists, handle along the knuckle axis.
+ * Params: hands ("both" | "near"), style ("neutral" | "underhand" | "overhand").
+ */
+const dumbbells =
+  (fallback: NonNullable<GripStyle>): ExtraPropBuilder =>
+  (p) => {
+    const g = new THREE.Group();
+    const near = str(p, "hands", "both") === "near";
+    const bells = Array.from({ length: near ? 1 : 2 }, () => dumbbell());
+    bells.forEach((b) => g.add(b));
+    return owned(
+      g,
+      (rig) => {
+        bells.forEach((b, i) => {
+          const s = rig.joints!.sides[i];
+          b.position.copy(s.grip);
+          b.quaternion.setFromUnitVectors(Z_AXIS, s.gripAxis);
+        });
+      },
+      { hands: near ? "near" : "both", radius: 0.014, style: style(p, fallback) },
+    );
+  };
+
+/**
+ * A fixed horizontal bar across the view (pull-up / chin-up bar, low bar for
+ * inverted rows) on two uprights, gripped with the given style.
+ * Params: x, y (bar, authoring cm), style.
+ */
+const fixedBar: ExtraPropBuilder = (p) => {
   const g = new THREE.Group();
-  const count = str(p, "hands", "both") === "near" ? 1 : 2;
-  const alongTorso = str(p, "grip", "sagittal") === "torso";
-  const bells = Array.from({ length: count }, () => dumbbell());
-  bells.forEach((b) => g.add(b));
-  return owned(g, (rig) => {
-    const j = rig.joints!;
-    bells.forEach((b, i) => {
-      const s = j.sides[i];
-      grip(rig, i, b.position);
-      _d.subVectors(s.hand, s.elbow).normalize();
-      if (alongTorso) _a.copy(j.up);
-      else _a.crossVectors(_d, j.side);
-      _a.addScaledVector(_d, -_a.dot(_d));
-      if (_a.lengthSq() < 1e-4) _a.copy(j.chestForward);
-      b.quaternion.setFromUnitVectors(Z_AXIS, _a.normalize());
-    });
-  });
+  const c = W(num(p, "x", 165), num(p, "y", 40));
+  g.add(rod(new THREE.Vector3(c.x, c.y, -0.6), new THREE.Vector3(c.x, c.y, 0.6), 0.016, chrome));
+  for (const sd of [1, -1]) {
+    g.add(rod(new THREE.Vector3(c.x, c.y + 0.08, sd * 0.6), new THREE.Vector3(c.x, 0, sd * 0.6), 0.03, frame));
+    g.add(block(new THREE.Vector3(c.x, 0.015, sd * 0.6), [0.4, 0.03, 0.08], frame));
+  }
+  return owned(g, undefined, { hands: "both", radius: 0.016, style: style(p, "overhand") });
 };
 
 /**
@@ -220,7 +261,8 @@ const landmine: ExtraPropBuilder = (p) => {
 /**
  * A cable column: pulley at (x, y, z) with a cable running to a handle that
  * follows one hand (side "0" / "1") or the midpoint of both ("both").
- * Params: x, y, z (authoring cm, z signed), side, handle ("single" | "bar"),
+ * Params: x, y, z (authoring cm, z signed), side, handle ("single" | "bar" |
+ * "rope"), style (grip, default overhand for bars, neutral otherwise),
  * tower (boolean, default true).
  */
 const cable: ExtraPropBuilder = (p) => {
@@ -244,28 +286,33 @@ const cable: ExtraPropBuilder = (p) => {
   const line = stretchRod(0.005, cableMat);
   g.add(line);
   const handle = new THREE.Group();
+  const ropes = handleType === "rope" ? [stretchRod(0.014, cableMat), stretchRod(0.014, cableMat)] : [];
   if (handleType === "bar") {
     handle.add(rod(new THREE.Vector3(0, 0, -0.28), new THREE.Vector3(0, 0, 0.28), 0.013, chrome));
-  } else {
+  } else if (handleType === "single") {
     handle.add(rod(new THREE.Vector3(0, 0, -0.055), new THREE.Vector3(0, 0, 0.055), 0.015, iron));
   }
-  g.add(handle);
+  g.add(handle, ...ropes);
   return owned(g, (rig) => {
     const j = rig.joints!;
     if (side === "both") {
       gripMid(rig, handle.position);
-      handle.position.z = 0;
+      if (handleType === "rope") {
+        // Rope ends in each fist, joined a hand's width toward the pulley.
+        _d.subVectors(pulley, handle.position).normalize();
+        handle.position.addScaledVector(_d, 0.1);
+        ropes.forEach((r, i) => aim(r, handle.position, j.sides[i].grip));
+      } else handle.position.z = 0;
     } else {
       const s = j.sides[side === "1" ? 1 : 0];
-      grip(rig, side === "1" ? 1 : 0, handle.position);
-      // D-handle grip runs across the palm: perpendicular to the forearm and the cable.
-      _a.subVectors(s.hand, s.elbow).normalize();
-      _d.subVectors(pulley, handle.position).normalize();
-      _b.crossVectors(_d, _a);
-      if (_b.lengthSq() < 1e-4) _b.copy(Z_AXIS);
-      handle.quaternion.setFromUnitVectors(Z_AXIS, _b.normalize());
+      handle.position.copy(s.grip);
+      handle.quaternion.setFromUnitVectors(Z_AXIS, s.gripAxis);
     }
     aim(line, handle.position, pulley);
+  }, {
+    hands: side === "both" ? "both" : side === "1" ? "far" : "near",
+    radius: handleType === "rope" ? 0.018 : 0.014,
+    style: style(p, handleType === "bar" ? "overhand" : "neutral"),
   });
 };
 
@@ -478,7 +525,10 @@ const pecDeck: ExtraPropBuilder = (p) => {
 /** Props for the upper-body exercise library, keyed by `kind` (use a "upper:" prefix). */
 export const UPPER_PROPS: Record<string, ExtraPropBuilder> = {
   "upper:ez-bar": ezBar,
-  "upper:neutral-dumbbells": neutralDumbbells,
+  "upper:neutral-dumbbells": dumbbells("neutral"),
+  "upper:dumbbells": dumbbells("overhand"),
+  "upper:bar": straightBar,
+  "upper:fixed-bar": fixedBar,
   "upper:landmine": landmine,
   "upper:cable": cable,
   "upper:row-station": rowStation,

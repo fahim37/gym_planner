@@ -59,7 +59,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
     breathing: "Inhale as you lower, exhale as you press.",
     prescription: { sets: "3–4", reps: "8–12", rest: "90 s" },
     animation: {
-      props: [FLAT_BENCH, { type: "dumbbell" }],
+      props: [FLAT_BENCH, { type: "extra", kind: "upper:dumbbells", params: { style: "overhand" } }],
       frames: repFrames(
         onBench([{ ik: { x: 101, y: 135, z: 21 }, pole: [0.2, 1, 0.8] }]),
         onBench([{ ik: { x: 108, y: 178, z: 38 }, pole: [0.3, 1, 0.8] }]),
@@ -231,14 +231,14 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
         {
           hip: [156, 123],
           torso: 18,
-          arms: [{ ik: { x: 172, y: 121, z: 27 }, pole: [-1, -0.2, 0.3] }],
+          arms: [{ ik: { x: 172, y: 118, z: 29.5 }, pole: [-1, -0.2, 0.3] }],
           legs: [{ angles: [16, -72], spread: [3, 0], footFollowsShin: true }],
         },
         {
           hip: [151, 145],
           torso: 32,
           head: -8,
-          arms: [{ ik: { x: 172, y: 121, z: 27 }, pole: [-1, -0.2, 0.3] }],
+          arms: [{ ik: { x: 172, y: 118, z: 29.5 }, pole: [-1, -0.2, 0.3] }],
           legs: [{ angles: [24, -68], spread: [3, 0], footFollowsShin: true }],
         },
         { go: 1.3, back: 0.9, hold: 0.1, cues: ["Lean forward and lower", "Press back up"] },
@@ -409,19 +409,19 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
     prescription: { sets: "3–4", reps: "5–10", rest: "2 min" },
     animation: {
       camera: "back",
-      props: [{ type: "pullupBar", x: 165, y: 40 }],
+      props: [{ type: "extra", kind: "upper:fixed-bar", params: { x: 165, y: 40, style: "underhand" } }],
       frames: repFrames(
         {
           hip: [167, 163],
           torso: -5,
-          arms: [{ ik: { x: 165, y: 45, z: 21 }, pole: [0.7, 1, 0.3] }],
+          arms: [{ ik: { x: 167.5, y: 47, z: 21 }, pole: [0.7, 1, 0.3] }],
           legs: [{ angles: [10, -62], spread: [2, 0], footFollowsShin: true }],
         },
         {
           hip: [171, 116],
           torso: -12,
           head: -12,
-          arms: [{ ik: { x: 165, y: 45, z: 21 }, pole: [0.7, 1, 0.3] }],
+          arms: [{ ik: { x: 167.5, y: 47, z: 21 }, pole: [0.7, 1, 0.3] }],
           legs: [{ angles: [18, -56], spread: [2, 0], footFollowsShin: true }],
         },
         { go: 1, back: 1.5, hold: 0.3, cues: ["Elbows down to your ribs", "Lower to a dead hang"] },
@@ -453,10 +453,10 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
     prescription: { sets: "3", reps: "8–15", rest: "60 s" },
     animation: {
       camera: "side",
-      props: [{ type: "pullupBar", x: 140, y: 148 }],
+      props: [{ type: "extra", kind: "upper:fixed-bar", params: { x: 140, y: 148, style: "overhand" } }],
       frames: repFrames(
-        plankPose(250, 244, -72, [{ ik: { x: 140, y: 152, z: 25 }, pole: [0.3, 1, 0.5] }], -75),
-        { ...plankPose(250, 244, -54, [{ ik: { x: 140, y: 152, z: 25 }, pole: [0.3, 1, 0.5] }], -75), head: 8 },
+        plankPose(250, 244, -72, [{ ik: { x: 133.5, y: 152, z: 25 }, pole: [0.3, 1, 0.5] }], -75),
+        { ...plankPose(250, 244, -54, [{ ik: { x: 137, y: 155, z: 25 }, pole: [0.3, 1, 0.5] }], -75), head: 8 },
         { go: 1, back: 1.3, hold: 0.3, cues: ["Pull your chest to the bar", "Lower with control"] },
       ),
     },
@@ -595,7 +595,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
     prescription: { sets: "3", reps: "12–15", rest: "60 s" },
     animation: {
       camera: "back",
-      props: [{ type: "extra", kind: "upper:neutral-dumbbells", params: { grip: "torso" } }],
+      props: [{ type: "extra", kind: "upper:neutral-dumbbells", params: { style: "neutral" } }],
       frames: repFrames(
         { hip: [140, 164], torso: 74, head: -15, arms: [{ angles: [4, 8], spread: [6, 2] }], legs: [planted(160, 12)] },
         { hip: [140, 164], torso: 74, head: -15, arms: [{ angles: [8, 14], spread: [82, 72] }], legs: [planted(160, 12)] },
@@ -718,7 +718,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
     breathing: "Inhale at the bottom, exhale as you press.",
     prescription: { sets: "3–4", reps: "8–12", rest: "90 s" },
     animation: {
-      props: [UPRIGHT_BENCH, { type: "dumbbell" }],
+      props: [UPRIGHT_BENCH, { type: "extra", kind: "upper:dumbbells", params: { style: "overhand" } }],
       frames: (() => {
         const seat = (arms: LimbSpec): Pose => ({ hip: [154, 191], torso: -8, arms: [arms], legs: [seatedLegs] });
         return repFrames(
@@ -752,7 +752,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
     breathing: "Exhale as you rotate and press, inhale as you lower.",
     prescription: { sets: "3", reps: "8–12", rest: "90 s" },
     animation: {
-      props: [UPRIGHT_BENCH, { type: "dumbbell" }],
+      props: [UPRIGHT_BENCH, { type: "extra", kind: "upper:dumbbells", params: { style: "overhand" } }],
       frames: (() => {
         const seat = (arms: LimbSpec): Pose => ({ hip: [154, 191], torso: -8, arms: [arms], legs: [seatedLegs] });
         const front = seat({ ik: { x: 166, y: 116, z: 14 }, pole: [1, 1, 0.1] });
@@ -791,7 +791,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
     breathing: "Exhale as you raise, inhale as you lower.",
     prescription: { sets: "3", reps: "10–15", rest: "60 s" },
     animation: {
-      props: [{ type: "dumbbell" }],
+      props: [{ type: "extra", kind: "upper:dumbbells", params: { style: "overhand" } }],
       frames: repFrames(
         standing({ arms: [{ angles: [14, 18], spread: [5, 2] }] }),
         standing({ arms: [{ angles: [88, 92], spread: [5, 2] }] }),
@@ -1002,7 +1002,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
     breathing: "Exhale as you curl, inhale as you lower.",
     prescription: { sets: "3–4", reps: "8–12", rest: "60–90 s" },
     animation: {
-      props: [{ type: "barbell", plate: "small" }],
+      props: [{ type: "extra", kind: "upper:bar", params: { style: "underhand" } }],
       frames: repFrames(
         standing({ arms: [{ angles: [10, 12], spread: [4, 1] }] }),
         standing({ arms: [{ angles: [-4, 148], spread: [4, 1] }] }),
@@ -1033,7 +1033,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
     breathing: "Exhale as you curl, inhale as you lower.",
     prescription: { sets: "3", reps: "10–12", rest: "60 s" },
     animation: {
-      props: [{ type: "extra", kind: "upper:ez-bar" }],
+      props: [{ type: "extra", kind: "upper:ez-bar", params: { style: "underhand" } }],
       frames: repFrames(
         standing({ arms: [{ angles: [10, 12], spread: [1, -3] }] }),
         standing({ arms: [{ angles: [-4, 148], spread: [1, -3] }] }),
@@ -1066,7 +1066,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
     animation: {
       props: [
         { type: "extra", kind: "upper:preacher-bench", params: { seatFrom: 118, seatTo: 158, seatTop: 196, padX: 172, padY: 145, angle: 45, length: 30 } },
-        { type: "extra", kind: "upper:ez-bar" },
+        { type: "extra", kind: "upper:ez-bar", params: { style: "underhand" } },
       ],
       frames: (() => {
         const seat = (arms: LimbSpec): Pose => ({
@@ -1111,7 +1111,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
     animation: {
       props: [
         { type: "bench", from: 40, to: 160, top: 205 },
-        { type: "dumbbell", hands: "near" },
+        { type: "extra", kind: "upper:dumbbells", params: { hands: "near", style: "underhand" } },
       ],
       frames: (() => {
         const legs: LimbSpec = { ik: { x: 208, y: 245, z: 27 }, pole: [0.5, -1, 0.5] };
@@ -1149,7 +1149,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
     breathing: "Exhale as you curl, inhale as you lower.",
     prescription: { sets: "3", reps: "12–15", rest: "60 s" },
     animation: {
-      props: [{ type: "cable", pulley: [218, 236], handle: "bar" }],
+      props: [{ type: "extra", kind: "upper:cable", params: { x: 218, y: 236, z: 0, side: "both", handle: "bar", style: "underhand" } }],
       frames: repFrames(
         standing({ arms: [{ angles: [10, 12], spread: [4, 1] }], legs: [planted(162, 12)] }),
         standing({ arms: [{ angles: [-4, 148], spread: [4, 1] }], legs: [planted(162, 12)] }),
@@ -1183,7 +1183,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
     breathing: "Inhale as you lower, exhale as you extend.",
     prescription: { sets: "3", reps: "8–12", rest: "90 s" },
     animation: {
-      props: [FLAT_BENCH, { type: "extra", kind: "upper:ez-bar" }],
+      props: [FLAT_BENCH, { type: "extra", kind: "upper:ez-bar", params: { style: "overhand" } }],
       frames: repFrames(
         onBench([{ angles: [192, 184], spread: [-2, -5] }]),
         onBench([{ angles: [192, 300], spread: [-2, -8] }]),
@@ -1288,6 +1288,422 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
         plankPose(64, 234, 86, [{ ik: { x: 209, y: 243, z: 17 }, pole: [-1, -0.5, 0.2] }], 74),
         { go: 1.2, back: 0.8, hold: 0.1, cues: ["Elbows back, lower", "Push up"] },
       ),
+    },
+  },
+  // ─────────────────────────── MORE ARMS ───────────────────────────
+  {
+    slug: "incline-dumbbell-curl",
+    name: "Incline Dumbbell Curl",
+    region: "Arms",
+    primary: ["biceps"],
+    secondary: ["forearms"],
+    equipment: ["Dumbbell", "Bench"],
+    gear: ["dumbbells", "adjustable-bench"],
+    level: "Intermediate",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "Curling with your arms hanging behind your body stretches the long head of the biceps like no other curl.",
+    steps: [
+      "Set a bench to about 45–60° and lie back with a dumbbell in each hand.",
+      "Let your arms hang straight down toward the floor, palms facing forward.",
+      "Keeping your upper arms still, curl the dumbbells up toward your shoulders.",
+      "Squeeze at the top, then lower slowly until your arms are fully straight again.",
+    ],
+    tips: ["Keep your head and shoulders against the pad — don't let the shoulders roll forward.", "Go lighter than on standing curls; the stretched position is much harder."],
+    mistakes: ["Swinging the elbows forward to finish the rep", "Stopping short of a full stretch at the bottom", "Lifting the head and shoulders off the pad"],
+    breathing: "Exhale as you curl, inhale as you lower.",
+    prescription: { sets: "3", reps: "8–12", rest: "60 s" },
+    animation: {
+      props: [
+        { type: "bench", from: 128, to: 196, top: 200, incline: { at: 138, length: 85, angle: 55 } },
+        { type: "extra", kind: "upper:dumbbells", params: { style: "underhand" } },
+      ],
+      frames: (() => {
+        const seat = (arms: LimbSpec): Pose => ({ hip: [156, 191], torso: -35, arms: [arms], legs: [seatedLegs] });
+        return repFrames(seat({ angles: [0, 2], spread: [8, 4] }), seat({ angles: [0, 140], spread: [8, 4] }), {
+          go: 1,
+          back: 1.6,
+          hold: 0.2,
+          cues: ["Curl without moving your elbows", "Lower to a full stretch"],
+        });
+      })(),
+    },
+  },
+  {
+    slug: "spider-curl",
+    name: "Dumbbell Spider Curl",
+    region: "Arms",
+    primary: ["biceps"],
+    secondary: ["forearms"],
+    equipment: ["Dumbbell", "Bench"],
+    gear: ["dumbbells", "adjustable-bench"],
+    level: "Intermediate",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "A face-down curl on an incline bench that keeps tension on the biceps right to the top of the rep.",
+    steps: [
+      "Set a bench to about 45° and lie face-down with your chest on the pad and your chin just over the top.",
+      "Let your arms hang straight down in front of the bench, palms facing forward.",
+      "Curl the dumbbells up while keeping your upper arms pointing at the floor.",
+      "Squeeze hard at the top, then lower until your arms are straight.",
+    ],
+    tips: ["Keep your chest on the pad the whole set.", "Pause for a second at the top — that's where this curl is strongest."],
+    mistakes: ["Letting the elbows drift forward", "Lifting the chest off the pad to heave the weight", "Half reps at the bottom"],
+    breathing: "Exhale as you curl, inhale as you lower.",
+    prescription: { sets: "3", reps: "10–12", rest: "60 s" },
+    animation: {
+      camera: "front",
+      props: [
+        { type: "extra", kind: "upper:prone-bench", params: { from: 108, to: 150, top: 200, at: 145, length: 80, angle: 40 } },
+        { type: "extra", kind: "upper:dumbbells", params: { style: "underhand" } },
+      ],
+      frames: (() => {
+        const base = (arms: LimbSpec): Pose => ({
+          hip: [149, 171],
+          torso: 50,
+          head: -6,
+          arms: [arms],
+          legs: [{ ik: { x: 98, y: 238, z: 12 }, pole: [1, 0, 0.1], foot: 45 }],
+        });
+        return repFrames(base({ angles: [0, 2], spread: [5, 2] }), base({ angles: [0, 145], spread: [5, 2] }), {
+          go: 0.9,
+          back: 1.5,
+          hold: 0.4,
+          cues: ["Curl up, elbows still", "Lower slowly"],
+        });
+      })(),
+    },
+  },
+  {
+    slug: "reverse-barbell-curl",
+    name: "Reverse Barbell Curl",
+    region: "Arms",
+    primary: ["forearms", "biceps"],
+    secondary: [],
+    equipment: ["Barbell"],
+    gear: ["barbell"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "An overhand curl that builds the forearms and the brachialis under the biceps.",
+    steps: [
+      "Stand tall holding a barbell with an overhand grip, hands shoulder-width apart.",
+      "Let the bar hang against your thighs with your elbows at your sides.",
+      "Curl the bar up toward your shoulders, keeping your wrists straight and knuckles facing forward.",
+      "Lower slowly until your arms are straight.",
+    ],
+    tips: ["Use about half the weight of your normal curl.", "Keep your wrists in line with your forearms — don't let them bend back."],
+    mistakes: ["Letting the wrists droop at the top", "Swinging the weight with the hips", "Elbows drifting forward"],
+    breathing: "Exhale as you curl, inhale as you lower.",
+    prescription: { sets: "3", reps: "10–15", rest: "60 s" },
+    animation: {
+      props: [{ type: "extra", kind: "upper:bar", params: { style: "overhand" } }],
+      frames: repFrames(
+        standing({ arms: [{ angles: [10, 12], spread: [4, 1] }] }),
+        standing({ arms: [{ angles: [-4, 140], spread: [4, 1] }] }),
+        { go: 1, back: 1.5, hold: 0.2, cues: ["Curl, knuckles up", "Lower slowly"] },
+      ),
+    },
+  },
+  {
+    slug: "barbell-drag-curl",
+    name: "Barbell Drag Curl",
+    region: "Arms",
+    primary: ["biceps"],
+    secondary: ["forearms", "rear-delts"],
+    equipment: ["Barbell"],
+    gear: ["barbell"],
+    level: "Intermediate",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "The bar drags up your body while your elbows travel back, taking the front delts out and loading the biceps.",
+    steps: [
+      "Stand tall holding a barbell with an underhand, shoulder-width grip against your thighs.",
+      "Pull your elbows back behind your body as you curl, keeping the bar in contact with your torso.",
+      "Drag the bar up to your lower chest.",
+      "Squeeze, then slide the bar back down your body to the start.",
+    ],
+    tips: ["Think “elbows back”, not “hands up”.", "Keep your shoulders down and back throughout."],
+    mistakes: ["Letting the bar swing away from your body", "Shrugging the shoulders up", "Leaning back to move the weight"],
+    breathing: "Exhale as you drag the bar up, inhale as you lower.",
+    prescription: { sets: "3", reps: "8–12", rest: "60 s" },
+    animation: {
+      props: [{ type: "extra", kind: "upper:bar", params: { style: "underhand" } }],
+      frames: repFrames(
+        standing({ arms: [{ ik: { x: 170, y: 152, z: 22 }, pole: [-1, 0, 0.2] }] }),
+        standing({ arms: [{ ik: { x: 175, y: 114, z: 22 }, pole: [-1, 0.4, 0.2] }] }),
+        { go: 1, back: 1.4, hold: 0.3, cues: ["Elbows back, drag it up", "Slide it down"] },
+      ),
+    },
+  },
+  {
+    slug: "cable-rope-hammer-curl",
+    name: "Cable Rope Hammer Curl",
+    region: "Arms",
+    primary: ["biceps", "forearms"],
+    secondary: [],
+    equipment: ["Cable"],
+    gear: ["cable-machine"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "A neutral-grip curl on a low pulley with constant tension for the brachialis and forearms.",
+    steps: [
+      "Attach a rope to the low pulley and hold one end in each hand, palms facing each other.",
+      "Stand tall close to the machine with your elbows at your sides.",
+      "Curl the rope up toward your shoulders, keeping your palms facing each other.",
+      "Squeeze at the top, then lower slowly until your arms are straight.",
+    ],
+    tips: ["Pull the rope ends slightly apart at the top.", "Keep your upper arms pinned — only the forearms move."],
+    mistakes: ["Leaning back to finish the rep", "Elbows drifting forward", "Letting the weight stack crash down"],
+    breathing: "Exhale as you curl, inhale as you lower.",
+    prescription: { sets: "3", reps: "12–15", rest: "60 s" },
+    animation: {
+      props: [{ type: "extra", kind: "upper:cable", params: { x: 220, y: 238, z: 0, side: "both", handle: "rope", style: "neutral" } }],
+      frames: repFrames(
+        standing({ arms: [{ angles: [2, 4], spread: [2, -6] }], legs: [planted(162, 12)] }),
+        standing({ arms: [{ angles: [-6, 140], spread: [2, -8] }], legs: [planted(162, 12)] }),
+        { go: 1, back: 1.4, hold: 0.3, cues: ["Curl, palms facing in", "Lower slowly"] },
+      ),
+    },
+  },
+  {
+    slug: "cross-body-hammer-curl",
+    name: "Cross-Body Hammer Curl",
+    region: "Arms",
+    primary: ["biceps", "forearms"],
+    secondary: [],
+    equipment: ["Dumbbell"],
+    gear: ["dumbbells"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "A hammer curl across the chest that hits the brachialis and brachioradialis from a new angle.",
+    steps: [
+      "Stand tall with a dumbbell in each hand at your sides, palms facing your thighs.",
+      "Curl one dumbbell up and across your body toward the opposite shoulder, keeping the palm facing in.",
+      "Squeeze at the top, then lower it along the same path.",
+      "Repeat with the other arm.",
+    ],
+    tips: ["Keep your elbow close to your side as the dumbbell crosses.", "Don't twist your torso to help the weight across."],
+    mistakes: ["Rotating the shoulders", "Swinging the weight", "Rushing the lowering"],
+    breathing: "Exhale as you curl, inhale as you lower.",
+    prescription: { sets: "3", reps: "10–12 each arm", rest: "60 s" },
+    animation: {
+      props: [{ type: "extra", kind: "upper:neutral-dumbbells" }],
+      frames: (() => {
+        const down: LimbSpec = { angles: [2, 4], spread: [9, 5] };
+        const up: LimbSpec = { angles: [-2, 130], spread: [4, -40] };
+        const frames: Keyframe[] = [
+          { pose: standing({ arms: [down, down] }), dur: 0.9, cue: "Curl across to the opposite shoulder", rep: true },
+          { pose: standing({ arms: [up, down] }), dur: 1.2, hold: 0.2, cue: "Lower slowly" },
+          { pose: standing({ arms: [down, down] }), dur: 0.9, cue: "Other arm", rep: true },
+          { pose: standing({ arms: [down, up] }), dur: 1.2, hold: 0.2, cue: "Lower slowly" },
+        ];
+        return frames;
+      })(),
+    },
+  },
+  {
+    slug: "high-cable-curl",
+    name: "High Cable Curl",
+    region: "Arms",
+    primary: ["biceps"],
+    secondary: ["forearms", "front-delts"],
+    equipment: ["Cable"],
+    gear: ["cable-machine"],
+    level: "Intermediate",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "A double-biceps-pose curl between two high pulleys for a hard peak contraction.",
+    steps: [
+      "Set both pulleys at shoulder height and stand in the middle holding a handle in each hand.",
+      "Raise your arms out to the sides to shoulder height, palms facing up.",
+      "Keeping your upper arms still, curl the handles in toward the sides of your head.",
+      "Squeeze, then straighten your arms slowly back out to the sides.",
+    ],
+    tips: ["Keep your elbows level with your shoulders the whole time.", "Use a light weight and a slow tempo."],
+    mistakes: ["Letting the elbows drop", "Leaning toward one side", "Not straightening the arms fully"],
+    breathing: "Exhale as you curl, inhale as you extend.",
+    prescription: { sets: "3", reps: "12–15", rest: "60 s" },
+    animation: {
+      props: [
+        { type: "extra", kind: "upper:cable", params: { x: 160, y: 92, z: 96, side: "0", style: "underhand" } },
+        { type: "extra", kind: "upper:cable", params: { x: 160, y: 92, z: -96, side: "1", style: "underhand" } },
+      ],
+      frames: repFrames(
+        standing({ arms: [{ angles: [90, 90], spread: [86, 78] }], legs: [planted(162, 14)] }),
+        standing({ arms: [{ angles: [90, 180], spread: [86, -8] }], legs: [planted(162, 14)] }),
+        { go: 1, back: 1.4, hold: 0.4, cues: ["Curl toward your head", "Extend slowly"] },
+      ),
+    },
+  },
+  {
+    slug: "overhead-cable-triceps-extension",
+    name: "Overhead Cable Triceps Extension",
+    region: "Arms",
+    primary: ["triceps"],
+    secondary: ["abs"],
+    equipment: ["Cable"],
+    gear: ["cable-machine"],
+    level: "Intermediate",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "Stretches the long head of the triceps under constant cable tension.",
+    steps: [
+      "Attach a rope to a pulley at about chest height, grab it and turn to face away from the machine.",
+      "Step forward into a split stance and lean slightly forward, hands behind your head and elbows pointing forward.",
+      "Keeping your upper arms still beside your head, straighten your elbows to push the rope forward and up.",
+      "Squeeze at full extension, then let your hands return behind your head for a deep stretch.",
+    ],
+    tips: ["Keep your elbows narrow — about head-width apart.", "Brace your abs so your lower back doesn't arch."],
+    mistakes: ["Elbows flaring out wide", "Moving the upper arms so it turns into a pullover", "Cutting the stretch short"],
+    breathing: "Exhale as you extend, inhale as your hands return.",
+    prescription: { sets: "3", reps: "10–15", rest: "60 s" },
+    animation: {
+      props: [{ type: "extra", kind: "upper:cable", params: { x: 100, y: 110, z: 0, side: "both", handle: "rope", style: "neutral" } }],
+      frames: (() => {
+        const base = (arms: LimbSpec): Pose => ({
+          hip: [158, 158],
+          torso: 22,
+          arms: [arms],
+          legs: [planted(186, 12, [1, -0.1, 0.1]), { ik: { x: 128, y: 240, z: 12 }, pole: [1, 0, 0.1], foot: 30 }],
+        });
+        return repFrames(base({ angles: [150, 335], spread: [6, -8] }), base({ angles: [150, 150], spread: [6, -6] }), {
+          go: 1,
+          back: 1.4,
+          hold: 0.3,
+          cues: ["Extend forward and up", "Return for a deep stretch"],
+        });
+      })(),
+    },
+  },
+  {
+    slug: "lying-dumbbell-triceps-extension",
+    name: "Lying Dumbbell Triceps Extension",
+    region: "Arms",
+    primary: ["triceps"],
+    secondary: ["forearms"],
+    equipment: ["Dumbbell", "Bench"],
+    gear: ["dumbbells", "flat-bench"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "A skull crusher with dumbbells and a neutral grip — easier on the wrists and elbows.",
+    steps: [
+      "Lie on a flat bench holding a dumbbell in each hand over your chest, palms facing each other.",
+      "Tilt your upper arms back slightly so they point just behind vertical.",
+      "Bend only at the elbows to lower the dumbbells beside your head.",
+      "Straighten your arms to press the dumbbells back up.",
+    ],
+    tips: ["Keep your elbows pointing at the ceiling and about shoulder-width apart.", "Lower under control — the dumbbells end up next to your ears."],
+    mistakes: ["Letting the elbows flare out", "Turning it into a press by moving the upper arms", "Dropping the dumbbells too fast"],
+    breathing: "Inhale as you lower, exhale as you extend.",
+    prescription: { sets: "3", reps: "10–12", rest: "60 s" },
+    animation: {
+      props: [FLAT_BENCH, { type: "extra", kind: "upper:neutral-dumbbells" }],
+      frames: repFrames(
+        onBench([{ angles: [192, 184], spread: [4, 2] }]),
+        onBench([{ angles: [192, 292], spread: [4, 4] }]),
+        { go: 1.5, back: 1, hold: 0.1, cues: ["Lower beside your head", "Extend to the top"] },
+      ),
+    },
+  },
+  {
+    slug: "reverse-grip-cable-pushdown",
+    name: "Reverse-Grip Cable Pushdown",
+    region: "Arms",
+    primary: ["triceps"],
+    secondary: ["forearms"],
+    equipment: ["Cable"],
+    gear: ["cable-machine"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "An underhand pushdown that shifts emphasis toward the medial head of the triceps.",
+    steps: [
+      "Attach a straight bar to a high pulley and grab it with an underhand grip, hands about shoulder-width apart.",
+      "Pin your elbows to your sides with your forearms just above parallel to the floor.",
+      "Push the bar down until your arms are fully straight.",
+      "Squeeze, then let the bar rise slowly back to the start.",
+    ],
+    tips: ["Use less weight than a normal pushdown — the grip is weaker.", "Keep your wrists straight."],
+    mistakes: ["Elbows drifting forward", "Leaning over the bar", "Letting the wrists bend back"],
+    breathing: "Exhale as you push down, inhale on the way up.",
+    prescription: { sets: "3", reps: "12–15", rest: "60 s" },
+    animation: {
+      camera: "back",
+      props: [{ type: "extra", kind: "upper:cable", params: { x: 196, y: 26, z: 0, side: "both", handle: "bar", style: "underhand" } }],
+      frames: repFrames(
+        standing({ torso: 10, arms: [{ angles: [-10, 110], spread: [4, -4] }], legs: [planted(162, 12)] }),
+        standing({ torso: 10, arms: [{ angles: [-6, 4], spread: [4, -3] }], legs: [planted(162, 12)] }),
+        { go: 0.9, back: 1.2, hold: 0.3, cues: ["Push down to lockout", "Let it rise slowly"] },
+      ),
+    },
+  },
+  {
+    slug: "dumbbell-tate-press",
+    name: "Dumbbell Tate Press",
+    region: "Arms",
+    primary: ["triceps"],
+    secondary: ["chest"],
+    equipment: ["Dumbbell", "Bench"],
+    gear: ["dumbbells", "flat-bench"],
+    level: "Intermediate",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "A lying triceps press where the elbows flare out and the dumbbells tip in to your chest.",
+    steps: [
+      "Lie on a flat bench holding dumbbells over your chest with straight arms, palms facing your feet.",
+      "Keeping your upper arms still, bend your elbows out to the sides so the inner ends of the dumbbells lower toward your chest.",
+      "Touch the dumbbells lightly to the middle of your chest.",
+      "Straighten your elbows to press them back up.",
+    ],
+    tips: ["Use light dumbbells — this is a triceps finisher, not a press.", "Let the dumbbells touch at the bottom to keep the path consistent."],
+    mistakes: ["Letting the upper arms move so it becomes a bench press", "Banging the dumbbells into the chest", "Going too heavy"],
+    breathing: "Inhale as you lower, exhale as you press up.",
+    prescription: { sets: "3", reps: "10–15", rest: "60 s" },
+    animation: {
+      props: [FLAT_BENCH, { type: "extra", kind: "upper:dumbbells", params: { style: "overhand" } }],
+      frames: repFrames(
+        onBench([{ ik: { x: 101, y: 135, z: 21 }, pole: [0, 0.3, 1] }]),
+        onBench([{ ik: { x: 106, y: 168, z: 9 }, pole: [0, -0.2, 1] }]),
+        { go: 1.3, back: 0.9, hold: 0.1, cues: ["Elbows out, lower to your chest", "Press back up"] },
+      ),
+    },
+  },
+  {
+    slug: "single-arm-overhead-dumbbell-extension",
+    name: "Single-Arm Overhead Dumbbell Extension",
+    region: "Arms",
+    primary: ["triceps"],
+    secondary: ["abs"],
+    equipment: ["Dumbbell"],
+    gear: ["dumbbells"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "A one-arm overhead extension that stretches the long head and evens out left-right differences.",
+    steps: [
+      "Stand tall and press one dumbbell overhead, arm straight and close to your head.",
+      "Keeping your upper arm pointing at the ceiling, bend your elbow to lower the dumbbell behind your head.",
+      "Lower until you feel a deep stretch in the back of the arm.",
+      "Straighten your elbow to press the dumbbell back up. Finish the set, then switch arms.",
+    ],
+    tips: ["Brace your abs and glutes so your lower back stays neutral.", "Hold your working elbow with the free hand if it drifts."],
+    mistakes: ["Elbow flaring out to the side", "Arching the lower back", "Moving the upper arm"],
+    breathing: "Inhale as you lower, exhale as you extend.",
+    prescription: { sets: "3", reps: "10–12 each arm", rest: "45 s" },
+    animation: {
+      props: [{ type: "extra", kind: "upper:neutral-dumbbells", params: { hands: "near" } }],
+      frames: (() => {
+        const free: LimbSpec = { angles: [2, 4], spread: [9, 5] };
+        return repFrames(
+          standing({ arms: [{ angles: [172, -176], spread: [4, -8] }, free] }),
+          standing({ arms: [{ angles: [168, -35], spread: [4, -24] }, free], head: 4 }),
+          { go: 1.3, back: 1, hold: 0.1, cues: ["Lower behind your head", "Extend to the top"] },
+        );
+      })(),
     },
   },
 ];
