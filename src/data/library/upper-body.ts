@@ -1569,7 +1569,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
           arms: [arms],
           legs: [planted(186, 12, [1, -0.1, 0.1]), { ik: { x: 128, y: 240, z: 12 }, pole: [1, 0, 0.1], foot: 30 }],
         });
-        return repFrames(base({ angles: [150, 335], spread: [6, -8] }), base({ angles: [150, 150], spread: [6, -6] }), {
+        return repFrames(base({ angles: [150, 305], spread: [6, -8] }), base({ angles: [150, 150], spread: [6, -6] }), {
           go: 1,
           back: 1.4,
           hold: 0.3,
