@@ -197,7 +197,7 @@ const FOUNDATION_EXERCISES: Exercise[] = [
       props: [{ type: "mat" }],
       frames: repFrames(
         lyingOnBack(239, -90, [{ ik: { x: 150, y: 246, z: 24 }, pole: [0, -1, 0.3] }]),
-        lyingOnBack(210, -115.8, [{ ik: { x: 150, y: 246, z: 24 }, pole: [0, -1, 0.3] }], 156),
+        { ...lyingOnBack(210, -115.8, [{ ik: { x: 150, y: 246, z: 24 }, pole: [0, -1, 0.3] }], 156), head: 30 },
         { go: 0.9, back: 1.2, hold: 0.6, cues: ["Drive hips up", "Squeeze, then lower"] },
       ),
     },
@@ -327,7 +327,7 @@ const FOUNDATION_EXERCISES: Exercise[] = [
           torso: 78,
           twist,
           head: -10,
-          arms: [arm, { ik: { x: 214, y: 204, z: 18 }, pole: [-1, 0, 0.2] }],
+          arms: [arm, { ik: { x: 210, y: 201, z: 18 }, pole: [-1, 0, 0.2] }],
           legs: [
             { ik: { x: 150, y: 245, z: 18 }, pole: [1, 0, 0.3] },
             { ik: { x: 104, y: 201, z: 12 }, pole: [0.3, 1, 0], foot: 182 },
@@ -363,19 +363,19 @@ const FOUNDATION_EXERCISES: Exercise[] = [
     breathing: "Exhale as you pull up, inhale as you lower.",
     prescription: { sets: "3–4", reps: "5–10", rest: "2 min" },
     animation: {
-      props: [{ type: "pullupBar", x: 165, y: 40 }],
+      props: [{ type: "pullupBar", x: 165, y: 20 }],
       frames: repFrames(
         {
-          hip: [167, 163],
+          hip: [167, 143],
           torso: -5,
-          arms: [{ ik: { x: 165, y: 45, z: 36 }, pole: [0.2, 1, 0.7] }],
+          arms: [{ ik: { x: 165, y: 25, z: 36 }, pole: [0.2, 1, 0.7] }],
           legs: [{ angles: [8, -32], spread: [2, 0], footFollowsShin: true }],
         },
         {
-          hip: [171, 116],
+          hip: [171, 96],
           torso: -12,
           head: -12,
-          arms: [{ ik: { x: 165, y: 45, z: 36 }, pole: [0.2, 1, 0.7] }],
+          arms: [{ ik: { x: 165, y: 25, z: 36 }, pole: [0.2, 1, 0.7] }],
           legs: [{ angles: [14, -30], spread: [2, 0], footFollowsShin: true }],
         },
         { go: 1, back: 1.5, hold: 0.3, cues: ["Pull your elbows down", "Lower to a dead hang"] },
@@ -867,10 +867,10 @@ const FOUNDATION_EXERCISES: Exercise[] = [
     breathing: "Exhale as you raise, inhale as you lower.",
     prescription: { sets: "3", reps: "8–15", rest: "60 s" },
     animation: {
-      props: [{ type: "pullupBar", x: 165, y: 40 }],
+      props: [{ type: "pullupBar", x: 165, y: 15 }],
       frames: repFrames(
-        { hip: [165, 163], torso: -2, arms: [{ ik: { x: 165, y: 45, z: 28 }, pole: [0, 1, 0.5] }], legs: [{ angles: [4, 4], footFollowsShin: true }] },
-        { hip: [155, 162], torso: 9, arms: [{ ik: { x: 165, y: 45, z: 28 }, pole: [0, 1, 0.5] }], legs: [{ angles: [90, 88], footFollowsShin: true }] },
+        { hip: [165, 138], torso: -2, arms: [{ ik: { x: 165, y: 20, z: 28 }, pole: [0, 1, 0.5] }], legs: [{ angles: [4, 4], footFollowsShin: true }] },
+        { hip: [155, 137], torso: 9, arms: [{ ik: { x: 165, y: 20, z: 28 }, pole: [0, 1, 0.5] }], legs: [{ angles: [90, 88], footFollowsShin: true }] },
         { go: 1.1, back: 1.6, hold: 0.3, cues: ["Raise your legs", "Lower with control"] },
       ),
     },
@@ -900,9 +900,15 @@ const FOUNDATION_EXERCISES: Exercise[] = [
       frames: (() => {
         const knee: LimbSpec = { angles: [55, -95], foot: 30 };
         const back = straightLegBack(-72);
+        // Passing position: hips up a touch, one knee coming through, the other leg folding forward.
+        const passBack: LimbSpec = { angles: [-5, -140], foot: 30 };
+        const passFront: LimbSpec = { angles: [15, -130], foot: 30 };
+        const pass = { hip: [150, 196] as [number, number], torso: 80, arms: [plankHands] as [LimbSpec] };
         return [
-          { pose: { ...HIGH_PLANK, arms: [plankHands], legs: [knee, back] }, dur: 0.45, cue: "Drive your knees", rep: true },
-          { pose: { ...HIGH_PLANK, arms: [plankHands], legs: [back, knee] }, dur: 0.45, rep: true },
+          { pose: { ...HIGH_PLANK, arms: [plankHands], legs: [knee, back] }, dur: 0.24, cue: "Drive your knees", rep: true },
+          { pose: { ...pass, legs: [passBack, passFront] }, dur: 0.2 },
+          { pose: { ...HIGH_PLANK, arms: [plankHands], legs: [back, knee] }, dur: 0.24, rep: true },
+          { pose: { ...pass, legs: [passFront, passBack] }, dur: 0.2 },
         ];
       })(),
     },
