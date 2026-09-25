@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { EquipmentSummary } from "@/lib/equipment-types";
-import { GLASS_CARD, SPRING } from "./EquipmentGlass";
+import { SPRING, SURFACE } from "./EquipmentGlass";
 import EquipmentThumb from "./EquipmentThumb";
 
 /** Gallery card: 3D still, name, one-line summary, part and exercise counts. */
@@ -9,7 +9,7 @@ export default function EquipmentCard({ item }: { item: EquipmentSummary }) {
   return (
     <Link
       href={`/equipment/${item.slug}`}
-      className={`group flex flex-col overflow-hidden rounded-[1.6rem] p-1.5 text-white ${GLASS_CARD} ${SPRING} hover:-translate-y-1 active:scale-[0.97]`}
+      className={`group flex flex-col overflow-hidden rounded-[1.6rem] p-1.5 text-white glass-reactive ${SURFACE} ${SPRING} hover:-translate-y-1 active:scale-[0.97]`}
     >
       <EquipmentThumb slug={item.slug} className="aspect-[4/3] rounded-[1.2rem]" />
       <div className="flex flex-1 flex-col gap-1.5 px-2 pb-2 pt-2.5 sm:gap-2 sm:px-2.5 sm:pb-2.5">

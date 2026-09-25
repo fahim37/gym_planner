@@ -29,7 +29,7 @@ export class Stage {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(30, 1, 0.05, 50);
   readonly palette: Palette = createPalette();
-  readonly rig = new BodyRig(this.palette);
+  private rigInstance: BodyRig | null = null;
   readonly controls: OrbitControls | null = null;
   private readonly raycaster = new THREE.Raycaster();
   private readonly bounds = new THREE.Box3(new THREE.Vector3(-0.5, 0, -0.4), new THREE.Vector3(0.5, 1.9, 0.4));
@@ -38,6 +38,12 @@ export class Stage {
   /** Custom view direction set by frame(); overrides the preset while set. */
   private viewDir: THREE.Vector3 | null = null;
   private readonly key: THREE.DirectionalLight;
+
+  /** The anatomy figure, built on first use: `figure: false` stages never pay for it. */
+  get rig(): BodyRig {
+    this.rigInstance ??= new BodyRig(this.palette);
+    return this.rigInstance;
+  }
 
   constructor(canvas: HTMLCanvasElement, opts: StageOptions = {}) {
     this.renderer = new THREE.WebGLRenderer({
@@ -209,7 +215,8 @@ export class Stage {
   pick(ndcX: number, ndcY: number): MuscleId | null {
     this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
     this.scene.updateMatrixWorld();
-    const hit = this.raycaster.intersectObjects(this.rig.group.children, false)[0];
+    if (!this.rigInstance) return null;
+    const hit = this.raycaster.intersectObjects(this.rigInstance.group.children, false)[0];
     return (hit?.object.userData.muscle as MuscleId | undefined) ?? null;
   }
 

@@ -2,7 +2,7 @@
 
 import type { EquipmentPart } from "@/lib/equipment-types";
 import { useEquipmentFocus } from "./EquipmentFocus";
-import { GLASS_BEAD, GLASS_BEAD_ACTIVE, GLASS_CARD, SPRING } from "./EquipmentGlass";
+import { BEAD, GLASS_ACTIVE, SPRING, SURFACE } from "./EquipmentGlass";
 
 /** Numbered part list; tapping a part focuses it in the page's EquipmentViewer. */
 export default function EquipmentPartList({ parts }: { parts: EquipmentPart[] }) {
@@ -19,13 +19,13 @@ export default function EquipmentPartList({ parts }: { parts: EquipmentPart[] })
               aria-pressed={on}
               className={`flex w-full items-start gap-3 rounded-[1.4rem] p-3 text-left ${SPRING} active:scale-[0.98] ${
                 on
-                  ? "bg-amber-300/10 ring-1 ring-inset ring-amber-300/50 shadow-[inset_0_1px_0_rgb(255_255_255/0.14),0_12px_30px_-14px_rgb(251_191_36/0.45)]"
-                  : `${GLASS_CARD} hover:bg-white/[0.06]`
+                  ? `${SURFACE} bg-amber-300/[0.12]`
+                  : `glass-reactive ${SURFACE} hover:bg-white/[0.07]`
               }`}
             >
               <span
                 className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-black ${SPRING} ${
-                  on ? `scale-110 ${GLASS_BEAD_ACTIVE}` : GLASS_BEAD
+                  on ? `scale-110 ${GLASS_ACTIVE}` : BEAD
                 }`}
               >
                 {i + 1}

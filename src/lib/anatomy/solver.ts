@@ -177,5 +177,46 @@ export function solvePose(pose: Pose): Skeleton {
     };
   }) as [SideJoints, SideJoints];
 
-  return { pelvis, chest, neck, head, up, forward, chestForward, chestSide, headUp, headForward, sides };
+  const sk: Skeleton = { pelvis, chest, neck, head, up, forward, side, chestForward, chestSide, headUp, headForward, sides };
+  if (pose.orient) orientSkeleton(sk, pose.orient.roll ?? 0, pose.orient.yaw ?? 0);
+  return sk;
+}
+
+/**
+ * Rigidly rotates a solved skeleton about its pelvis centre: `roll` degrees
+ * about the world x axis (+z side goes down), then `yaw` about the vertical
+ * axis (+x turns toward +z). Mutates `sk`.
+ */
+function orientSkeleton(sk: Skeleton, roll: number, yaw: number) {
+  if (!roll && !yaw) return;
+  const cr = Math.cos(roll * DEG);
+  const sr = Math.sin(roll * DEG);
+  const cy = Math.cos(yaw * DEG);
+  const sy = Math.sin(yaw * DEG);
+  // Authoring space is y-down, so "+z goes down" means z rotates into +y.
+  const dir = (v: Vec3) => {
+    const y = v[1] * cr + v[2] * sr;
+    const z = -v[1] * sr + v[2] * cr;
+    const x = v[0];
+    v[0] = x * cy - z * sy;
+    v[1] = y;
+    v[2] = x * sy + z * cy;
+  };
+  const o: Vec3 = [sk.pelvis[0], sk.pelvis[1], sk.pelvis[2]];
+  const point = (v: Vec3) => {
+    v[0] -= o[0];
+    v[1] -= o[1];
+    v[2] -= o[2];
+    dir(v);
+    v[0] += o[0];
+    v[1] += o[1];
+    v[2] += o[2];
+  };
+  for (const v of [sk.pelvis, sk.chest, sk.neck, sk.head]) point(v);
+  for (const v of [sk.up, sk.forward, sk.side, sk.chestForward, sk.chestSide, sk.headUp, sk.headForward]) dir(v);
+  for (const s of sk.sides) {
+    for (const v of [s.shoulder, s.elbow, s.wrist, s.hand, s.hip, s.knee, s.ankle, s.heel, s.toe]) point(v);
+    dir(s.armFront);
+    dir(s.legFront);
+  }
 }

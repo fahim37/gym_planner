@@ -1,6 +1,13 @@
 import * as THREE from "three";
 import type { MuscleId } from "@/lib/muscles";
 import type { Skeleton, Vec3 } from "@/lib/anatomy/types";
+import { getBodyData, type BodyData } from "./body/cache";
+import { createBodyDepthMaterial, createBodyMaterial, createPickMaterial, MUSCLE_COUNT, type BodyUniforms } from "./body/material";
+import { MUSCLE_INDEX, muscleAt } from "./body/muscle-index";
+import { BONE_COUNT, BoneSolver, emptyJoints, fillJoints, type GripSpec, type Support, type WorldJoints } from "./body/skeleton";
+import { fibreNormalMap } from "./body/textures";
+
+export type { GripSpec, GripStyle, Support, WorldJoints } from "./body/skeleton";
 
 /** Authoring centimetres (y down, floor at 250) → three.js metres (y up). */
 export function toWorld(p: Vec3, out = new THREE.Vector3()) {
@@ -14,13 +21,7 @@ export function toDir(d: Vec3, out = new THREE.Vector3()) {
 export type Emphasis = "primary" | "secondary";
 export type Highlights = Partial<Record<MuscleId, Emphasis>>;
 
-const CM = 0.01;
-const SPHERE = new THREE.SphereGeometry(1, 36, 24);
-
-/** Inverted-hull contour that gives the figure an illustrated, anatomy-chart outline. */
-const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x52525b, side: THREE.BackSide });
-const OUTLINE_SCALE = 1.045;
-
+/** Colour theme of the figure. Only the colours are used. */
 export interface Palette {
   skin: THREE.MeshStandardMaterial;
   shorts: THREE.MeshStandardMaterial;
@@ -30,383 +31,377 @@ export interface Palette {
   hover: THREE.MeshStandardMaterial;
 }
 
-/** Fine vertical striations; on a sphere they run pole-to-pole, i.e. along the muscle. */
-function fiberTexture() {
-  const size = 256;
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#808080";
-  ctx.fillRect(0, 0, size, size);
-  let seed = 7;
-  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let x = 0; x < size; x += 2 + rand() * 3) {
-    const shade = Math.floor(90 + rand() * 90);
-    ctx.strokeStyle = `rgb(${shade},${shade},${shade})`;
-    ctx.lineWidth = 0.8 + rand() * 1.4;
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.bezierCurveTo(x + rand() * 6 - 3, size / 3, x + rand() * 6 - 3, (2 * size) / 3, x, size);
-    ctx.stroke();
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(4, 1);
-  return tex;
-}
-
 export function createPalette(): Palette {
-  const fibers = fiberTexture();
-  const muscle = { bumpMap: fibers, bumpScale: 1.4 };
   return {
-    skin: new THREE.MeshStandardMaterial({ color: 0xdedee2, roughness: 0.6, metalness: 0.02, ...muscle }),
-    shorts: new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.85 }),
-    hair: new THREE.MeshStandardMaterial({ color: 0x3f3f46, roughness: 0.9 }),
-    primary: new THREE.MeshStandardMaterial({
-      color: 0xe0311f,
-      roughness: 0.45,
-      ...muscle,
-      emissive: 0x8a0f05,
-      emissiveIntensity: 0.35,
-    }),
-    secondary: new THREE.MeshStandardMaterial({
-      color: 0xf28b6c,
-      roughness: 0.5,
-      ...muscle,
-      emissive: 0x6b1d0c,
-      emissiveIntensity: 0.12,
-    }),
-    hover: new THREE.MeshStandardMaterial({
-      color: 0xfacc15,
-      roughness: 0.45,
-      emissive: 0x6b5200,
-      emissiveIntensity: 0.4,
-    }),
+    skin: new THREE.MeshStandardMaterial({ color: 0xd4d5da }),
+    shorts: new THREE.MeshStandardMaterial({ color: 0x141417 }),
+    hair: new THREE.MeshStandardMaterial({ color: 0x2c2c31 }),
+    primary: new THREE.MeshStandardMaterial({ color: 0xd8211a, emissive: 0x8a0f05, emissiveIntensity: 0.35 }),
+    secondary: new THREE.MeshStandardMaterial({ color: 0xf29a74 }),
+    hover: new THREE.MeshStandardMaterial({ color: 0xfacc15 }),
   };
 }
 
-// Scratch vectors reused every frame.
-const _x = new THREE.Vector3();
-const _y = new THREE.Vector3();
-const _z = new THREE.Vector3();
-const _m = new THREE.Matrix4();
-
-/** Unit vector perpendicular to `axis`, as close as possible to the first usable candidate. */
-function perp(axis: THREE.Vector3, out: THREE.Vector3, ...candidates: THREE.Vector3[]) {
-  for (const c of candidates) {
-    out.copy(c).addScaledVector(axis, -c.dot(axis));
-    if (out.lengthSq() > 0.06) return out.normalize();
-  }
-  out.set(0, 1, 0).addScaledVector(axis, -axis.y);
-  if (out.lengthSq() < 1e-4) out.set(1, 0, 0).addScaledVector(axis, -axis.x);
-  return out.normalize();
-}
-
-/** Places a unit-sphere mesh as an ellipsoid. Radii are in cm: [side, along y-axis, along z-axis]. */
-function place(
-  mesh: THREE.Mesh,
-  center: THREE.Vector3,
-  yAxis: THREE.Vector3,
-  zHint: THREE.Vector3,
-  r: [number, number, number],
-) {
-  _y.copy(yAxis).normalize();
-  perp(_y, _z, zHint, WORLD_UP);
-  _x.crossVectors(_y, _z);
-  _m.makeBasis(_x.multiplyScalar(r[0] * CM), _y.multiplyScalar(r[1] * CM), _z.multiplyScalar(r[2] * CM));
-  _m.setPosition(center);
-  mesh.matrix.copy(_m);
-  mesh.matrixWorldNeedsUpdate = true;
-}
-
-const WORLD_UP = new THREE.Vector3(0, 1, 0);
-
-type Slot = "skin" | "shorts" | "hair";
-
-interface Part {
-  mesh: THREE.Mesh;
-  muscle?: MuscleId;
-  /** Material when the muscle isn't highlighted. */
-  base: Slot;
-}
-
-/** Joints of the solved skeleton converted to three.js space. */
-interface WorldJoints {
-  pelvis: THREE.Vector3;
-  chest: THREE.Vector3;
-  head: THREE.Vector3;
-  up: THREE.Vector3;
-  forward: THREE.Vector3;
-  side: THREE.Vector3;
-  chestForward: THREE.Vector3;
-  chestSide: THREE.Vector3;
-  headUp: THREE.Vector3;
-  headForward: THREE.Vector3;
-  sides: {
-    shoulder: THREE.Vector3;
-    elbow: THREE.Vector3;
-    wrist: THREE.Vector3;
-    hand: THREE.Vector3;
-    hip: THREE.Vector3;
-    knee: THREE.Vector3;
-    ankle: THREE.Vector3;
-    heel: THREE.Vector3;
-    toe: THREE.Vector3;
-    armFront: THREE.Vector3;
-    legFront: THREE.Vector3;
-  }[];
-}
-
+/** Joints of a solved skeleton in three.js space (allocates; use for one-off framing). */
 export function worldJoints(sk: Skeleton): WorldJoints {
-  return {
-    pelvis: toWorld(sk.pelvis),
-    chest: toWorld(sk.chest),
-    head: toWorld(sk.head),
-    up: toDir(sk.up),
-    forward: toDir(sk.forward),
-    side: new THREE.Vector3(0, 0, 1),
-    chestForward: toDir(sk.chestForward),
-    chestSide: toDir(sk.chestSide),
-    headUp: toDir(sk.headUp),
-    headForward: toDir(sk.headForward),
-    sides: sk.sides.map((s) => ({
-      shoulder: toWorld(s.shoulder),
-      elbow: toWorld(s.elbow),
-      wrist: toWorld(s.wrist),
-      hand: toWorld(s.hand),
-      hip: toWorld(s.hip),
-      knee: toWorld(s.knee),
-      ankle: toWorld(s.ankle),
-      heel: toWorld(s.heel),
-      toe: toWorld(s.toe),
-      armFront: toDir(s.armFront),
-      legFront: toDir(s.legFront),
-    })),
-  };
+  return fillJoints(sk, emptyJoints());
 }
 
-type Updater = (j: WorldJoints) => void;
+const _q = new THREE.Quaternion();
+const _t = new THREE.Vector3();
+const _s = new THREE.Vector3();
+const _m = new THREE.Matrix4();
+const _v2 = new THREE.Vector2();
+const _c = new THREE.Color();
 
 /**
- * A stylised anatomical figure built from ellipsoid "muscles" that follow
- * the solved skeleton. Every muscle mesh carries its MuscleId so it can be
- * highlighted or picked with a raycaster.
+ * The anatomical figure: one skinned mesh (dual-quaternion skinning on the
+ * GPU) generated procedurally from a sculpted distance field, with muscle
+ * ids baked into its vertices so highlights, hover and picking are a
+ * per-vertex lookup rather than separate meshes.
  */
 export class BodyRig {
   readonly group = new THREE.Group();
-  private readonly parts: Part[] = [];
-  private readonly updaters: Updater[] = [];
-  private highlights: Highlights = {};
-  private hovered: MuscleId | null = null;
+  /** Joints of the current pose (updated in place; null until the first pose). */
   joints: WorldJoints | null = null;
+  /** Increments whenever the pose or highlight state changes (for render-on-demand). */
+  version = 0;
+  readonly uniforms: BodyUniforms;
+  private readonly solver = new BoneSolver();
+  private readonly dq = new Float32Array(BONE_COUNT * 8);
+  private readonly inverseBind: THREE.Matrix4[] = [];
+  private readonly body: THREE.Mesh;
+  private readonly pickMesh: THREE.Mesh;
+  private readonly pickScene = new THREE.Scene();
+  private pickTarget: THREE.WebGLRenderTarget | null = null;
+  private pickBuffer = new Uint8Array(0);
+  private proxies: THREE.Mesh[] | null = null;
+  private proxyVersion = -1;
+  private hovered: MuscleId | null = null;
+  private lastSkeleton: Skeleton | null = null;
 
-  constructor(private readonly palette: Palette) {
-    this.build();
+  constructor(private readonly palette: Palette = createPalette()) {
+    const data = getBodyData();
+    const tex = new THREE.DataTexture(this.dq, BONE_COUNT * 2, 1, THREE.RGBAFormat, THREE.FloatType);
+    tex.magFilter = tex.minFilter = THREE.NearestFilter;
+    tex.needsUpdate = true;
+    this.uniforms = {
+      uBoneDQ: { value: tex },
+      uMuscle: { value: new Float32Array(MUSCLE_COUNT) },
+      uHover: { value: -1 },
+      uFibreMap: { value: sharedFibreMap() },
+      uPulse: { value: 0 },
+      uDetail: { value: 1 },
+      uSkin: { value: new THREE.Color() },
+      uPrimary: { value: new THREE.Color() },
+      uSecondary: { value: new THREE.Color() },
+      uHoverColor: { value: new THREE.Color() },
+      uShorts: { value: new THREE.Color() },
+      uHair: { value: new THREE.Color() },
+      uLine: { value: 1 },
+      uFade: { value: 1 },
+    };
+    this.syncPalette();
+    for (let b = 0; b < BONE_COUNT; b++) this.inverseBind.push(new THREE.Matrix4().fromArray(data.bind, b * 16).invert());
+    // Start in the bind pose so the first frame is valid even before update().
+    for (let b = 0; b < BONE_COUNT; b++) this.dq[b * 8 + 3] = 1;
+
+    const geometry = sharedGeometry(data);
+    const body = new THREE.Mesh(geometry, createBodyMaterial(this.uniforms));
+    body.customDepthMaterial = createBodyDepthMaterial(this.uniforms);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    body.frustumCulled = false;
+    // Raycasting a GPU-skinned body on the CPU would hit the bind pose; use pick() / muscleMeshes.
+    body.raycast = () => {};
+    this.body = body;
+    this.group.add(body);
+    this.pickMesh = new THREE.Mesh(geometry, createPickMaterial(this.uniforms));
+    this.pickMesh.frustumCulled = false;
+    this.pickMesh.matrixAutoUpdate = false;
+    this.pickScene.add(this.pickMesh);
   }
 
-  /** Meshes that belong to a muscle, for raycasting. */
-  get muscleMeshes() {
-    return this.parts.filter((p) => p.muscle).map((p) => p.mesh);
-  }
-
-  private part(base: Slot, muscle?: MuscleId) {
-    const mesh = new THREE.Mesh(SPHERE, this.palette[base]);
-    mesh.matrixAutoUpdate = false;
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    mesh.userData.muscle = muscle;
-    const outline = new THREE.Mesh(SPHERE, OUTLINE);
-    outline.scale.setScalar(OUTLINE_SCALE);
-    outline.raycast = () => {};
-    mesh.add(outline);
-    this.group.add(mesh);
-    this.parts.push({ mesh, muscle, base });
-    return mesh;
-  }
-
-  private on(fn: Updater) {
-    this.updaters.push(fn);
-  }
-
-  private build() {
-    const c = new THREE.Vector3();
-    const a = new THREE.Vector3();
-    const d = new THREE.Vector3();
-    const f = new THREE.Vector3();
-    const o = new THREE.Vector3();
-
-    // ---------- Torso ----------
-    const ribs = this.part("skin");
-    const waist = this.part("skin");
-    const pelvis = this.part("shorts");
-    const neck = this.part("skin");
-    this.on((j) => {
-      place(ribs, c.copy(j.pelvis).addScaledVector(j.up, 0.4), j.up, j.chestForward, [17.5, 20.5, 11.8]);
-      place(waist, c.copy(j.pelvis).addScaledVector(j.up, 0.18), j.up, j.forward, [13.8, 15, 10]);
-      place(pelvis, c.copy(j.pelvis).addScaledVector(j.up, 0.02), j.up, j.forward, [15.2, 10, 10.4]);
-      a.copy(j.chest).addScaledVector(j.up, 0.02);
-      c.copy(a).add(j.head).multiplyScalar(0.5);
-      place(neck, c, d.subVectors(j.head, a), j.headForward, [6.4, 8, 6]);
-    });
-
-    const girdle = this.part("skin");
-    this.on((j) => {
-      place(girdle, c.copy(j.chest).addScaledVector(j.up, -0.035).addScaledVector(j.chestForward, -0.01), j.up, j.chestForward, [19, 7.5, 9.5]);
-    });
-
-    const traps = this.part("skin", "traps");
-    const trapsLower = this.part("skin", "traps");
-    this.on((j) => {
-      place(traps, c.copy(j.chest).addScaledVector(j.up, 0.035).addScaledVector(j.chestForward, -0.025), j.up, j.chestForward, [12.5, 6, 6.2]);
-      place(trapsLower, c.copy(j.chest).addScaledVector(j.up, -0.08).addScaledVector(j.chestForward, -0.075), j.up, j.chestForward, [4.6, 13, 3.2]);
-    });
-
-    for (const sign of [1, -1]) {
-      const pec = this.part("skin", "chest");
-      const lat = this.part("skin", "lats");
-      const rhomboid = this.part("skin", "upper-back");
-      const oblique = this.part("skin", "obliques");
-      const erector = this.part("skin", "lower-back");
-      const glute = this.part("shorts", "glutes");
-      this.on((j) => {
-        place(pec, c.copy(j.chest).addScaledVector(j.up, -0.085).addScaledVector(j.chestForward, 0.072).addScaledVector(j.chestSide, sign * 0.08), j.up, j.chestForward, [9.8, 7.8, 5]);
-        d.copy(j.up).addScaledVector(j.chestSide, sign * 0.3);
-        place(lat, c.copy(j.chest).addScaledVector(j.up, -0.2).addScaledVector(j.chestSide, sign * 0.12).addScaledVector(j.chestForward, -0.045), d, j.chestForward, [7.4, 16, 7.6]);
-        place(rhomboid, c.copy(j.chest).addScaledVector(j.up, -0.11).addScaledVector(j.chestForward, -0.085).addScaledVector(j.chestSide, sign * 0.055), j.up, j.chestForward, [5, 8.5, 3.2]);
-        place(oblique, c.copy(j.pelvis).addScaledVector(j.up, 0.16).addScaledVector(j.side, sign * 0.112).addScaledVector(j.forward, 0.02), j.up, j.forward, [4, 11, 6.8]);
-        place(erector, c.copy(j.pelvis).addScaledVector(j.up, 0.15).addScaledVector(j.forward, -0.083).addScaledVector(j.side, sign * 0.035), j.up, j.forward, [3.3, 13.5, 3.2]);
-        place(glute, c.copy(j.pelvis).addScaledVector(j.up, -0.03).addScaledVector(j.forward, -0.066).addScaledVector(j.side, sign * 0.07), j.up, j.forward, [8.4, 9.2, 7.6]);
-      });
-    }
-
-    // Six-pack.
-    for (let row = 0; row < 3; row++) {
-      for (const sign of [1, -1]) {
-        const block = this.part("skin", "abs");
-        this.on((j) => {
-          const along = 0.1 + row * 0.074;
-          const depth = row === 2 ? 0.078 : 0.085;
-          place(block, c.copy(j.pelvis).addScaledVector(j.up, along).addScaledVector(j.forward, depth).addScaledVector(j.side, sign * 0.037), j.up, j.forward, [3.4, 3.4, 2.3]);
-        });
+  /** Invisible per-muscle proxy volumes that follow the pose, for CPU raycasting. */
+  get muscleMeshes(): THREE.Mesh[] {
+    if (!this.proxies) this.proxies = buildProxies(getBodyData(), this.group);
+    if (this.proxyVersion !== this.version) {
+      this.proxyVersion = this.version;
+      for (const p of this.proxies) {
+        const d = p.userData as { bone: number; local: THREE.Matrix4 };
+        p.matrix.multiplyMatrices(this.skinMatrix(d.bone, _m), d.local);
+        p.matrixWorld.multiplyMatrices(this.group.matrixWorld, p.matrix);
       }
     }
+    return this.proxies;
+  }
 
-    // ---------- Head ----------
-    const skull = this.part("skin");
-    const hair = this.part("hair");
-    const jaw = this.part("skin");
-    const nose = this.part("skin");
-    this.on((j) => {
-      place(skull, j.head, j.headUp, j.headForward, [9.4, 11.2, 10.4]);
-      place(hair, c.copy(j.head).addScaledVector(j.headUp, 0.03).addScaledVector(j.headForward, -0.022), j.headUp, j.headForward, [9.3, 9.2, 9.6]);
-      place(jaw, c.copy(j.head).addScaledVector(j.headUp, -0.05).addScaledVector(j.headForward, 0.032), j.headUp, j.headForward, [7.2, 6.2, 6.6]);
-      place(nose, c.copy(j.head).addScaledVector(j.headForward, 0.1).addScaledVector(j.headUp, -0.01), j.headUp, j.headForward, [1.4, 2.2, 1.8]);
-    });
+  /** How each hand holds equipment ([side 0, side 1]); set by the prop set every frame. */
+  setGrips(grips: (GripSpec | null)[]) {
+    const s = this.solver;
+    const a = grips[0] ?? null;
+    const b = grips[1] ?? null;
+    if (s.grips[0] === a && s.grips[1] === b) return;
+    s.grips[0] = a;
+    s.grips[1] = b;
+    if (this.lastSkeleton) this.update(this.lastSkeleton);
+  }
 
-    // ---------- Limbs ----------
-    for (const i of [0, 1]) {
-      const sign = i === 0 ? 1 : -1;
-
-      const deltFront = this.part("skin", "front-delts");
-      const deltSide = this.part("skin", "side-delts");
-      const deltRear = this.part("skin", "rear-delts");
-      const humerus = this.part("skin");
-      const biceps = this.part("skin", "biceps");
-      const triceps = this.part("skin", "triceps");
-      const elbow = this.part("skin");
-      const forearm = this.part("skin", "forearms");
-      const wristPart = this.part("skin");
-      const hand = this.part("skin");
-      const out = new THREE.Vector3();
-      const side = new THREE.Vector3();
-      this.on((j) => {
-        const s = j.sides[i];
-        d.subVectors(s.elbow, s.shoulder).normalize();
-        perp(d, f, s.armFront, j.chestForward);
-        side.copy(j.chestSide).multiplyScalar(sign);
-        perp(d, out, side, j.up);
-        const top = c.copy(s.shoulder).addScaledVector(d, 0.035);
-        place(deltSide, o.copy(top).addScaledVector(out, 0.035), d, out, [6, 9, 5.4]);
-        place(deltFront, o.copy(top).addScaledVector(f, 0.034).addScaledVector(out, 0.012), d, f, [5.6, 8.6, 4.6]);
-        place(deltRear, o.copy(top).addScaledVector(f, -0.034).addScaledVector(out, 0.012), d, f, [5.6, 8.6, 4.6]);
-
-        const mid = a.copy(s.shoulder).add(s.elbow).multiplyScalar(0.5);
-        place(humerus, mid, d, f, [4, 15, 4]);
-        place(biceps, o.copy(mid).addScaledVector(d, 0.012).addScaledVector(f, 0.026), d, f, [4.4, 11, 4.7]);
-        place(triceps, o.copy(mid).addScaledVector(d, -0.01).addScaledVector(f, -0.025), d, f, [4.8, 12.5, 4.7]);
-        place(elbow, s.elbow, d, f, [3.8, 3.8, 3.8]);
-
-        d.subVectors(s.wrist, s.elbow).normalize();
-        perp(d, f, s.armFront, j.chestForward);
-        place(forearm, o.copy(s.elbow).addScaledVector(d, 0.1), d, f, [4.6, 11.5, 4]);
-        place(wristPart, o.copy(s.elbow).addScaledVector(d, 0.215), d, f, [2.9, 7, 2.4]);
-        place(hand, o.copy(s.wrist).addScaledVector(d, 0.045), d, f, [3, 4.8, 1.9]);
-      });
-
-      const shorts = this.part("shorts");
-      const femur = this.part("skin");
-      const quads = this.part("skin", "quads");
-      const teardrop = this.part("skin", "quads");
-      const hams = this.part("skin", "hamstrings");
-      const adductor = this.part("skin", "adductors");
-      const knee = this.part("skin");
-      const tibia = this.part("skin");
-      const calf = this.part("skin", "calves");
-      const foot = this.part("skin");
-      const inward = new THREE.Vector3();
-      this.on((j) => {
-        const s = j.sides[i];
-        d.subVectors(s.knee, s.hip).normalize();
-        perp(d, f, s.legFront, j.forward);
-        inward.copy(j.side).multiplyScalar(-sign);
-        perp(d, inward, inward, j.forward);
-
-        const mid = a.copy(s.hip).add(s.knee).multiplyScalar(0.5);
-        place(femur, mid, d, f, [7.2, 22, 7.2]);
-        place(quads, o.copy(mid).addScaledVector(d, 0.02).addScaledVector(f, 0.03), d, f, [7.8, 20, 6.8]);
-        place(teardrop, o.copy(s.knee).addScaledVector(d, -0.075).addScaledVector(f, 0.028).addScaledVector(inward, 0.028), d, f, [4.4, 6.2, 4.2]);
-        place(hams, o.copy(mid).addScaledVector(f, -0.033), d, f, [6.9, 19.5, 6]);
-        place(adductor, o.copy(mid).addScaledVector(d, -0.06).addScaledVector(inward, 0.035), d, f, [4.6, 14.5, 5]);
-        place(shorts, o.copy(s.hip).addScaledVector(d, 0.075), d, f, [9.3, 8.5, 9.3]);
-        place(knee, s.knee, d, f, [5.3, 5.3, 5.3]);
-
-        d.subVectors(s.ankle, s.knee).normalize();
-        perp(d, f, s.legFront, j.forward);
-        place(tibia, o.copy(s.knee).addScaledVector(d, 0.21), d, f, [4.5, 21, 4.8]);
-        place(calf, o.copy(s.knee).addScaledVector(d, 0.13).addScaledVector(f, -0.034), d, f, [6, 11.5, 5.6]);
-
-        o.subVectors(s.toe, s.heel);
-        const footLen = o.length();
-        o.normalize();
-        c.copy(s.heel).add(s.toe).multiplyScalar(0.5);
-        place(foot, c, o, d.negate(), [3.9, (footLen / CM) * 0.52, 2.8]);
-      });
-    }
+  /** Surfaces a free hand can rest flat on (the floor is always included). */
+  setSupports(supports: Support[]) {
+    this.solver.supports = [{ y: 0 }, ...supports];
+    if (this.lastSkeleton) this.update(this.lastSkeleton);
   }
 
   update(sk: Skeleton) {
-    const j = worldJoints(sk);
-    this.joints = j;
-    for (const u of this.updaters) u(j);
+    this.lastSkeleton = sk;
+    this.solver.update(sk);
+    this.joints = this.solver.joints;
+    const M = this.solver.matrices;
+    const dq = this.dq;
+    for (let b = 0; b < BONE_COUNT; b++) {
+      _m.multiplyMatrices(M[b], this.inverseBind[b]);
+      _m.decompose(_t, _q, _s);
+      const o = b * 8;
+      dq[o] = _q.x;
+      dq[o + 1] = _q.y;
+      dq[o + 2] = _q.z;
+      dq[o + 3] = _q.w;
+      const tx = _t.x;
+      const ty = _t.y;
+      const tz = _t.z;
+      dq[o + 4] = 0.5 * (tx * _q.w + ty * _q.z - tz * _q.y);
+      dq[o + 5] = 0.5 * (-tx * _q.z + ty * _q.w + tz * _q.x);
+      dq[o + 6] = 0.5 * (tx * _q.y - ty * _q.x + tz * _q.w);
+      dq[o + 7] = -0.5 * (tx * _q.x + ty * _q.y + tz * _q.z);
+    }
+    this.uniforms.uBoneDQ.value.needsUpdate = true;
+    this.version++;
+  }
+
+  private skinMatrix(bone: number, out: THREE.Matrix4) {
+    return out.multiplyMatrices(this.solver.matrices[bone], this.inverseBind[bone]);
   }
 
   setHighlights(h: Highlights) {
-    this.highlights = h;
-    this.applyMaterials();
+    this.syncPalette();
+    const u = this.uniforms.uMuscle.value;
+    u.fill(0);
+    for (const [m, e] of Object.entries(h) as [MuscleId, Emphasis][]) u[MUSCLE_INDEX[m]] = e === "primary" ? 2 : 1;
+    this.version++;
   }
 
   setHovered(m: MuscleId | null) {
     if (m === this.hovered) return;
     this.hovered = m;
-    this.applyMaterials();
+    this.uniforms.uHover.value = m ? MUSCLE_INDEX[m] : -1;
+    this.version++;
   }
 
-  private applyMaterials() {
-    for (const p of this.parts) {
-      const emphasis = p.muscle ? this.highlights[p.muscle] : undefined;
-      if (p.muscle && p.muscle === this.hovered) p.mesh.material = this.palette.hover;
-      else if (emphasis) p.mesh.material = this.palette[emphasis];
-      else p.mesh.material = this.palette[p.base];
+  /** Target-muscle pulse, 0..1. */
+  setPulse(p: number) {
+    this.uniforms.uPulse.value = p;
+  }
+
+  private syncPalette() {
+    const u = this.uniforms;
+    const p = this.palette;
+    u.uSkin.value.copy(p.skin.color);
+    u.uPrimary.value.copy(p.primary.color);
+    u.uSecondary.value.copy(p.secondary.color);
+    u.uHoverColor.value.copy(p.hover.color);
+    u.uShorts.value.copy(p.shorts.color);
+    u.uHair.value.copy(p.hair.color);
+  }
+
+  /**
+   * GPU picking: renders muscle ids in a small window around the pointer and
+   * returns the id nearest the centre within `radius` CSS pixels (a generous
+   * radius makes touch picking forgiving).
+   */
+  pick(renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, ndcX: number, ndcY: number, radius = 2): MuscleId | null {
+    const size = renderer.getSize(_v2);
+    const w = size.x;
+    const h = size.y;
+    if (!w || !h) return null;
+    const win = Math.max(3, Math.ceil(radius) * 2 + 1);
+    if (!this.pickTarget || this.pickTarget.width !== win) {
+      this.pickTarget?.dispose();
+      this.pickTarget = new THREE.WebGLRenderTarget(win, win);
+      this.pickBuffer = new Uint8Array(win * win * 4);
+    }
+    const px = ((ndcX + 1) / 2) * w;
+    const py = ((1 - ndcY) / 2) * h;
+    camera.setViewOffset(w, h, px - win / 2, py - win / 2, win, win);
+    this.pickMesh.matrixWorld.copy(this.group.matrixWorld);
+    const prevTarget = renderer.getRenderTarget();
+    const prevAlpha = renderer.getClearAlpha();
+    renderer.getClearColor(_c);
+    const prevShadow = renderer.shadowMap.autoUpdate;
+    renderer.shadowMap.autoUpdate = false;
+    renderer.setRenderTarget(this.pickTarget);
+    renderer.setClearColor(0x000000, 0);
+    renderer.clear();
+    renderer.render(this.pickScene, camera);
+    renderer.readRenderTargetPixels(this.pickTarget, 0, 0, win, win, this.pickBuffer);
+    renderer.setRenderTarget(prevTarget);
+    renderer.setClearColor(_c, prevAlpha);
+    renderer.shadowMap.autoUpdate = prevShadow;
+    camera.clearViewOffset();
+    let best = -1;
+    let bestD = Infinity;
+    const c = (win - 1) / 2;
+    for (let y = 0; y < win; y++) {
+      for (let x = 0; x < win; x++) {
+        const id = this.pickBuffer[(y * win + x) * 4];
+        if (!id) continue;
+        const d = (x - c) * (x - c) + (y - c) * (y - c);
+        if (d < bestD && d <= radius * radius + 0.5) {
+          bestD = d;
+          best = id - 1;
+        }
+      }
+    }
+    return best >= 0 ? muscleAt(best) : null;
+  }
+
+  dispose() {
+    this.pickTarget?.dispose();
+    (this.body.material as THREE.Material).dispose();
+    this.body.customDepthMaterial?.dispose();
+    (this.pickMesh.material as THREE.Material).dispose();
+    this.uniforms.uBoneDQ.value.dispose();
+  }
+}
+
+// Shared resources ------------------------------------------------------------
+
+let fibreMap: THREE.DataTexture | null = null;
+function sharedFibreMap() {
+  if (!fibreMap) fibreMap = fibreNormalMap();
+  return fibreMap;
+}
+
+let geometry: THREE.BufferGeometry | null = null;
+function sharedGeometry(d: BodyData) {
+  if (geometry) return geometry;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(d.position, 3));
+  g.setAttribute("normal", new THREE.BufferAttribute(d.normal, 3));
+  g.setAttribute("aBones", new THREE.BufferAttribute(d.bones, 4));
+  g.setAttribute("aWeights", new THREE.BufferAttribute(d.weights, 4, true));
+  g.setAttribute("aInfo", new THREE.BufferAttribute(d.info, 4));
+  g.setAttribute("aFibre", new THREE.BufferAttribute(d.fibre, 4, true));
+  g.setAttribute("aExtra", new THREE.BufferAttribute(d.extra, 4));
+  g.setIndex(new THREE.BufferAttribute(d.index, 1));
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.95, 0), 1.3);
+  geometry = g;
+  return g;
+}
+
+const PROXY_GEO = new THREE.SphereGeometry(1, 12, 8);
+const PROXY_MAT = new THREE.MeshBasicMaterial({ visible: false });
+
+/**
+ * One ellipsoid per (muscle, bone) cluster of vertices, fitted to the bind
+ * mesh (mean + principal axes), placed each pose by that bone.
+ */
+function buildProxies(d: BodyData, parent: THREE.Object3D): THREE.Mesh[] {
+  const n = d.position.length / 3;
+  const acc = new Map<number, { n: number; s: number[]; c: number[] }>();
+  for (let v = 0; v < n; v++) {
+    const m = d.info[v * 4];
+    if (m === 255 || d.weights[v * 4] < 170) continue;
+    const key = m * 256 + d.bones[v * 4];
+    let a = acc.get(key);
+    if (!a) acc.set(key, (a = { n: 0, s: [0, 0, 0], c: [0, 0, 0, 0, 0, 0] }));
+    const x = d.position[v * 3];
+    const y = d.position[v * 3 + 1];
+    const z = d.position[v * 3 + 2];
+    a.n++;
+    a.s[0] += x;
+    a.s[1] += y;
+    a.s[2] += z;
+    a.c[0] += x * x;
+    a.c[1] += y * y;
+    a.c[2] += z * z;
+    a.c[3] += x * y;
+    a.c[4] += x * z;
+    a.c[5] += y * z;
+  }
+  const out: THREE.Mesh[] = [];
+  for (const [key, a] of acc) {
+    if (a.n < 40) continue;
+    const mx = a.s[0] / a.n;
+    const my = a.s[1] / a.n;
+    const mzv = a.s[2] / a.n;
+    const cxx = a.c[0] / a.n - mx * mx;
+    const cyy = a.c[1] / a.n - my * my;
+    const czz = a.c[2] / a.n - mzv * mzv;
+    const cxy = a.c[3] / a.n - mx * my;
+    const cxz = a.c[4] / a.n - mx * mzv;
+    const cyz = a.c[5] / a.n - my * mzv;
+    const { vectors, values } = eigen3([
+      [cxx, cxy, cxz],
+      [cxy, cyy, cyz],
+      [cxz, cyz, czz],
+    ]);
+    const r = (i: number) => Math.sqrt(Math.max(values[i], 1e-6)) * 1.9;
+    const basis = new THREE.Matrix4().makeBasis(
+      vectors[0].multiplyScalar(r(0)),
+      vectors[1].multiplyScalar(r(1)),
+      vectors[2].multiplyScalar(r(2)),
+    );
+    basis.setPosition(mx, my, mzv);
+    const mesh = new THREE.Mesh(PROXY_GEO, PROXY_MAT);
+    mesh.matrixAutoUpdate = false;
+    mesh.userData = { muscle: muscleAt(Math.floor(key / 256)), bone: key % 256, local: basis };
+    parent.add(mesh);
+    out.push(mesh);
+  }
+  return out;
+}
+
+/** Eigen-decomposition of a symmetric 3×3 matrix (cyclic Jacobi). */
+function eigen3(a: number[][]) {
+  const v = [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+  ];
+  for (let sweep = 0; sweep < 12; sweep++) {
+    for (const [p, q] of [
+      [0, 1],
+      [0, 2],
+      [1, 2],
+    ]) {
+      if (Math.abs(a[p][q]) < 1e-14) continue;
+      const theta = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+      const t = (theta >= 0 ? 1 : -1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+      const c = 1 / Math.sqrt(t * t + 1);
+      const s = t * c;
+      for (let k = 0; k < 3; k++) {
+        const akp = a[k][p];
+        const akq = a[k][q];
+        a[k][p] = c * akp - s * akq;
+        a[k][q] = s * akp + c * akq;
+      }
+      for (let k = 0; k < 3; k++) {
+        const apk = a[p][k];
+        const aqk = a[q][k];
+        a[p][k] = c * apk - s * aqk;
+        a[q][k] = s * apk + c * aqk;
+      }
+      for (let k = 0; k < 3; k++) {
+        const vkp = v[k][p];
+        const vkq = v[k][q];
+        v[k][p] = c * vkp - s * vkq;
+        v[k][q] = s * vkp + c * vkq;
+      }
     }
   }
+  return {
+    values: [a[0][0], a[1][1], a[2][2]],
+    vectors: [0, 1, 2].map((i) => new THREE.Vector3(v[0][i], v[1][i], v[2][i]).normalize()),
+  };
 }

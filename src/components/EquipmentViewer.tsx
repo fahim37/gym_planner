@@ -4,16 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { EquipmentSlug } from "@/lib/equipment-catalog";
 import type { EquipmentPart } from "@/lib/equipment-types";
 import { useEquipmentFocus } from "./EquipmentFocus";
-import {
-  GLASS,
-  GLASS_BEAD,
-  GLASS_BEAD_ACTIVE,
-  GLASS_CHIP,
-  GLASS_CHIP_ACTIVE,
-  GLASS_LIGHT,
-  GLASS_STRONG,
-  SPRING,
-} from "./EquipmentGlass";
+import { BEAD, GLASS_ACTIVE, GLASS_CHIP, GLASS_HUD, GLASS_STRONG, SPRING } from "./EquipmentGlass";
 import type { EquipmentScene, MarkerState } from "./EquipmentScene";
 
 interface Props {
@@ -39,7 +30,7 @@ const ICONS = {
   next: "M9 5l7 7-7 7",
 };
 
-const roundBtn = `pointer-events-auto grid h-11 w-11 place-items-center rounded-full ${GLASS} ${SPRING} active:scale-90`;
+const roundBtn = `glass-reactive pointer-events-auto grid h-11 w-11 place-items-center rounded-full ${GLASS_HUD} ${SPRING} active:scale-90`;
 const sheetBtn = `grid h-11 w-11 place-items-center rounded-full ${SPRING} hover:bg-white/10 active:scale-90`;
 
 /**
@@ -264,12 +255,12 @@ export default function EquipmentViewer({ slug, name, parts, className }: Props)
     >
       <div
         className={`relative isolate overflow-hidden bg-gradient-to-b from-white to-zinc-200 ${
-          full ? "min-h-0 flex-1" : "aspect-[4/5] rounded-[2rem] shadow-[0_24px_60px_-28px_rgb(0_0_0/0.9)] sm:aspect-[4/3] lg:aspect-square"
+          full ? "min-h-0 flex-1" : "aspect-[4/5] rounded-[2rem] sm:aspect-[4/3] lg:aspect-square"
         }`}
       >
         {/* Specular glass rim around the 3D stage. */}
         {!full && (
-          <div className="pointer-events-none absolute inset-0 z-30 rounded-[inherit] ring-1 ring-inset ring-white/60 shadow-[inset_0_1px_0_rgb(255_255_255/0.9),inset_0_-12px_24px_-16px_rgb(0_0_0/0.25)]" />
+          <div className="glass-border pointer-events-none absolute inset-0 z-30 rounded-[inherit]" />
         )}
         <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-label={`Interactive 3D model of the ${name}`} />
 
@@ -307,13 +298,13 @@ export default function EquipmentViewer({ slug, name, parts, className }: Props)
                 {focus.id === p.id && <span className="absolute inset-1 animate-ping rounded-full bg-amber-300/50" />}
                 <span
                   className={`relative grid h-8 w-8 place-items-center rounded-full text-sm font-black ${SPRING} group-active:scale-90 group-data-[occluded=true]:scale-75 ${
-                    focus.id === p.id ? `scale-125 ${GLASS_BEAD_ACTIVE}` : GLASS_BEAD
+                    focus.id === p.id ? `scale-125 ${GLASS_ACTIVE}` : BEAD
                   }`}
                 >
                   {i + 1}
                 </span>
                 <span
-                  className={`pointer-events-none absolute bottom-full mb-1 hidden whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold group-hover:block ${GLASS}`}
+                  className={`pointer-events-none absolute bottom-full mb-1 hidden whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold group-hover:block ${GLASS_HUD}`}
                 >
                   {p.label}
                 </span>
@@ -330,7 +321,7 @@ export default function EquipmentViewer({ slug, name, parts, className }: Props)
               aria-checked={demo}
               onClick={toggleDemo}
               className={`pointer-events-auto flex h-11 items-center gap-2 rounded-full pl-2 pr-4 text-sm font-bold ${SPRING} active:scale-95 ${
-                demo ? GLASS_CHIP_ACTIVE : GLASS
+                demo ? GLASS_ACTIVE : `glass-reactive ${GLASS_HUD}`
               }`}
             >
               <span
@@ -363,7 +354,7 @@ export default function EquipmentViewer({ slug, name, parts, className }: Props)
 
         {status === "ready" && !touched && !active && (
           <p className="pointer-events-none absolute inset-x-0 bottom-3 z-10 text-center">
-            <span className={`animate-rise inline-block rounded-full px-3 py-1.5 text-xs font-semibold ${GLASS_LIGHT}`}>
+            <span className={`animate-rise inline-block rounded-full px-3 py-1.5 text-xs font-semibold ${GLASS_HUD}`}>
               Drag to spin · pinch to zoom{hasHotspots ? " · tap a part" : ""}
             </span>
           </p>
@@ -371,24 +362,25 @@ export default function EquipmentViewer({ slug, name, parts, className }: Props)
 
         {active && (
           <section
-            key={active.id}
             aria-live="polite"
             aria-label={`${active.label} details`}
             onPointerDown={(e) => (swipe.current = { x: e.clientX, y: e.clientY })}
             onPointerUp={onSheetUp}
             onPointerCancel={() => (swipe.current = null)}
-            className={`absolute inset-x-2 bottom-2 z-20 touch-none rounded-[1.75rem] px-4 pb-4 pt-2 ${GLASS_STRONG} ${SPRING} starting:translate-y-8 starting:scale-95 starting:opacity-0 sm:inset-x-3 sm:bottom-3`}
+            className={`animate-sheet absolute inset-x-2 bottom-2 z-20 touch-none rounded-[1.75rem] px-4 pb-4 pt-2 ${GLASS_STRONG} sm:inset-x-3 sm:bottom-3`}
           >
             <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-white/25" aria-hidden />
             <div className="flex items-center gap-3">
-              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-black ${GLASS_BEAD_ACTIVE}`}>
+              <span key={active.id} className={`animate-fade grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-black ${GLASS_ACTIVE}`}>
                 {activeIndex + 1}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                   Part {activeIndex + 1} of {parts.length}
                 </p>
-                <h3 className="text-base font-bold leading-tight">{active.label}</h3>
+                <h3 key={active.id} className="animate-fade text-base font-bold leading-tight">
+                  {active.label}
+                </h3>
               </div>
               <div className="-mr-2 flex shrink-0">
                 {parts.length > 1 && (
@@ -406,7 +398,9 @@ export default function EquipmentViewer({ slug, name, parts, className }: Props)
                 </button>
               </div>
             </div>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-300">{active.description}</p>
+            <p key={active.id} className="animate-fade mt-2 text-sm leading-relaxed text-zinc-300">
+              {active.description}
+            </p>
           </section>
         )}
       </div>
@@ -429,11 +423,11 @@ export default function EquipmentViewer({ slug, name, parts, className }: Props)
                 onClick={() => setFocus(p.id)}
                 aria-pressed={on}
                 className={`flex min-h-11 shrink-0 snap-start items-center gap-2 rounded-full py-1.5 pl-1.5 pr-4 text-sm font-semibold ${SPRING} active:scale-95 ${
-                  on ? GLASS_CHIP_ACTIVE : GLASS_CHIP
+                  on ? GLASS_ACTIVE : GLASS_CHIP
                 }`}
               >
                 <span
-                  className={`grid h-8 w-8 place-items-center rounded-full text-xs font-black ${on ? "bg-zinc-900/90 text-amber-300" : GLASS_BEAD}`}
+                  className={`grid h-8 w-8 place-items-center rounded-full text-xs font-black ${on ? "bg-zinc-900 text-amber-300" : BEAD}`}
                 >
                   {i + 1}
                 </span>

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import EquipmentCard from "@/components/EquipmentCard";
 import { EquipmentFocusProvider } from "@/components/EquipmentFocus";
-import { GLASS_CARD, GLASS_CHIP } from "@/components/EquipmentGlass";
+import { GLASS_CHIP, SURFACE } from "@/components/EquipmentGlass";
 import EquipmentPartList from "@/components/EquipmentPartList";
 import EquipmentViewer from "@/components/EquipmentViewer";
 import { ExerciseCard, MuscleChip } from "@/components/ui";
@@ -129,7 +129,7 @@ export default async function EquipmentDetailPage({ params }: PageProps<"/equipm
             {e.specs && e.specs.length > 0 && (
               <>
                 <h2 className={`mt-8 ${h2}`}>Specs</h2>
-                <dl className={`mt-3 divide-y divide-white/10 overflow-hidden rounded-[1.4rem] ${GLASS_CARD}`}>
+                <dl className={`mt-3 divide-y divide-white/10 overflow-hidden rounded-[1.4rem] ${SURFACE}`}>
                   {e.specs.map((s) => (
                     <div key={s.label} className="flex flex-col gap-0.5 px-4 py-3 sm:flex-row sm:gap-4">
                       <dt className="text-xs font-bold uppercase tracking-wider text-zinc-500 sm:w-36 sm:shrink-0 sm:pt-0.5">{s.label}</dt>
@@ -158,7 +158,7 @@ export default async function EquipmentDetailPage({ params }: PageProps<"/equipm
               ))}
             </div>
           ) : (
-            <div className={`rounded-[1.75rem] p-5 sm:p-6 ${GLASS_CARD}`}>
+            <div className={`rounded-[1.75rem] p-5 sm:p-6 ${SURFACE}`}>
               <p className="font-semibold text-white">No animated exercises for the {e.name.toLowerCase()} in our library yet.</p>
               <p className="mt-1 text-sm text-zinc-400">
                 Follow the set-up and how-to steps above, and ask a coach on the gym floor for a quick demo on your first go.

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import EquipmentCard from "@/components/EquipmentCard";
-import { GLASS_CHIP, GLASS_CHIP_ACTIVE, SPRING } from "@/components/EquipmentGlass";
+import { GLASS_ACTIVE, GLASS_CHIP, SPRING } from "@/components/EquipmentGlass";
 import type { EquipmentCategory } from "@/lib/equipment-catalog";
 import type { EquipmentSummary } from "@/lib/equipment-types";
 
@@ -28,7 +28,7 @@ export default function EquipmentBrowser({ groups, initial }: { groups: Group[];
 
   const chip = (active: boolean) =>
     `flex min-h-11 shrink-0 snap-start items-center gap-1.5 rounded-full px-4 text-sm font-semibold ${SPRING} active:scale-95 ${
-      active ? GLASS_CHIP_ACTIVE : GLASS_CHIP
+      active ? GLASS_ACTIVE : GLASS_CHIP
     }`;
   const count = (active: boolean) => `text-xs ${active ? "text-zinc-700" : "text-zinc-500"}`;
 
