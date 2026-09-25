@@ -134,6 +134,8 @@ export default function BodyExplorer({ highlights = {}, navigate = true, autoRot
         s.controls.autoRotateSpeed = 1.2;
         s.controls.enableZoom = false;
       }
+      // OrbitControls claims every touch; let vertical swipes scroll the page (horizontal drags still rotate).
+      canvas.style.touchAction = "pan-y";
       observer = new ResizeObserver(([e]) => s.resize(e.contentRect.width, e.contentRect.height));
       observer.observe(canvas);
       io = new IntersectionObserver(
@@ -224,7 +226,7 @@ export default function BodyExplorer({ highlights = {}, navigate = true, autoRot
 
   return (
     <div className={`relative overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-white via-zinc-100 to-zinc-300 ${className ?? ""}`}>
-      <canvas ref={canvasRef} className="block h-full w-full touch-none" aria-label="Interactive 3D muscle map" />
+      <canvas ref={canvasRef} className="block h-full w-full touch-pan-y" aria-label="Interactive 3D muscle map" />
       {!ready && <div className="skeleton pointer-events-none absolute inset-0 opacity-60" />}
       <div
         ref={tipRef}
