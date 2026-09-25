@@ -53,7 +53,13 @@ export default function CharacterLab() {
         s.scene.add(props.group);
       }
       s.fit(poses, props ?? undefined);
-      const pose = timeline ? timeline.keyframe(frame) : A_POSE;
+      let pose = timeline ? timeline.keyframe(frame) : A_POSE;
+      // Dev overrides: wrist flexion (deg) on both arms, per-keyframe grip style.
+      const wq = q.get("wrist");
+      const gq = q.get("grip") as Pose["grip"] | null;
+      if (wq !== null || gq) {
+        pose = { ...pose, ...(gq ? { grip: gq, gripTurn: undefined } : {}), arms: pose.arms.map((a) => (wq !== null ? { ...a, wrist: Number(wq) } : a)) as Pose["arms"] };
+      }
       s.pose(pose);
       props?.update(s.rig);
       s.setPreset((q.get("view") as CameraPreset) ?? ex?.animation.camera ?? "front");

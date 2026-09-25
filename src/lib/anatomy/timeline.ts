@@ -1,4 +1,4 @@
-import type { Animation, Keyframe, LimbSpec, Pose } from "./types";
+import { GRIP_TURN, type Animation, type Keyframe, type LimbSpec, type Pose } from "./types";
 
 const DEFAULT_DUR = 1.1;
 
@@ -8,16 +8,28 @@ function limb(spec: LimbSpec): LimbSpec {
   return { ...spec, foot: spec.foot ?? 0 };
 }
 
+const arm = (spec: LimbSpec): LimbSpec => ({ ...limb(spec), wrist: spec.wrist ?? 0 });
+
+/** Numeric palm turn per arm from a pose's `grip`, so grip changes interpolate. */
+function gripTurn(pose: Pose): [number, number] | undefined {
+  if (pose.gripTurn) return [pose.gripTurn[0], pose.gripTurn[1]];
+  if (!pose.grip) return undefined;
+  const [a, b] = typeof pose.grip === "string" ? [pose.grip, pose.grip] : pose.grip;
+  return [GRIP_TURN[a], GRIP_TURN[b]];
+}
+
 /** Fills in the mirrored second limb and every optional value, so every pose has the same shape. */
 function normalize(pose: Pose): Pose {
-  const arm = limb(pose.arms[0]);
+  const arm0 = arm(pose.arms[0]);
   const leg = limb(pose.legs[0]);
+  const turn = gripTurn(pose);
   return {
     ...pose,
+    ...(turn ? { gripTurn: turn } : {}),
     head: pose.head ?? 0,
     twist: pose.twist ?? 0,
     orient: { roll: pose.orient?.roll ?? 0, yaw: pose.orient?.yaw ?? 0 },
-    arms: [arm, pose.arms[1] ? limb(pose.arms[1]) : arm],
+    arms: [arm0, pose.arms[1] ? arm(pose.arms[1]) : arm0],
     legs: [leg, pose.legs[1] ? limb(pose.legs[1]) : leg],
   };
 }
@@ -92,8 +104,11 @@ export class Timeline {
       const reached = j < i || local >= (frame.dur ?? DEFAULT_DUR);
       if (this.frames[(j + 1) % this.frames.length].rep && reached) reps++;
     }
+    const pose = lerpDeep(frame.pose, next.pose, k);
+    // The discrete style label follows the nearer keyframe (the numeric turn blends).
+    if (next.pose.grip !== undefined && k >= 0.5) pose.grip = next.pose.grip;
     return {
-      pose: lerpDeep(frame.pose, next.pose, k),
+      pose,
       cue: frame.cue,
       reps,
       cycle: t / this.duration,

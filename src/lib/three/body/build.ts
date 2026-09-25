@@ -222,6 +222,7 @@ export function buildBodyData(opts: BuildOptions = {}): BodyData {
   stats.vertices = nv;
   stats.triangles = nt / 3;
   stats.ms = Math.round(now() - t0);
+  fillMuscleSpecks(info, seg, index.subarray(0, to), nv);
   return { position, normal, bones, weights, info, fibre, extra, fuv, seg, index: index.subarray(0, to), bind, stats };
 }
 
@@ -576,3 +577,59 @@ function writeTop4(acc: Float64Array, bones: Uint8Array, weights: Uint8Array, o:
 
 export type { BindFrame };
 
+/**
+ * Tiny islands of "no muscle" skin inside a muscle (a bony landmark's own primitive
+ * winning a few vertices, e.g. the ulnar head) show as white specks in a highlight.
+ * Components under 40 vertices whose rim is a single muscle join that muscle.
+ */
+function fillMuscleSpecks(info: Uint8Array, seg: Uint8Array, index: Uint32Array, nv: number) {
+  const deg = new Uint32Array(nv + 1);
+  for (let t = 0; t < index.length; t++) deg[index[t] + 1] += 2;
+  for (let v = 0; v < nv; v++) deg[v + 1] += deg[v];
+  const adj = new Uint32Array(deg[nv]);
+  const fill = deg.slice(0, nv);
+  for (let t = 0; t < index.length; t += 3) {
+    for (let e = 0; e < 3; e++) {
+      const a = index[t + e];
+      adj[fill[a]++] = index[t + ((e + 1) % 3)];
+      adj[fill[a]++] = index[t + ((e + 2) % 3)];
+    }
+  }
+  const seen = new Uint8Array(nv);
+  const stack: number[] = [];
+  const comp: number[] = [];
+  const isNone = (v: number) => info[v * 4] === 255 && info[v * 4 + 1] === MAT_SKIN;
+  for (let s0 = 0; s0 < nv; s0++) {
+    if (seen[s0] || !isNone(s0)) continue;
+    comp.length = 0;
+    stack.push(s0);
+    seen[s0] = 1;
+    let rim = -1;
+    let single = true;
+    while (stack.length) {
+      const v = stack.pop()!;
+      comp.push(v);
+      for (let j = deg[v]; j < deg[v + 1]; j++) {
+        const u = adj[j];
+        if (isNone(u)) {
+          if (!seen[u]) {
+            seen[u] = 1;
+            stack.push(u);
+          }
+        } else {
+          const m = info[u * 4];
+          if (m === 255) single = false;
+          else if (rim < 0) rim = m;
+          else if (rim !== m) single = false;
+        }
+      }
+    }
+    if (comp.length < 40 && single && rim >= 0) {
+      for (const v of comp) {
+        info[v * 4] = rim;
+        seg[v * 2] = 255;
+        seg[v * 2 + 1] = 255;
+      }
+    }
+  }
+}

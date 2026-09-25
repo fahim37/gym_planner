@@ -7,6 +7,7 @@ import type {
   Target,
   Vec3,
 } from "./types";
+import { GRIP_TURN } from "./types";
 
 /** Segment lengths in centimetres. */
 export const BODY = {
@@ -174,6 +175,8 @@ export function solvePose(pose: Pose): Skeleton {
       toe: add(leg.end, scale(footDir, BODY.foot)),
       armFront: arm.front,
       legFront: leg.front,
+      wristFlex: armSpecs[i].wrist ?? 0,
+      gripTurn: pose.gripTurn ? pose.gripTurn[i] : pose.grip ? GRIP_TURN[typeof pose.grip === "string" ? pose.grip : pose.grip[i]] : undefined,
     };
   }) as [SideJoints, SideJoints];
 

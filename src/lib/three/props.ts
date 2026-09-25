@@ -248,9 +248,9 @@ export class PropSet {
         cable.position.copy(pulley);
         this.group.add(cable);
         const half = p.handle === "bar" ? 0.3 : p.handle === "rope" ? 0.07 : 0.06;
-        if (p.handle === "bar") this.grip(barGrip(0.013));
-        else if (p.handle === "rope") this.grip(handle(0.018));
-        else this.grip(handle(0.013), null);
+        if (p.handle === "bar") this.grip({ ...barGrip(0.013), style: p.grip ?? "overhand" });
+        else if (p.handle === "rope") this.grip(handle(0.018, p.grip ?? "neutral"));
+        else this.grip(handle(0.013, p.grip ?? "neutral"), null);
         const handleMesh = rod(new THREE.Vector3(0, 0, -half), new THREE.Vector3(0, 0, half), p.handle === "rope" ? 0.018 : 0.013, p.handle === "rope" ? cableMat : chrome);
         this.group.add(handleMesh);
         this.followers.push((rig) => {
@@ -271,7 +271,10 @@ export class PropSet {
         break;
       }
       case "extra": {
-        const g = EXTRA_GRIPS[p.kind];
+        let g = EXTRA_GRIPS[p.kind];
+        // `params.grip` ("overhand" | "underhand" | "neutral") restyles the default grip.
+        const ps = p.params?.grip;
+        if (g && (ps === "overhand" || ps === "underhand" || ps === "neutral")) g = [g[0] && { ...g[0], style: ps }, g[1] && { ...g[1], style: ps }];
         if (g) this.grip(g[0], g[1]);
         const built = buildExtraProp(p.kind, p.params ?? {});
         if (!built) break;
@@ -285,6 +288,7 @@ export class PropSet {
           if (built.grip.hands !== "far") this.grips[0] = spec;
           if (built.grip.hands !== "near") this.grips[1] = spec;
         }
+        for (const sp of built.supports ?? []) this.support(sp.from, sp.to, sp.top, (sp.z ?? 0) / 100, (sp.width ?? 30) / 100);
         built.object.userData.external = true;
         this.group.add(built.object);
         if (built.update) this.followers.push(built.update);

@@ -137,6 +137,10 @@ export interface SideWorld {
   gripAxis: THREE.Vector3;
   /** Palm normal. */
   palm: THREE.Vector3;
+  /** Wrist flexion from the pose, degrees (+ = towards the palm). */
+  wristFlex: number;
+  /** Palm turn from the pose's grip override, degrees; NaN = use the prop's grip style. */
+  gripTurn: number;
 }
 
 /** Joints of the solved skeleton converted to three.js space (metres, y up). */
@@ -171,6 +175,8 @@ export function emptyJoints(): WorldJoints {
     legFront: vec(),
     grip: vec(),
     gripAxis: vec(),
+    wristFlex: 0,
+    gripTurn: NaN,
     palm: vec(),
   });
   return {
@@ -215,6 +221,8 @@ export function fillJoints(sk: Skeleton, out: WorldJoints) {
     toW(s.toe, o.toe);
     toD(s.armFront, o.armFront);
     toD(s.legFront, o.legFront);
+    o.wristFlex = s.wristFlex ?? 0;
+    o.gripTurn = s.gripTurn ?? NaN;
   }
   return out;
 }
@@ -436,7 +444,8 @@ export class BoneSolver {
       curls = FLAT.map(() => [0, 0, 0] as [number, number, number]);
     } else if (grip) {
       // Knuckle axis along the handle: choose the palm side nearest the preferred style.
-      const pref = PREF[grip.style ?? (grip.axis ? "overhand" : "neutral")];
+      // A per-keyframe grip override (pose.grip → palm turn) wins over the prop's style.
+      const pref = Number.isNaN(s.gripTurn) ? PREF[grip.style ?? (grip.axis ? "overhand" : "neutral")] : s.gripTurn;
       if (grip.axis) {
         const a = perp(grip.axis, d2, this.tmp, j.chestSide);
         let bestP = pref;
@@ -472,7 +481,7 @@ export class BoneSolver {
         const hgt = wrist.y - sp.y;
         if (hgt > -0.02 && hgt < 0.11 && d2.y < -0.3) flatOn = sp;
       }
-      hand.pronation = 90;
+      hand.pronation = Number.isNaN(s.gripTurn) ? 90 : s.gripTurn;
       if (flatOn) curls = FLAT;
     }
 
@@ -491,10 +500,16 @@ export class BoneSolver {
       while (p < -90) p += 360;
       while (p > 270) p -= 360;
       hand.pronation = p;
-    } else if (hand.flex) {
-      const zk = v1.crossVectors(X, Y).normalize();
-      rotate(X, zk, -hand.flex);
-      rotate(Y, zk, -hand.flex);
+    } else {
+      // Grip cock plus the pose's wrist flexion (+ bends the fingers towards the palm).
+      const w = bind ? 0 : s.wristFlex * DEG;
+      const total = hand.flex + w;
+      if (total) {
+        const zk = v1.crossVectors(X, Y).normalize();
+        rotate(X, zk, -total);
+        rotate(Y, zk, -total);
+      }
+      hand.flex = total;
     }
     const handM = M[armBone(i, A_HAND)];
     frame(handM, wrist, X, Y);

@@ -41,6 +41,8 @@ export interface IkLimb {
   pole: Vec3;
   /** Foot tilt in degrees, positive = toes down (legs only). */
   foot?: number;
+  /** Wrist flexion in degrees (arms only): positive bends the hand towards the palm, negative extends it. Default 0. */
+  wrist?: number;
 }
 
 export interface AngleLimb {
@@ -54,6 +56,8 @@ export interface AngleLimb {
   foot?: number;
   /** Foot follows the shin (pointed toes) instead of staying flat. */
   footFollowsShin?: boolean;
+  /** Wrist flexion in degrees (arms only): positive bends the hand towards the palm, negative extends it. Default 0. */
+  wrist?: number;
 }
 
 export type LimbSpec = IkLimb | AngleLimb;
@@ -75,6 +79,18 @@ export interface Pose {
    * facing direction from +x toward +z). Omitted = no rotation.
    */
   orient?: { roll?: number; yaw?: number };
+  /**
+   * Grip style for this keyframe, overriding the held prop's style: one style for
+   * both hands or [side 0, side 1]. The Timeline turns the forearm smoothly between
+   * keyframes with different styles (e.g. a Zottman curl). Omitted = the prop's style.
+   * Set it on every keyframe of an animation that uses it.
+   */
+  grip?: GripStyle | [GripStyle, GripStyle];
+  /**
+   * Palm turn per arm in degrees (5 = underhand, 90 = neutral, 175 = overhand), derived
+   * from `grip` by the Timeline so it interpolates; set directly only for in-between turns.
+   */
+  gripTurn?: [number, number];
   arms: [LimbSpec] | [LimbSpec, LimbSpec];
   legs: [LimbSpec] | [LimbSpec, LimbSpec];
 }
@@ -99,6 +115,9 @@ export interface Keyframe {
 /** How a hand holds a handle: palm down/back, palm up/forward, or palms facing. */
 export type GripStyle = "overhand" | "underhand" | "neutral";
 
+/** Palm turn (forearm pronation, degrees) of each grip style. */
+export const GRIP_TURN: Record<GripStyle, number> = { overhand: 175, underhand: 5, neutral: 90 };
+
 export type Prop =
   | { type: "barbell"; at?: "hands" | "back"; plate?: "large" | "small"; grip?: GripStyle }
   /** `grip`: palm orientation on the handle (default neutral; curls use "underhand"). */
@@ -116,7 +135,8 @@ export type Prop =
     }
   | { type: "box"; from: number; to: number; top: number; bottom?: number; width?: number; z?: number }
   | { type: "pullupBar"; y: number; x: number }
-  | { type: "cable"; pulley: [number, number]; handle: "bar" | "rope" | "single" }
+  /** `grip`: palm orientation on the handle (default overhand on a bar, neutral on a rope/single handle). */
+  | { type: "cable"; pulley: [number, number]; handle: "bar" | "rope" | "single"; grip?: GripStyle }
   | { type: "mat" }
   /** Plug-in prop registered in src/lib/three/extra-props (EZ bar, dip bars, medicine ball…). */
   | { type: "extra"; kind: string; params?: Record<string, number | string | boolean> }
@@ -145,6 +165,10 @@ export interface SideJoints {
   armFront: Vec3;
   /** Unit direction the front of the leg (quads/knee cap) faces. */
   legFront: Vec3;
+  /** Wrist flexion in degrees (from the arm spec's `wrist`). */
+  wristFlex?: number;
+  /** Palm turn in degrees when the pose sets `grip`/`gripTurn`; undefined = the prop's style. */
+  gripTurn?: number;
 }
 
 export interface Skeleton {

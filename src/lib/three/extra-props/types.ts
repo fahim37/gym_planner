@@ -12,6 +12,12 @@ export interface ExtraProp {
    * (rig.joints.sides[i].grip, knuckle axis gripAxis). "near" = side 0.
    */
   grip?: { hands: "both" | "near" | "far"; radius?: number; style?: "overhand" | "underhand" | "neutral" };
+  /**
+   * Flat surfaces a free hand lies on when it rests there (like the built-in bench and
+   * box): authoring coordinates in cm — x range `from`..`to`, top height `top`
+   * (y down, floor = 250), optional lateral centre `z` and `width` (default 30).
+   */
+  supports?: { from: number; to: number; top: number; z?: number; width?: number }[];
   update?: (rig: BodyRig) => void;
   dispose?: () => void;
 }
