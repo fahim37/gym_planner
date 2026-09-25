@@ -163,6 +163,61 @@ function ventCanvas() {
   });
 }
 
+function woodCanvas() {
+  const rand = rng(17);
+  return canvas(256, 256, (ctx, w, h) => {
+    ctx.fillStyle = "#d6b98a";
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 90; i++) {
+      const y = rand() * h;
+      ctx.strokeStyle = `rgba(${120 + rand() * 40},${80 + rand() * 30},40,${0.08 + rand() * 0.18})`;
+      ctx.lineWidth = 0.6 + rand() * 2;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      for (let x = 0; x <= w; x += 16) ctx.lineTo(x, y + Math.sin(x / 40 + i) * 3 + (rand() - 0.5) * 2);
+      ctx.stroke();
+    }
+  });
+}
+
+/** Twisted three-strand rope: diagonal lays. */
+function ropeCanvas() {
+  return canvas(64, 64, (ctx, w, h) => {
+    ctx.fillStyle = "#808080";
+    ctx.fillRect(0, 0, w, h);
+    for (let k = -2; k < 4; k++) {
+      const g = ctx.createLinearGradient(0, 0, w / 3, h / 3);
+      g.addColorStop(0, "#303030");
+      g.addColorStop(0.5, "#e0e0e0");
+      g.addColorStop(1, "#303030");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(k * (w / 3), 0);
+      ctx.lineTo(k * (w / 3) + w / 3, 0);
+      ctx.lineTo(k * (w / 3) + w / 3 + w, h);
+      ctx.lineTo(k * (w / 3) + w, h);
+      ctx.fill();
+    }
+  });
+}
+
+/** Foam roller shell: a grid of raised pads (white) between channels. */
+function gridCanvas() {
+  return canvas(128, 128, (ctx, w, h) => {
+    ctx.fillStyle = "#202020";
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = "#f0f0f0";
+    for (let y = 0; y < 4; y++) {
+      for (let x = 0; x < 4; x++) {
+        ctx.beginPath();
+        if ((x + y) % 2) ctx.roundRect(x * 32 + 4, y * 32 + 4, 24, 24, 6);
+        else ctx.arc(x * 32 + 16, y * 32 + 16, 9, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  });
+}
+
 function create() {
   const env = texture(studioCanvas(), { color: true, repeat: false });
   env.mapping = THREE.EquirectangularReflectionMapping;
@@ -178,6 +233,14 @@ function create() {
   const foam = texture(noise(256, [[32, 0.4], [128, 1]], 21, 1.2));
   foam.repeat.set(5, 5);
   const vent = texture(ventCanvas(), { repeat: false });
+  const wood = texture(woodCanvas(), { color: true });
+  wood.repeat.set(2, 2);
+  const rope = texture(ropeCanvas());
+  rope.repeat.set(1 / 0.09, 1 / 0.12);
+  const grid = texture(gridCanvas());
+  grid.repeat.set(1 / 0.08, 1 / 0.08);
+  const pebble = texture(noise(256, [[128, 1], [256, 0.6]], 31, 2));
+  pebble.repeat.set(6, 6);
 
   const std = (p: THREE.MeshStandardMaterialParameters, envIntensity = 0.35) =>
     new THREE.MeshStandardMaterial({ envMap: env, envMapIntensity: envIntensity, ...p });
@@ -210,6 +273,15 @@ function create() {
       0.4,
     ),
     glass: std({ color: 0x0b0b0d, roughness: 0.08, metalness: 0.2 }, 1.2),
+    wood: std({ map: wood, roughness: 0.7, bumpMap: speckle, bumpScale: 0.2 }, 0.2),
+    rope: std({ color: 0x1e2433, roughness: 0.85, bumpMap: rope, bumpScale: 2 }, 0.2),
+    tape: std({ color: 0x0f0f11, roughness: 0.25 }, 0.6),
+    bandRed: std({ color: 0xd62d2d, roughness: 0.55 }, 0.3),
+    bandGreen: std({ color: 0x15803d, roughness: 0.5 }, 0.3),
+    nylon: std({ color: 0x111827, roughness: 0.8, bumpMap: speckle, bumpScale: 0.6 }, 0.2),
+    foamRoller: std({ color: 0x0e7490, roughness: 0.8, bumpMap: grid, bumpScale: 3 }, 0.2),
+    medball: std({ color: 0x1c1c20, roughness: 0.75, bumpMap: pebble, bumpScale: 1.2 }, 0.3),
+    blue: std({ color: 0x2563eb, roughness: 0.45 }, 0.4),
   };
   return mats;
 }
@@ -335,7 +407,7 @@ export function textLabel(text: string, color: string, w = 256, h = 128, font = 
   );
 }
 
-export type ScreenKind = "treadmill" | "rower" | "bike";
+export type ScreenKind = "treadmill" | "rower" | "bike" | "cardio";
 
 /** Console display artwork, used as an emissive map. */
 export function screenTexture(kind: ScreenKind) {
@@ -395,16 +467,17 @@ export function screenTexture(kind: ScreenKind) {
           ctx.font = "bold 24px sans-serif";
           ctx.fillText("3.42 km", 256, 145);
         } else {
+          const cardio = kind === "cardio";
           ctx.textAlign = "center";
           ctx.fillStyle = amber;
           ctx.font = "bold 96px sans-serif";
-          ctx.fillText("92", 150, 120);
+          ctx.fillText(cardio ? "12" : "92", 150, 120);
           ctx.fillStyle = cyan;
-          ctx.fillText("214", 380, 120);
+          ctx.fillText(cardio ? "148" : "214", 380, 120);
           ctx.fillStyle = "#94a3b8";
           ctx.font = "bold 26px sans-serif";
-          ctx.fillText("RPM", 150, 200);
-          ctx.fillText("WATTS", 380, 200);
+          ctx.fillText(cardio ? "LEVEL" : "RPM", 150, 200);
+          ctx.fillText(cardio ? "STEPS/MIN" : "WATTS", 380, 200);
           ctx.fillStyle = "#1e3a8a";
           ctx.fillRect(40, 240, w - 80, 16);
           ctx.fillStyle = cyan;

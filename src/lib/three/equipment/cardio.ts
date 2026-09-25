@@ -29,7 +29,7 @@ import { knob, rubberFoot, wheel } from "./parts";
 const Z = v3(0, 0, 1);
 
 /** Per-model emissive display (its brightness is animated). */
-function screen(kit: Kit, kind: ScreenKind, lcd = false) {
+export function screen(kit: Kit, kind: ScreenKind, lcd = false) {
   const map = screenTexture(kind);
   return kit.own(
     new THREE.MeshStandardMaterial({
@@ -335,7 +335,7 @@ export function rowingMachine(): EquipmentModel {
 // ------------------------------------------------------------ exercise bike
 
 /** Convex hull of two circles as a shape (chain guard outline). */
-function capsuleHull(a: THREE.Vector2, ra: number, b: THREE.Vector2, rb: number) {
+export function capsuleHull(a: THREE.Vector2, ra: number, b: THREE.Vector2, rb: number) {
   const pts: THREE.Vector2[] = [];
   for (const [c, r] of [[a, ra], [b, rb]] as const) {
     for (let i = 0; i < 48; i++) pts.push(new THREE.Vector2(c.x + Math.cos((i / 48) * TAU) * r, c.y + Math.sin((i / 48) * TAU) * r));

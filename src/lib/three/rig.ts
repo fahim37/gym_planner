@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { MuscleId } from "@/lib/muscles";
 import type { Skeleton, Vec3 } from "@/lib/anatomy/types";
-import { getBodyData, type BodyData } from "./body/cache";
+import { loadBodyData, peekBodyData, type BodyData } from "./body/cache";
 import { createBodyDepthMaterial, createBodyMaterial, createPickMaterial, MUSCLE_COUNT, type BodyUniforms } from "./body/material";
 import { MUSCLE_INDEX, muscleAt } from "./body/muscle-index";
 import { BONE_COUNT, BoneSolver, emptyJoints, fillJoints, type GripSpec, type Support, type WorldJoints } from "./body/skeleton";
@@ -33,7 +33,7 @@ export interface Palette {
 
 export function createPalette(): Palette {
   return {
-    skin: new THREE.MeshStandardMaterial({ color: 0xd4d5da }),
+    skin: new THREE.MeshStandardMaterial({ color: 0xc9cad0 }),
     shorts: new THREE.MeshStandardMaterial({ color: 0x141417 }),
     hair: new THREE.MeshStandardMaterial({ color: 0x2c2c31 }),
     primary: new THREE.MeshStandardMaterial({ color: 0xd8211a, emissive: 0x8a0f05, emissiveIntensity: 0.35 }),
@@ -70,8 +70,11 @@ export class BodyRig {
   private readonly solver = new BoneSolver();
   private readonly dq = new Float32Array(BONE_COUNT * 8);
   private readonly inverseBind: THREE.Matrix4[] = [];
-  private readonly body: THREE.Mesh;
-  private readonly pickMesh: THREE.Mesh;
+  private body: THREE.Mesh | null = null;
+  private pickMesh: THREE.Mesh | null = null;
+  /** Resolves once the generated body mesh is attached. */
+  readonly ready: Promise<void>;
+  private disposed = false;
   private readonly pickScene = new THREE.Scene();
   private pickTarget: THREE.WebGLRenderTarget | null = null;
   private pickBuffer = new Uint8Array(0);
@@ -81,7 +84,6 @@ export class BodyRig {
   private lastSkeleton: Skeleton | null = null;
 
   constructor(private readonly palette: Palette = createPalette()) {
-    const data = getBodyData();
     const tex = new THREE.DataTexture(this.dq, BONE_COUNT * 2, 1, THREE.RGBAFormat, THREE.FloatType);
     tex.magFilter = tex.minFilter = THREE.NearestFilter;
     tex.needsUpdate = true;
@@ -102,10 +104,21 @@ export class BodyRig {
       uFade: { value: 1 },
     };
     this.syncPalette();
-    for (let b = 0; b < BONE_COUNT; b++) this.inverseBind.push(new THREE.Matrix4().fromArray(data.bind, b * 16).invert());
-    // Start in the bind pose so the first frame is valid even before update().
+    // The solver starts in the bind pose: its matrices are the bind matrices.
+    for (let b = 0; b < BONE_COUNT; b++) this.inverseBind.push(this.solver.matrices[b].clone().invert());
     for (let b = 0; b < BONE_COUNT; b++) this.dq[b * 8 + 3] = 1;
+    const now = peekBodyData();
+    if (now) {
+      this.attach(now);
+      this.ready = Promise.resolve();
+    } else {
+      this.ready = loadBodyData().then((d) => {
+        if (!this.disposed) this.attach(d);
+      });
+    }
+  }
 
+  private attach(data: BodyData) {
     const geometry = sharedGeometry(data);
     const body = new THREE.Mesh(geometry, createBodyMaterial(this.uniforms));
     body.customDepthMaterial = createBodyDepthMaterial(this.uniforms);
@@ -120,11 +133,14 @@ export class BodyRig {
     this.pickMesh.frustumCulled = false;
     this.pickMesh.matrixAutoUpdate = false;
     this.pickScene.add(this.pickMesh);
+    this.version++;
   }
 
   /** Invisible per-muscle proxy volumes that follow the pose, for CPU raycasting. */
   get muscleMeshes(): THREE.Mesh[] {
-    if (!this.proxies) this.proxies = buildProxies(getBodyData(), this.group);
+    const data = peekBodyData();
+    if (!data) return [];
+    if (!this.proxies) this.proxies = buildProxies(data, this.group);
     if (this.proxyVersion !== this.version) {
       this.proxyVersion = this.version;
       for (const p of this.proxies) {
@@ -223,7 +239,7 @@ export class BodyRig {
     const size = renderer.getSize(_v2);
     const w = size.x;
     const h = size.y;
-    if (!w || !h) return null;
+    if (!w || !h || !this.pickMesh) return null;
     const win = Math.max(3, Math.ceil(radius) * 2 + 1);
     if (!this.pickTarget || this.pickTarget.width !== win) {
       this.pickTarget?.dispose();
@@ -266,10 +282,11 @@ export class BodyRig {
   }
 
   dispose() {
+    this.disposed = true;
     this.pickTarget?.dispose();
-    (this.body.material as THREE.Material).dispose();
-    this.body.customDepthMaterial?.dispose();
-    (this.pickMesh.material as THREE.Material).dispose();
+    (this.body?.material as THREE.Material | undefined)?.dispose();
+    this.body?.customDepthMaterial?.dispose();
+    (this.pickMesh?.material as THREE.Material | undefined)?.dispose();
     this.uniforms.uBoneDQ.value.dispose();
   }
 }

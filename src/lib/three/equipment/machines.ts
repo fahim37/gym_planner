@@ -36,7 +36,7 @@ import {
 
 const Z = v3(0, 0, 1);
 
-interface Tower {
+export interface Tower {
   stack: WeightStack;
   /** Stack base position in model space. */
   base: THREE.Vector3;
@@ -49,7 +49,7 @@ interface Tower {
  * Selectorized stack between two posts (±`halfW` along z) with a base plate,
  * a top crossmember at `height` and a branded back panel.
  */
-function stackTower(kit: Kit, x: number, z: number, height: number, plates = 15, pinFromTop = 6, halfW = 0.22): Tower {
+export function stackTower(kit: Kit, x: number, z: number, height: number, plates = 15, pinFromTop = 6, halfW = 0.22): Tower {
   const { m, root } = kit;
   const post = 0.08;
   for (const s of [1, -1]) {

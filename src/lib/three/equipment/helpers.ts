@@ -292,6 +292,96 @@ export class Cable {
   }
 }
 
+/**
+ * A tube whose centreline is re-sampled every frame (ropes, bands). The cross
+ * section is an ellipse `rx` × `ry` (ry along the frame normal, which starts
+ * close to world up); UVs are in metres along the rest length.
+ */
+export class DynamicTube {
+  readonly mesh: THREE.Mesh;
+  private readonly pos: Float32Array;
+  private readonly nor: Float32Array;
+  private readonly n = new THREE.Vector3();
+  private readonly b = new THREE.Vector3();
+  private readonly t = new THREE.Vector3();
+
+  constructor(
+    parent: THREE.Object3D,
+    mat: THREE.Material,
+    readonly samples: number,
+    private readonly radial = 10,
+    private rx = 0.01,
+    private ry = rx,
+    private readonly closed = false,
+    restLength = 1,
+  ) {
+    const ring = radial + 1;
+    const count = samples * ring;
+    this.pos = new Float32Array(count * 3);
+    this.nor = new Float32Array(count * 3);
+    const uv = new Float32Array(count * 2);
+    const idx: number[] = [];
+    const circ = Math.PI * (rx + ry);
+    for (let i = 0; i < samples; i++) {
+      for (let j = 0; j <= radial; j++) uv.set([(i / (samples - 1)) * restLength, (j / radial) * circ], (i * ring + j) * 2);
+    }
+    const last = closed ? samples : samples - 1;
+    for (let i = 0; i < last; i++) {
+      const a = i * ring;
+      const c = ((i + 1) % samples) * ring;
+      for (let j = 0; j < radial; j++) idx.push(a + j, c + j, a + j + 1, a + j + 1, c + j, c + j + 1);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(this.pos, 3));
+    g.setAttribute("normal", new THREE.BufferAttribute(this.nor, 3));
+    g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    this.mesh = mesh(g, mat, parent);
+    this.mesh.userData.keep = true;
+  }
+
+  /** `points` must hold `samples` centreline points. */
+  set(points: THREE.Vector3[], rx = this.rx, ry = this.ry) {
+    this.rx = rx;
+    this.ry = ry;
+    const { n, b, t } = this;
+    const N = this.samples;
+    const ring = this.radial + 1;
+    for (let i = 0; i < N; i++) {
+      const prev = points[this.closed ? (i - 1 + N) % N : Math.max(0, i - 1)];
+      const next = points[this.closed ? (i + 1) % N : Math.min(N - 1, i + 1)];
+      t.subVectors(next, prev).normalize();
+      if (i === 0) n.set(0, 1, 0);
+      n.addScaledVector(t, -n.dot(t));
+      if (n.lengthSq() < 1e-6) n.set(1, 0, 0).addScaledVector(t, -t.x);
+      n.normalize();
+      b.crossVectors(t, n);
+      const p = points[i];
+      for (let j = 0; j <= this.radial; j++) {
+        const a = (j / this.radial) * TAU;
+        const c = Math.cos(a);
+        const s = Math.sin(a);
+        const k = (i * ring + j) * 3;
+        this.pos[k] = p.x + b.x * c * rx + n.x * s * ry;
+        this.pos[k + 1] = p.y + b.y * c * rx + n.y * s * ry;
+        this.pos[k + 2] = p.z + b.z * c * rx + n.z * s * ry;
+        const nx = b.x * c * ry + n.x * s * rx;
+        const ny = b.y * c * ry + n.y * s * rx;
+        const nz = b.z * c * ry + n.z * s * rx;
+        const l = Math.hypot(nx, ny, nz) || 1;
+        this.nor[k] = nx / l;
+        this.nor[k + 1] = ny / l;
+        this.nor[k + 2] = nz / l;
+      }
+    }
+    const g = this.mesh.geometry;
+    g.getAttribute("position").needsUpdate = true;
+    g.getAttribute("normal").needsUpdate = true;
+    g.computeBoundingSphere();
+    g.boundingBox = null;
+  }
+}
+
 const decalMats = new Map<string, THREE.MeshStandardMaterial>();
 
 /** Printed label on a plane facing +z (shared material per texture). */

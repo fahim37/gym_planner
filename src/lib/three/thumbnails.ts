@@ -51,7 +51,7 @@ export function thumbnail(exercise: Exercise): Promise<string> {
   let p = cache.get(exercise.slug);
   if (!p) {
     // Render one at a time, yielding between jobs so scrolling stays smooth.
-    p = queue.then(() => new Promise<string>((resolve, reject) => {
+    p = queue.then(() => getStage().rig.ready).then(() => new Promise<string>((resolve, reject) => {
       requestAnimationFrame(() => {
         try {
           resolve(render(exercise));

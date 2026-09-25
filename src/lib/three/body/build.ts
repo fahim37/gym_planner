@@ -38,7 +38,7 @@ export interface BuildOptions {
   foot?: number;
 }
 
-const DEFAULTS: Required<BuildOptions> = { body: 0.62, head: 0.3, hand: 0.2, foot: 0.3 };
+const DEFAULTS: Required<BuildOptions> = { body: 0.72, head: 0.34, hand: 0.25, foot: 0.34 };
 
 const HAND_SEAM = 1.5;
 const HEAD_SEAM = -0.5;
@@ -318,7 +318,7 @@ class Baker {
         // Muscle / material identity.
         const wm = Math.exp(-dd / 0.3);
         if (m.muscle >= 0) this.muscleW[m.muscle] += wm;
-        else noneW += wm;
+        else noneW += S.layerOf(i) === L_MUSCLE ? wm : wm * 0.4;
         this.matW[m.material] += wm;
         // Fibres.
         const wf = Math.exp(-dd / 0.45);

@@ -80,7 +80,8 @@ attribute vec4 aInfo;
 attribute vec4 aFibre;
 attribute vec4 aExtra;
 varying vec3 vHi;
-varying float vMatId;
+varying vec4 vMat;
+varying float vLip;
 varying vec4 vSurf;
 varying float vTone;
 varying vec2 vFibreUv;
@@ -100,7 +101,8 @@ uniform vec3 uHair;
 uniform float uLine;
 uniform float uFade;
 varying vec3 vHi;
-varying float vMatId;
+varying vec4 vMat;
+varying float vLip;
 varying vec4 vSurf;
 varying float vTone;
 varying vec2 vFibreUv;
@@ -110,7 +112,14 @@ vec4 gFibre;
 
 /** Material ids (see sdf.ts MAT_*): skin, shorts, hair, eye, nail, lip. */
 const MATERIAL_FN = /* glsl */ `
-float matIs(float id) { return 1.0 - step(0.5, abs(vMatId - id)); }
+float matIs(float id) {
+  if (id < 0.5) return clamp(1.0 - vMat.x - vMat.y - vMat.z - vMat.w - vLip, 0.0, 1.0);
+  if (id < 1.5) return vMat.x;
+  if (id < 2.5) return vMat.y;
+  if (id < 3.5) return vMat.z;
+  if (id < 4.5) return vMat.w;
+  return vLip;
+}
 `;
 
 function patchLights(chunk: string) {
@@ -140,14 +149,15 @@ export function createBodyMaterial(u: BodyUniforms) {
 		float st = mid < ${MUSCLE_COUNT} ? uMuscle[ mid ] : 0.0;
 		float prim = step( 1.5, st );
 		vHi = vec3( prim, step( 0.5, st ) * ( 1.0 - prim ), ( mid < ${MUSCLE_COUNT} && abs( float( mid ) - uHover ) < 0.5 ) ? 1.0 : 0.0 );
-		vMatId = aInfo.y;
+		vMat = vec4( aInfo.y == 1.0 ? 1.0 : 0.0, aInfo.y == 2.0 ? 1.0 : 0.0, aInfo.y == 3.0 ? 1.0 : 0.0, aInfo.y == 4.0 ? 1.0 : 0.0 );
+		vLip = aInfo.y == 5.0 ? 1.0 : 0.0;
 		vSurf = vec4( aInfo.z / 255.0, aInfo.w / 255.0, aExtra.x, aExtra.y );
 		vTone = aExtra.z;
 		vec3 fib = aFibre.xyz;
 		vec3 pcm = position * 100.0;
 		vec3 bn = normalize( cross( normal, fib ) + 1e-5 );
 		float sc = aInfo.y > 1.5 && aInfo.y < 2.5 ? 2.6 : ( aInfo.y > 0.5 && aInfo.y < 1.5 ? 3.0 : 1.0 );
-		vFibreUv = vec2( dot( pcm, fib ) / 9.0, dot( pcm, bn ) / 4.2 ) * sc;
+		vFibreUv = vec2( dot( pcm, fib ) / 12.0, dot( pcm, bn ) / 4.5 ) * sc;
 		vFibreView = normalize( normalMatrix * dqRot( fib ) );
 	}`,
       );
@@ -179,7 +189,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 		base = mix( base, uHoverColor, vHi.z * ( muscle + shorts ) );
 		// Grooves between fibres read slightly darker.
 		float f = vSurf.x * uDetail * ( muscle + hair * 0.6 + shorts * 0.4 );
-		base *= mix( 1.0, 0.78 + 0.22 * gFibre.a, f );
+		base *= mix( 1.0, 0.72 + 0.28 * gFibre.a, f );
 		diffuseColor.rgb = base;
 	}`,
       )
@@ -235,7 +245,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 		float ink = 1.0 - smoothstep( 0.35, 1.35, px );
 		// Only near real boundaries, and fading out where the field is too coarse to resolve.
 		ink *= 1.0 - smoothstep( 0.25, 0.6, abs( lv ) );
-		ink *= uLine * ( matIs( 0.0 ) + matIs( 5.0 ) );
+		ink *= uLine * matIs( 0.0 );
 		outgoingLight = mix( outgoingLight, outgoingLight * 0.5, ink );
 		// Soft contour at the silhouette.
 		float ndv = abs( dot( normal, normalize( vViewPosition ) ) );

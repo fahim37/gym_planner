@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { toWorld } from "../rig";
+import { buildEquipmentModel, type EquipmentModel } from "../equipment";
+import { toWorld, type BodyRig } from "../rig";
 import type { ExtraPropBuilder, ExtraPropParams } from "./types";
 
 /*
@@ -260,10 +261,348 @@ const sideCable: ExtraPropBuilder = (params) => {
   };
 };
 
+
+// ─────────────────────────── ropes ───────────────────────────
+
+/** A tube through a moving list of points; vertices are rewritten in place every frame. */
+class DynamicTube {
+  readonly mesh: THREE.Mesh;
+  private readonly pos: Float32Array;
+  private readonly nrm: Float32Array;
+  private readonly geo: THREE.BufferGeometry;
+  private readonly t = new THREE.Vector3();
+  private readonly n = new THREE.Vector3();
+  private readonly b = new THREE.Vector3();
+  private readonly ref = new THREE.Vector3();
+
+  constructor(
+    readonly count: number,
+    private readonly radius: number,
+    mat: THREE.Material,
+    private readonly sides = 6,
+  ) {
+    const verts = count * sides;
+    this.pos = new Float32Array(verts * 3);
+    this.nrm = new Float32Array(verts * 3);
+    const index: number[] = [];
+    for (let i = 0; i < count - 1; i++) {
+      for (let k = 0; k < sides; k++) {
+        const a = i * sides + k;
+        const b = i * sides + ((k + 1) % sides);
+        index.push(a, a + sides, b, b, a + sides, b + sides);
+      }
+    }
+    this.geo = new THREE.BufferGeometry();
+    this.geo.setAttribute("position", new THREE.BufferAttribute(this.pos, 3));
+    this.geo.setAttribute("normal", new THREE.BufferAttribute(this.nrm, 3));
+    this.geo.setIndex(index);
+    this.mesh = new THREE.Mesh(this.geo, mat);
+    this.mesh.castShadow = true;
+    this.mesh.frustumCulled = false;
+  }
+
+  /** Limits what camera framing sees of this tube (an empty box = ignored). */
+  setBounds(box: THREE.Box3) {
+    this.geo.boundingBox = box;
+    this.geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 50);
+  }
+
+  update(points: THREE.Vector3[]) {
+    const { t, n, b, ref, sides, radius } = this;
+    for (let i = 0; i < this.count; i++) {
+      const p = points[i];
+      t.subVectors(points[Math.min(i + 1, this.count - 1)], points[Math.max(i - 1, 0)]).normalize();
+      ref.set(0, 1, 0);
+      if (Math.abs(t.y) > 0.9) ref.set(1, 0, 0);
+      n.crossVectors(t, ref).normalize();
+      b.crossVectors(t, n);
+      for (let k = 0; k < sides; k++) {
+        const a = (k / sides) * Math.PI * 2;
+        const c = Math.cos(a);
+        const s = Math.sin(a);
+        const o = (i * sides + k) * 3;
+        const nx = n.x * c + b.x * s;
+        const ny = n.y * c + b.y * s;
+        const nz = n.z * c + b.z * s;
+        this.nrm[o] = nx;
+        this.nrm[o + 1] = ny;
+        this.nrm[o + 2] = nz;
+        this.pos[o] = p.x + nx * radius;
+        this.pos[o + 1] = p.y + ny * radius;
+        this.pos[o + 2] = p.z + nz * radius;
+      }
+    }
+    this.geo.attributes.position.needsUpdate = true;
+    this.geo.attributes.normal.needsUpdate = true;
+  }
+
+  dispose() {
+    this.geo.dispose();
+  }
+}
+
+/**
+ * Skipping rope. The rope turns once per jump, timed from the pelvis height:
+ * overhead when the feet land, under the feet at the top of the jump.
+ * Params (authoring cm): groundY, airY — pelvis height on landing and at the top.
+ */
+const jumpRope: ExtraPropBuilder = (params) => {
+  const ground = (250 - num(params, "groundY", 151)) / 100;
+  const air = (250 - num(params, "airY", 141)) / 100;
+  const geos = new Geos();
+  const m = mats();
+  const group = new THREE.Group();
+  const N = 56;
+  const rope = new DynamicTube(N, 0.005, m.red);
+  group.add(rope.mesh);
+  const handles = [0, 1].map(() => {
+    const h = mesh(geos.add(new THREE.CylinderGeometry(0.014, 0.014, 0.14, 12)), m.grip, group);
+    return h;
+  });
+  const points = Array.from({ length: N }, () => new THREE.Vector3());
+  const tips = [new THREE.Vector3(), new THREE.Vector3()];
+  const mid = new THREE.Vector3();
+  const dir = new THREE.Vector3();
+  const across = new THREE.Vector3();
+  let prevY: number | null = null;
+  let rising = true;
+  return {
+    object: group,
+    update(rig) {
+      const j = rig.joints;
+      if (!j) return;
+      const y = j.pelvis.y;
+      if (prevY !== null && Math.abs(y - prevY) > 1e-5) rising = y > prevY;
+      prevY = y;
+      const h = Math.min(1, Math.max(0, (y - ground) / Math.max(1e-3, air - ground)));
+      // Angle of the rope around the hands' axis: π = overhead, π/2 = in front, 0 = under the feet.
+      const phi = rising ? Math.PI * (1 - h) : -Math.PI * (1 - h);
+      j.sides.forEach((s, i) => {
+        // Upright handle in the fist, the rope leaving from its lower end.
+        handles[i].position.copy(s.hand).lerp(s.wrist, 0.3);
+        tips[i].copy(handles[i].position).y -= 0.07;
+      });
+      mid.copy(tips[0]).add(tips[1]).multiplyScalar(0.5);
+      across.subVectors(tips[0], tips[1]).multiplyScalar(0.5);
+      dir.set(Math.sin(phi), -Math.cos(phi), 0);
+      // Just clears the floor when it passes under the feet.
+      const R = mid.y - 0.04;
+      for (let i = 0; i < N; i++) {
+        const s = i / (N - 1);
+        const r = R * Math.pow(Math.sin(Math.PI * s), 0.55);
+        points[i].copy(mid).addScaledVector(across, Math.cos(Math.PI * s)).addScaledVector(dir, r);
+      }
+      rope.update(points);
+    },
+    dispose() {
+      geos.dispose();
+      rope.dispose();
+    },
+  };
+};
+
+/**
+ * Two battle ropes anchored far ahead. Waves travel down each rope from the
+ * hand's own up-and-down motion (recorded each frame). Params (authoring cm):
+ * anchorX — anchor point on the floor ahead (default 620).
+ */
+const battleRopes: ExtraPropBuilder = (params) => {
+  const anchorX = (num(params, "anchorX", 620) - 160) / 100;
+  const geos = new Geos();
+  const m = mats();
+  const group = new THREE.Group();
+  const N = 64;
+  const ropes = [0, 1].map(() => {
+    const t = new DynamicTube(N, 0.019, m.rope, 8);
+    // Only the first metre counts for camera framing; the rest runs off-screen.
+    t.setBounds(new THREE.Box3());
+    group.add(t.mesh);
+    return t;
+  });
+  // Anchor post (ignored by framing too).
+  const postGeo = geos.add(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 16));
+  postGeo.boundingBox = new THREE.Box3();
+  const post = mesh(postGeo, m.frame, group);
+  post.position.set(anchorX + 0.08, 0.25, 0);
+  post.frustumCulled = false;
+  const history = [0, 1].map(() => [] as { t: number; y: number }[]);
+  const mean = [0, 0];
+  const points = Array.from({ length: N }, () => new THREE.Vector3());
+  const hand = new THREE.Vector3();
+  const speed = 7; // wave speed, m/s
+  const sample = (hist: { t: number; y: number }[], t: number) => {
+    for (let k = hist.length - 1; k >= 0; k--) if (hist[k].t <= t) return hist[k].y;
+    return hist.length ? hist[0].y : 0;
+  };
+  return {
+    object: group,
+    update(rig) {
+      const j = rig.joints;
+      if (!j) return;
+      const now = performance.now() / 1000;
+      j.sides.forEach((s, i) => {
+        hand.copy(s.hand).lerp(s.wrist, 0.4);
+        const hist = history[i];
+        hist.push({ t: now, y: hand.y });
+        while (hist.length > 2 && now - hist[0].t > 1.2) hist.shift();
+        mean[i] = hist.length === 1 ? hand.y : mean[i] + (hand.y - mean[i]) * 0.05;
+        const ax = anchorX;
+        const az = Math.sign(hand.z || 1) * 0.12;
+        const len = Math.hypot(ax - hand.x, hand.y);
+        for (let k = 0; k < N; k++) {
+          const u = k / (N - 1);
+          const p = points[k];
+          p.x = hand.x + (ax - hand.x) * u;
+          p.z = hand.z + (az - hand.z) * u;
+          // Hangs from the hand and settles toward the floor, with the hand's waves running along it.
+          const base = 0.03 + (hand.y - 0.03) * Math.pow(1 - u, 2.2);
+          const wave = (sample(hist, now - (u * len) / speed) - mean[i]) * Math.pow(1 - u, 0.8) * 1.4;
+          p.y = Math.max(0.02, base + (k === 0 ? 0 : wave));
+        }
+        ropes[i].update(points);
+      });
+    },
+    dispose() {
+      geos.dispose();
+      ropes.forEach((r) => r.dispose());
+    },
+  };
+};
+
+// ─────────────────────── cardio machines ───────────────────────
+
+/**
+ * Places a catalogue equipment model facing the athlete (+x) and returns a
+ * world→model converter. Params (authoring cm): x — model origin; scale.
+ */
+function placeModel(slug: "treadmill" | "rowing-machine" | "exercise-bike", params: ExtraPropParams) {
+  const model: EquipmentModel = buildEquipmentModel(slug);
+  const group = new THREE.Group();
+  group.add(model.group);
+  model.group.position.copy(W(num(params, "x", 160), 250));
+  model.group.rotation.y = Math.PI;
+  model.group.scale.setScalar(num(params, "scale", 1));
+  const local = (world: THREE.Vector3, out: THREE.Vector3) => {
+    model.group.updateWorldMatrix(true, false);
+    return model.group.worldToLocal(out.copy(world));
+  };
+  return { model, group, local };
+}
+
+/** Moving parts of a model, found by their rest position (null if the model changes). */
+function keepPart(model: EquipmentModel, x: number, y: number) {
+  return (
+    model.group.children.find((c) => c.userData.keep && !(c as THREE.Mesh).isMesh && Math.abs(c.position.x - x) < 0.01 && Math.abs(c.position.y - y) < 0.01) ??
+    null
+  );
+}
+
+/** Treadmill whose belt runs under the athlete. Params: x (authoring cm), speed (belt speed factor). */
+const treadmill: ExtraPropBuilder = (params) => {
+  const { model, group } = placeModel("treadmill", params);
+  const k = num(params, "speed", 0.8);
+  return {
+    object: group,
+    update() {
+      model.update?.((performance.now() / 1000) * k, true);
+    },
+    dispose: () => model.dispose(),
+  };
+};
+
+/** Rowing machine whose seat, handle and chain follow the athlete. Params: x (authoring cm). */
+const rower: ExtraPropBuilder = (params) => {
+  const { model, group, local } = placeModel("rowing-machine", params);
+  const seat = keepPart(model, 0.1, 0.34);
+  const fan = keepPart(model, -0.98, 0.5);
+  const handle = model.group.children.find((c) => c.userData.keep && !(c as THREE.Mesh).isMesh && c !== seat && c !== fan) ?? null;
+  const chain = (model.group.children.find((c) => c.userData.keep && (c as THREE.Mesh).isMesh) as THREE.Mesh | undefined) ?? null;
+  const exit = new THREE.Vector3(-0.78, 0.46, 0);
+  const tmp = new THREE.Vector3();
+  const p = new THREE.Vector3();
+  const end = new THREE.Vector3();
+  let last = performance.now();
+  return {
+    object: group,
+    update(rig: BodyRig) {
+      const j = rig.joints;
+      if (!j) return;
+      if (seat) seat.position.x = local(j.pelvis, p).x;
+      if (handle) {
+        palms(rig, tmp, p);
+        local(tmp, p);
+        handle.position.set(p.x, p.y, 0);
+        if (chain) {
+          end.copy(handle.position).add(tmp.set(-0.028, 0, 0));
+          const len = Math.max(1e-4, exit.distanceTo(end));
+          chain.position.copy(exit);
+          chain.quaternion.setFromUnitVectors(Y_AXIS, tmp.subVectors(end, exit).divideScalar(len));
+          chain.scale.set(1, len, 1);
+        }
+      }
+      const now = performance.now();
+      if (fan) fan.rotation.z -= Math.min(0.1, (now - last) / 1000) * 12;
+      last = now;
+    },
+    dispose: () => model.dispose(),
+  };
+};
+
+/**
+ * Exercise bike whose cranks turn with the athlete's feet. Params: x
+ * (authoring cm), scale. The far-side pedal (model +z) follows side 1's foot.
+ */
+const bike: ExtraPropBuilder = (params) => {
+  const { model, group, local } = placeModel("exercise-bike", params);
+  const crank = keepPart(model, 0.1, 0.32);
+  const pedals: THREE.Object3D[] = [];
+  crank?.traverse((o) => {
+    if (o !== crank && o.userData.keep) pedals.push(o);
+  });
+  const ball = new THREE.Vector3();
+  const p = new THREE.Vector3();
+  return {
+    object: group,
+    update(rig: BodyRig) {
+      const j = rig.joints;
+      if (!j || !crank) return;
+      // Pedal axle under the ball of the foot: 9.3 cm ahead of and 6.6 cm below the ankle.
+      ball.copy(j.sides[1].ankle).add(p.set(0.093, -0.066, 0));
+      local(ball, p);
+      const angle = Math.atan2(-(p.x - crank.position.x), -(p.y - crank.position.y));
+      crank.rotation.z = -angle;
+      for (const pedal of pedals) pedal.rotation.z = angle - pedal.parent!.rotation.z;
+    },
+    dispose: () => model.dispose(),
+  };
+};
+
+// ─────────────────────────── doorway ───────────────────────────
+
+/** A door frame for the doorway chest stretch. Params (authoring cm): x — front face of the frame, half — half the opening width. */
+const doorway: ExtraPropBuilder = (params) => {
+  const x = num(params, "x", 154);
+  const half = num(params, "half", 46);
+  const geos = new Geos();
+  const m = mats();
+  const group = new THREE.Group();
+  for (const s of [1, -1]) {
+    block(geos, group, W(x - 7, 147.5, s * (half + 6)), 0.14, 2.05, 0.12, m.wood);
+  }
+  block(geos, group, W(x - 7, 39, 0), 0.14, 0.12, (half * 2 + 24) / 100, m.wood);
+  return { object: group, dispose: geos.dispose };
+};
+
 /** Props for the core & cardio exercise library, keyed by `kind` (use a "core:" prefix). */
 export const CORE_PROPS: Record<string, ExtraPropBuilder> = {
   "core:medicine-ball": medicineBall,
   "core:ab-wheel": abWheel,
   "core:hyper-bench": hyperBench,
   "core:side-cable": sideCable,
+  "core:jump-rope": jumpRope,
+  "core:battle-ropes": battleRopes,
+  "core:treadmill": treadmill,
+  "core:rower": rower,
+  "core:bike": bike,
+  "core:doorway": doorway,
 };

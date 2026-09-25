@@ -11,7 +11,7 @@ export function fibreNormalMap(size = 512): THREE.DataTexture {
     const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
     return s - Math.floor(s);
   };
-  const BUNDLES = 11;
+  const BUNDLES = 7;
   const FINE = 4;
   const TAU = Math.PI * 2;
   for (let y = 0; y < size; y++) {
@@ -34,7 +34,7 @@ export function fibreNormalMap(size = 512): THREE.DataTexture {
     }
   }
   const data = new Uint8Array(size * size * 4);
-  const strength = 3.2;
+  const strength = 5.5;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const h = (xx: number, yy: number) => H[((yy + size) % size) * size + ((xx + size) % size)];

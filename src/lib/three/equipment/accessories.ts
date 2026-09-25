@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { Kit, Ticker, TAU, damp, decal, v3 } from "./helpers";
+import { Kit, Ticker, TAU, at, block, cyl, damp, decal, lathe, mesh, settleAngle, v3 } from "./helpers";
 import type { EquipmentModel } from "./index";
 import { BRAND, textLabel } from "./materials";
 
@@ -139,4 +139,152 @@ export function exerciseMat(): EquipmentModel {
       shape(rolled);
     }
   });
+}
+
+const patchMats = new Map<string, THREE.MeshStandardMaterial>();
+function patchMat(tex: THREE.Texture) {
+  let mat = patchMats.get(tex.uuid);
+  if (!mat) {
+    mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.6, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+    patchMats.set(tex.uuid, mat);
+  }
+  return mat;
+}
+
+/** Rolls `x` back and forth while active, returning to 0; `spin` turns without slipping. */
+function rolling(amplitude: number, period: number, radius: number, apply: (x: number, angle: number) => void) {
+  const tick = new Ticker();
+  let x = 0;
+  return (time: number, active: boolean) => {
+    x = damp(x, active ? amplitude * Math.sin((time / period) * TAU) : 0, 4, tick.dt(time));
+    apply(x, -x / radius);
+  };
+}
+
+// ----------------------------------------------------------- medicine ball
+
+export function medicineBall(): EquipmentModel {
+  const kit = new Kit("medicine-ball");
+  const { m, root } = kit;
+  const R = 0.14;
+  const ball = kit.part(root, 0, R, 0);
+  mesh(new THREE.SphereGeometry(R, 48, 32), m.medball, ball);
+  // Moulding seams and a coloured grip band.
+  for (const rx of [0, Math.PI / 2]) {
+    const seam = mesh(new THREE.TorusGeometry(R, 0.0028, 6, 64), m.rubber, ball);
+    seam.rotation.set(rx + Math.PI / 2, 0, 0);
+  }
+  const band = mesh(new THREE.TorusGeometry(R, 0.0045, 8, 64), m.accent, ball);
+  band.rotation.set(0, Math.PI / 2, 0.5);
+  const label = mesh(new THREE.SphereGeometry(R + 0.0008, 24, 12, -0.5, 1.0, Math.PI / 2 - 0.3, 0.6), patchMat(textLabelBall()), ball);
+  label.rotation.y = Math.PI;
+  label.castShadow = false;
+  kit.spot("shell", v3(-R * 0.35, R * 0.93, R * 0.1), ball);
+  kit.spot("weight-label", v3(R + 0.002, 0, 0), ball);
+
+  const tick = new Ticker();
+  let amp = 0;
+  let spin = 0;
+  const H = 0.38;
+  const T = 0.95;
+  return kit.finish((time, active) => {
+    const dt = tick.dt(time);
+    amp = damp(amp, active ? 1 : 0, 3, dt);
+    const f = (time / T) % 1;
+    const contact = Math.max(0, 1 - Math.min(f, 1 - f) / 0.07);
+    const squash = 0.12 * amp * contact;
+    ball.position.y = R * (1 - squash) + amp * H * 4 * f * (1 - f);
+    ball.scale.set(1 + squash / 2, 1 - squash, 1 + squash / 2);
+    spin = active ? spin + dt * 1.6 * amp : settleAngle(spin, 2, dt);
+    ball.rotation.z = -spin;
+  });
+}
+
+function textLabelBall() {
+  return textLabel("6 KG", "#fbbf24", 256, 128, "bold 80px sans-serif");
+}
+
+// ------------------------------------------------------------------ ab wheel
+
+export function abWheel(): EquipmentModel {
+  const kit = new Kit("ab-wheel");
+  const { m, root } = kit;
+  const R = 0.095;
+  const W = 0.062;
+  const roll = kit.part(root, 0, R, 0);
+  const wheel = kit.part(roll);
+  const tyre = mesh(
+    lathe(
+      [
+        [0.066, -W / 2],
+        [R - 0.012, -W / 2],
+        [R - 0.003, -W / 2 + 0.006, true],
+        [R, -W / 2 + 0.016, true],
+        [R - 0.003, -0.008],
+        [R, -0.002, true],
+        [R, 0.002, true],
+        [R - 0.003, 0.008],
+        [R, W / 2 - 0.016, true],
+        [R - 0.003, W / 2 - 0.006, true],
+        [R - 0.012, W / 2],
+        [0.066, W / 2],
+      ],
+      48,
+    ),
+    m.rubber,
+    wheel,
+  );
+  tyre.rotation.x = Math.PI / 2;
+  at(mesh(cyl(0.068, W - 0.008, 32), m.accent, wheel), 0, 0, 0, Math.PI / 2);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * TAU;
+    const spoke = block(wheel, Math.cos(a) * 0.04, Math.sin(a) * 0.04, 0, 0.05, 0.014, W - 0.002, m.plastic, 0.004);
+    spoke.rotation.z = a;
+  }
+  at(mesh(cyl(0.02, W + 0.006, 20), m.steel, wheel), 0, 0, 0, Math.PI / 2);
+  at(mesh(cyl(0.008, 0.36, 12), m.steel, roll), 0, 0, 0, Math.PI / 2);
+  for (const s of [1, -1]) {
+    at(mesh(cyl(0.021, 0.11, 20), m.grip, roll), 0, 0, s * 0.105, Math.PI / 2);
+    at(mesh(cyl(0.024, 0.012, 20), m.plastic, roll), 0, 0, s * 0.166, Math.PI / 2);
+    at(mesh(cyl(0.024, 0.008, 20), m.plastic, roll), 0, 0, s * 0.046, Math.PI / 2);
+  }
+  kit.spot("wheel", v3(0, R + 0.001, 0), roll);
+  kit.spot("handles", v3(0, 0.022, 0.12), roll);
+  return kit.finish(
+    rolling(0.32, 3, R, (x, angle) => {
+      roll.position.x = x;
+      wheel.rotation.z = angle;
+    }),
+  );
+}
+
+// -------------------------------------------------------------- foam roller
+
+export function foamRoller(): EquipmentModel {
+  const kit = new Kit("foam-roller");
+  const { m, root } = kit;
+  const R = 0.075;
+  const core = 0.05;
+  const L = 0.33;
+  const roll = kit.part(root, 0, R, 0);
+  const spin = kit.part(roll);
+  at(mesh(cyl(R, L, 48, R, true), m.foamRoller, spin), 0, 0, 0, Math.PI / 2);
+  for (const s of [1, -1]) {
+    const face = mesh(new THREE.RingGeometry(core, R, 48, 1), m.foamRoller, spin);
+    at(face, 0, 0, (s * L) / 2, 0, s > 0 ? 0 : Math.PI, 0);
+    const lip = mesh(new THREE.RingGeometry(core - 0.005, core, 48, 1), m.plastic, spin);
+    at(lip, 0, 0, s * (L / 2 + 0.004), 0, s > 0 ? 0 : Math.PI, 0);
+  }
+  at(mesh(cyl(core, L + 0.008, 40, core, true), m.plastic, spin), 0, 0, 0, Math.PI / 2);
+  const bore = mesh(cyl(core - 0.005, L + 0.008, 40, core - 0.005, true), m.board, spin);
+  at(bore, 0, 0, 0, Math.PI / 2);
+  bore.material = kit.own(new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.6, side: THREE.BackSide }));
+  kit.spot("surface", v3(0, R + 0.001, 0.06), roll);
+  kit.spot("core", v3(0, core - 0.002, L / 2 + 0.005), roll);
+  return kit.finish(
+    rolling(0.26, 2.6, R, (x, angle) => {
+      roll.position.x = x;
+      spin.rotation.z = angle;
+    }),
+  );
 }

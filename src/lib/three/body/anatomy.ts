@@ -207,17 +207,12 @@ export function sculptBody(frames: Frames): Sculpt {
   // ───────────────────────────── TORSO ─────────────────────────────
   const torso: BumpSpec[] = [];
   // Pectoralis major: clavicular and sternal heads fanning into the armpit.
-  bumps(torso, "pec-clav", M.chest, [TB([[9, 153.2], [40, 151.4], [70, 147.5]], [3.4, 3.4, 2.4], [1.3, 1.9, 1.3], 0.8)], { mirror: true, groove: 0.12, chain: [T, ARM, 0.75, 1] });
+  bumps(torso, "pec-clav", M.chest, [TB([[8, 152.5], [38, 151.2], [68, 148]], [3.2, 3.2, 2.2], [0.9, 1.4, 1.0], 0.7)], { mirror: true, groove: 0.1, chain: [T, ARM, 0.75, 1] });
   bumps(
     torso,
     "pec",
     M.chest,
-    [
-      TB([[5, 147.2], [38, 145.2], [70, 145.2]], [4.4, 4.6, 3.2], [1.7, 2.3, 1.6], 0.8),
-      TB([[5, 141], [36, 139], [69, 142.4]], [4.6, 4.8, 3.2], [1.9, 2.7, 1.8], 0.8),
-      TB([[6, 135.2], [34, 132.8], [66, 139]], [3.8, 4.2, 2.8], [1.8, 2.8, 1.8], 0.8),
-      TB([[14, 130.8], [38, 129.9], [63, 135.8]], [2.2, 2.6, 2.0], [1.0, 1.9, 1.3], 0.9),
-    ],
+    [TB([[4, 141.5], [30, 140], [52, 140.5], [70, 143.5]], [7.6, 8.0, 7.0, 4.0], [1.3, 2.0, 2.2, 1.6], 0.6)],
     { mirror: true, groove: 0.3, chain: [T, ARM, 0.75, 1] },
   );
   // Rectus abdominis: four segments per side between the tendinous intersections.
@@ -242,12 +237,10 @@ export function sculptBody(frames: Frames): Sculpt {
     "obliques",
     M.obliques,
     [
-      TB([[82, 132], [62, 120], [46, 110]], [3.6, 4.0, 3.2], [1.0, 1.4, 1.2], 0.8),
-      TB([[98, 127], [75, 115], [56, 106]], [3.8, 4.2, 3.2], [1.1, 1.6, 1.3], 0.8),
-      TB([[112, 121], [90, 111], [72, 104.5]], [3.8, 4.0, 3.0], [1.1, 1.7, 1.4], 0.8),
-      TB([[62, 106], [85, 107.4], [112, 108.4]], [2.4, 2.7, 2.2], [1.6, 2.1, 1.4], 1.1),
+      TB([[95, 128], [70, 116], [52, 107]], [6.0, 6.4, 4.4], [1.0, 1.5, 1.3], 0.6),
+      TB([[60, 106], [88, 107.6], [114, 108.4]], [2.6, 2.8, 2.2], [1.4, 1.9, 1.2], 1.1),
     ],
-    { mirror: true, groove: 0.3, fibre: 0.85 },
+    { mirror: true, groove: 0.25, fibre: 0.85 },
   );
   // Serratus anterior digits.
   for (let i = 0; i < 4; i++) {
@@ -260,11 +253,8 @@ export function sculptBody(frames: Frames): Sculpt {
     "lats",
     M.lats,
     [
-      TB([[162, 141.5], [128, 143.5], [98, 145.5]], [3.8, 4.2, 3.2], [0.5, 1.4, 2.4], 0.8),
-      TB([[168, 133], [134, 136.5], [101, 142]], [4.2, 4.6, 3.4], [0.5, 1.6, 2.6], 0.8),
-      TB([[171, 124], [140, 127.5], [104, 138]], [4.4, 4.8, 3.5], [0.5, 1.6, 2.5], 0.8),
-      TB([[170, 115], [144, 119], [106, 133]], [4.4, 4.8, 3.4], [0.4, 1.3, 2.2], 0.8),
-      TB([[152, 106.5], [130, 112], [106, 127]], [3.8, 4.2, 3.0], [0.4, 1.0, 1.8], 0.8),
+      TB([[166, 137], [132, 139], [100, 143.5]], [5.6, 6.2, 4.2], [0.5, 1.5, 2.4], 0.6),
+      TB([[168, 118], [140, 123], [106, 134]], [6.0, 6.4, 4.4], [0.4, 1.3, 2.2], 0.6),
     ],
     { mirror: true, groove: 0.3, chain: [T, ARM, 0.8, 1] },
   );
@@ -280,7 +270,7 @@ export function sculptBody(frames: Frames): Sculpt {
     groove: 0.2,
     chain: [T, ARM, 0.8, 1],
   });
-  bumps(torso, "traps-mid", M["upper-back"], [TB([[176, 157.5], [150, 157.2], [124, 157.5]], [2.2, 2.6, 2.0], [0.9, 1.2, 0.7]), TB([[176, 152.5], [148, 153.2], [126, 154.8]], [2.3, 2.6, 1.8], [0.9, 1.2, 0.7])], {
+  bumps(torso, "traps-mid", M["upper-back"], [TB([[176, 155], [150, 155.2], [124, 156.2]], [4.2, 4.6, 3.2], [0.8, 1.1, 0.6], 0.6)], {
     mirror: true,
     groove: 0.25,
   });
@@ -314,8 +304,6 @@ export function sculptBody(frames: Frames): Sculpt {
     // Vertebra prominens at the neck base.
     A.ellipsoid({ center: [-7.3, 163.8, 0], axes: ID, radii: [1.3, 1.1, 1.2] }, base({ k: 1.2 }));
   });
-  // Clavicle: a bony ridge from the sternal notch to the acromion.
-  A.spindle({ pts: curve(torsoAt(8, 155, 0.4), [6.4, 156.4, 9.8], [1.4, 160.6, 17.4], 5), radius: belly(0.95, 1.05, 1.15, 0.5, 1) }, base({ k: 1.3, meta: { chainA: T, chainB: ARM, chainT0: 0.65, chainT1: 1 } }));
   // Acromion + humeral head under the deltoid.
   A.ellipsoid({ center: add(S, [0.2, 0.8, -0.4]), axes: ID, radii: [3.6, 3.6, 3.5] }, base({ k: 2.2, chain: ARM }));
   // Iliac crest / hip bone front.
@@ -326,13 +314,13 @@ export function sculptBody(frames: Frames): Sculpt {
     A.loft(
       {
         a: [-0.4, 157, 0],
-        b: HL(0.4, -7.5, 0),
+        b: HL(-0.8, -2.5, 0),
         front: X,
         sections: [
-          { f: 6.4, b: 7.6, s: 7.4, m: 7.4, n: 2 },
-          { f: 5.8, b: 6.6, s: 6.5, m: 6.5, n: 2 },
-          { f: 5.5, b: 6.2, s: 6.0, m: 6.0, n: 2 },
-          { f: 5.4, b: 6.1, s: 5.8, m: 5.8, n: 2 },
+          { f: 6.2, b: 7.4, s: 7.0, m: 7.0, n: 2 },
+          { f: 5.4, b: 6.2, s: 5.9, m: 5.9, n: 2 },
+          { f: 5.0, b: 5.8, s: 5.4, m: 5.4, n: 2 },
+          { f: 4.8, b: 5.6, s: 5.2, m: 5.2, n: 2 },
         ],
       },
       base({ k: 2.5 }),
@@ -358,15 +346,14 @@ export function sculptBody(frames: Frames): Sculpt {
     // Skull + face profile as a loft (head-local y from the forehead down to the chin).
     const rows: [number, number, number, number, number, number][] = [
       // y, front, back, side, exponent, centre offset forward
-      [9.5, 7.0, 8.4, 7.2, 2.1, 0],
-      [6.5, 8.8, 9.5, 7.6, 2.2, 0],
-      [3.5, 9.4, 9.8, 7.75, 2.3, 0],
-      [0.5, 8.7, 9.7, 7.6, 2.5, 0],
-      [-2.5, 8.5, 8.8, 7.25, 2.6, 0],
-      [-5.0, 8.9, 5.4, 6.45, 2.6, 0],
-      [-7.5, 8.8, 3.0, 5.95, 2.5, 0],
-      [-10.0, 6.0, 2.2, 4.4, 2.3, 2.6],
-      [-11.6, 3.2, 2.2, 2.4, 2.2, 5.2],
+      [5.5, 8.7, 9.7, 7.45, 2.1, -0.4],
+      [3.2, 9.3, 9.9, 7.75, 2.2, -0.2],
+      [0.5, 8.8, 9.7, 7.55, 2.4, 0],
+      [-2.4, 8.6, 8.9, 7.15, 2.5, 0],
+      [-5.0, 8.9, 5.8, 6.7, 2.5, 0],
+      [-7.5, 8.7, 3.6, 6.2, 2.4, 0],
+      [-10.0, 5.9, 2.6, 4.4, 2.3, 2.5],
+      [-11.7, 3.0, 2.0, 2.4, 2.2, 5.0],
     ];
     const secs: LoftSection[] = [];
     const top = rows[0][0];
@@ -383,35 +370,32 @@ export function sculptBody(frames: Frames): Sculpt {
       secs.push({ f: l(1), b: l(2), s: l(3), m: l(3), n: l(4), of: l(5) });
     }
     A.loft({ a: HL(0, top, 0), b: HL(0, bot, 0), front: X, sections: secs }, H({ k: 1.2 }));
-    // Cranium dome and occiput.
-    A.ellipsoid({ center: HL(-0.9, 2.6, 0), axes: ID, radii: [9.7, 9.3, 7.6] }, H({ k: 1.6 }));
+    // Cranium dome.
+    A.ellipsoid({ center: HL(-0.6, 2.8, 0), axes: ID, radii: [9.7, 9.2, 7.65] }, H({ k: 3 }));
     // Chin.
     A.ellipsoid({ center: HL(7.4, -9.9, 0), axes: axes([1, -0.3, 0], Y), radii: [1.9, 1.9, 2.4] }, H({ k: 1.2 }));
     // Nose: bridge, tip.
-    A.cone(HL(8.8, 0.9, 0), HL(10.7, -3.4, 0), 0.62, 0.78, H({ k: 0.8 }));
-    A.ellipsoid({ center: HL(10.55, -3.9, 0), axes: ID, radii: [1.05, 0.9, 0.95] }, H({ k: 0.55 }));
+    A.cone(HL(8.9, 0.5, 0), HL(10.2, -3.2, 0), 0.5, 0.66, H({ k: 1.0 }));
+    A.ellipsoid({ center: HL(10.05, -3.65, 0), axes: ID, radii: [0.9, 0.78, 0.85] }, H({ k: 0.7 }));
     // Mouth line.
     A.ellipsoid({ center: HL(9.45, -6.62, 0), axes: ID, radii: [0.6, 0.12, 2.0] }, H({ op: OP_SUB, k: 0.3 }));
   });
-  // Brow ridge.
-  A.spindle({ pts: curve(HL(9.4, 1.7, 0.5), HL(9.35, 2.0, 3.4), HL(7.9, 1.8, 6.0), 4), radius: belly(0.65, 0.8, 0.6, 0.45, 1.2), flat: 0.6, flatDir: [0.4, 1, 0] }, base({ k: 1.5 }));
   // Eye socket, eyeball, lids.
-  A.ellipsoid({ center: HL(8.6, 0.0, 3.25), axes: axes([1, 0, 0.3], Y), radii: [1.9, 1.3, 1.7] }, base({ op: OP_SUB, k: 0.9 }));
-  A.ellipsoid({ center: HL(7.25, -0.05, 3.25), axes: ID, radii: [1.2, 1.2, 1.2] }, { layer: L_OVERLAY, k: 0.15, meta: { chainA: T, material: MAT_EYE } });
+  A.ellipsoid({ center: HL(8.9, 0.1, 3.2), axes: axes([1, 0, 0.3], Y), radii: [1.5, 1.05, 1.45] }, base({ op: OP_SUB, k: 1.0 }));
+  A.ellipsoid({ center: HL(7.45, -0.05, 3.2), axes: ID, radii: [1.2, 1.2, 1.2] }, { layer: L_OVERLAY, k: 0.15, meta: { chainA: T, material: MAT_EYE } });
   A.spindle({ pts: curve(HL(7.95, 0.35, 2.1), HL(8.65, 0.9, 3.25), HL(7.95, 0.35, 4.35), 4), radius: belly(0.2, 0.4, 0.2, 0.5, 1.4), flat: 0.55, flatDir: [0.6, 1, 0] }, { layer: L_OVERLAY, k: 0.25, meta: { chainA: T } });
   A.spindle({ pts: curve(HL(7.95, -0.5, 2.2), HL(8.4, -0.9, 3.25), HL(7.9, -0.45, 4.3), 4), radius: belly(0.16, 0.28, 0.16, 0.5, 1.4), flat: 0.7, flatDir: [0.5, -1, 0] }, { layer: L_OVERLAY, k: 0.25, meta: { chainA: T } });
   // Cheekbone, cheek.
-  A.ellipsoid({ center: HL(6.3, -1.8, 5.2), axes: axes([0.8, 0, 0.6], Y), radii: [2.2, 1.25, 1.6] }, base({ k: 1.4 }));
-  A.ellipsoid({ center: HL(6.2, -4.6, 4.2), axes: ID, radii: [1.9, 2.0, 1.8] }, base({ k: 2 }));
+  A.ellipsoid({ center: HL(6.0, -1.7, 5.1), axes: axes([0.8, 0, 0.6], Y), radii: [1.8, 1.0, 1.3] }, base({ k: 2 }));
   // Jaw line (mandible) and masseter.
   A.spindle({ pts: curve(HL(7.4, -10.0, 1.9), HL(3.8, -9.7, 5.2), HL(0.4, -7.4, 5.8), 5), radius: belly(1.0, 1.25, 1.1, 0.5, 1.2), flat: 0.75, flatDir: [0, 1, 0.4] }, base({ k: 1.4 }));
   A.ellipsoid({ center: HL(2.5, -5.3, 5.4), axes: axes([0.3, 1, 0], Z), radii: [2.5, 1.7, 1.1] }, base({ k: 1.5 }));
   // Nose wings and nostrils.
-  A.ellipsoid({ center: HL(9.7, -4.3, 1.2), axes: axes([1, 0, 0.45], Y), radii: [0.9, 0.7, 0.6] }, base({ k: 0.5 }));
-  A.ellipsoid({ center: HL(10.25, -4.85, 0.7), axes: ID, radii: [0.4, 0.2, 0.32] }, base({ op: OP_SUB, k: 0.2 }));
+  A.ellipsoid({ center: HL(9.35, -4.05, 1.05), axes: axes([1, 0, 0.45], Y), radii: [0.75, 0.6, 0.5] }, base({ k: 0.6 }));
+  A.ellipsoid({ center: HL(9.8, -4.5, 0.62), axes: ID, radii: [0.34, 0.17, 0.27] }, base({ op: OP_SUB, k: 0.2 }));
   // Lips.
-  A.spindle({ pts: curve(HL(8.9, -6.3, 0), HL(9.55, -6.2, 1.1), HL(8.65, -6.55, 2.1), 4), radius: belly(0.36, 0.5, 0.18, 0.25, 1.3), flat: 0.8, flatDir: [0, 1, 0] }, { layer: L_OVERLAY, k: 0.35, meta: { chainA: T, material: MAT_LIP } });
-  A.spindle({ pts: curve(HL(8.75, -7.1, 0), HL(9.3, -7.05, 1.0), HL(8.55, -6.75, 1.9), 4), radius: belly(0.5, 0.56, 0.18, 0.2, 1.3), flat: 0.8, flatDir: [0, 1, 0] }, { layer: L_OVERLAY, k: 0.35, meta: { chainA: T, material: MAT_LIP } });
+  A.spindle({ pts: curve(HL(8.9, -6.3, 0), HL(9.55, -6.2, 1.1), HL(8.65, -6.55, 2.1), 4), radius: belly(0.3, 0.4, 0.15, 0.25, 1.3), flat: 0.8, flatDir: [0, 1, 0] }, { layer: L_OVERLAY, k: 0.35, meta: { chainA: T, material: MAT_LIP } });
+  A.spindle({ pts: curve(HL(8.75, -7.1, 0), HL(9.3, -7.05, 1.0), HL(8.55, -6.75, 1.9), 4), radius: belly(0.4, 0.46, 0.15, 0.2, 1.3), flat: 0.8, flatDir: [0, 1, 0] }, { layer: L_OVERLAY, k: 0.35, meta: { chainA: T, material: MAT_LIP } });
   // Ear: plate, rim, concha, lobe.
   {
     const ex = axes([0.2, 0.2, 1], [-0.2, 1, 0]);
@@ -425,33 +409,24 @@ export function sculptBody(frames: Frames): Sculpt {
     A.ellipsoid({ center: add(c, add(scale(ex[0], 0.25), scale(ex[1], -2.7))), axes: ex, radii: [0.45, 0.85, 0.8] }, { layer: L_OVERLAY, k: 0.4, meta: { chainA: T } });
   }
 
-  // ───────────────────────────── SHOULDER (deltoid cap) ─────────────────────────────
+  // ───────────────────────────── SHOULDER (deltoid heads) ─────────────────────────────
   {
-    const tub = U(ua, 0.4, 13.5, 3.0);
-    const cap = (o: V3, bulge: V3, r: number) => ({ pts: curve(o, add(S, scale(sub(bulge, S), 1.15)), U(ua, 0, 7, 0), 5), r: belly(1.3, r * 1.25, 2.4, 0.45, 1.6), flat: 0.62, flatDir: norm(sub(bulge, S)) });
-    muscle("delt-front", M["front-delts"], [cap([4.0, 159.6, 13.4], add(S, [5.4, 2.0, -0.8]), 2.3), cap([2.8, 160.8, 15.8], add(S, [4.6, 3.6, 1.4]), 2.1)], { k: 1.0, groove: 0.3, chain: [ARM, ARM, 0, 1], fibreTo: tub });
-    muscle("delt-side", M["side-delts"], [cap([1.2, 162.2, 18.2], add(S, [2.0, 4.6, 3.6]), 2.3), cap([-1.2, 162.2, 18.4], add(S, [-1.2, 4.4, 4.2]), 2.3)], { k: 0.9, groove: 0.3, chain: [ARM, ARM, 0, 1], fibreTo: tub });
-    muscle("delt-rear", M["rear-delts"], [cap([-3.8, 160.6, 16.4], add(S, [-4.8, 2.8, 1.6]), 2.1), cap([-5.8, 159.4, 13.6], add(S, [-5.6, 0.6, -0.4]), 1.9)], { k: 1.0, groove: 0.3, chain: [ARM, ARM, 0, 1], fibreTo: tub });
+    const fr = F(ua);
+    const along = fr.y;
+    const head = (name: string, id: number, c: V3, out: V3, r: V3) =>
+      A.ellipsoid(
+        { center: c, axes: axes(along, out), radii: r },
+        { layer: L_MUSCLE, k: 1.4, group: A.group(name), groove: 0.25, meta: { name, muscle: id, chainA: ARM, fibre: 1, fibreDir: along } },
+      );
+    head("delt-front", M["front-delts"], U(ua, 2.4, 4.5, 1.2), fr.x, [5.6, 2.6, 3.0]);
+    head("delt-side", M["side-delts"], U(ua, 0, 4.2, 3.0), scale(fr.z, -1), [5.8, 2.8, 3.3]);
+    head("delt-rear", M["rear-delts"], U(ua, -2.5, 4.5, 1.2), scale(fr.x, -1), [5.4, 2.5, 3.0]);
   }
-  // Pec and lat tendons into the armpit (bridging the torso and the arm).
-  muscle("pec", M.chest, [{ pts: [torsoAt(66, 142.5, 1.3), add(torsoAt(72, 145, 1.6), [1.4, 0, 1.4]), U(ua, 2.0, 6.5, 0.4)], r: belly(2.2, 2.3, 0.9, 0.3, 1.4), flat: 0.55, flatDir: [0.6, -0.8, 0.2] }], {
-    k: 1.3,
-    groove: 0.25,
-    chain: [T, ARM, 0.2, 0.9],
-    tendon: [0, 0.35],
-  });
-  muscle("lats", M.lats, [{ pts: [torsoAt(104, 138, 1.6), add(torsoAt(98, 143, 2), [-0.8, 0, 1.2]), U(ua, -1.2, 6.5, -1.2)], r: belly(2.2, 2.3, 0.9, 0.3, 1.4), flat: 0.6, flatDir: [-0.8, -0.3, 0.5] }], {
-    k: 1.3,
-    groove: 0.25,
-    chain: [T, ARM, 0.2, 0.9],
-    tendon: [0, 0.35],
-  });
-
   // ───────────────────────────── ARM (one loft: shoulder → wrist) ─────────────────────────────
   {
     const arm: BumpSpec[] = [];
     const fore: BumpSpec[] = [];
-    const o = { chain: [ARM, ARM, 0, 1] as [number, number, number, number], ws: 1.35, ts: 1.0 };
+    const o = { chain: [ARM, ARM, 0, 1] as [number, number, number, number], ws: 1.45, ts: 1.35 };
     bumps(arm, "delt-front", M["front-delts"], [{ pts: [[20, 1], [40, 7], [72, 13]], w: [2.8, 2.6, 1.2], th: [2.2, 1.8, 0.4] }], { ...o, groove: 0.3 });
     bumps(arm, "delt-side", M["side-delts"], [{ pts: [[88, 0], [90, 7], [90, 13.8]], w: [3.2, 3.0, 1.2], th: [2.3, 2.0, 0.4] }], { ...o, groove: 0.3 });
     bumps(arm, "delt-rear", M["rear-delts"], [{ pts: [[160, 1], [135, 7], [108, 13]], w: [2.8, 2.6, 1.2], th: [2.0, 1.7, 0.4] }], { ...o, groove: 0.3 });
@@ -567,7 +542,7 @@ export function sculptBody(frames: Frames): Sculpt {
   {
     const th: BumpSpec[] = [];
     const sh: BumpSpec[] = [];
-    const o = { chain: [LEG, LEG, 0, 1] as [number, number, number, number], ws: 1.35, ts: 1.0 };
+    const o = { chain: [LEG, LEG, 0, 1] as [number, number, number, number], ws: 1.45, ts: 1.35 };
     bumps(th, "rectus-femoris", M.quads, [{ pts: [[8, -4], [2, 8], [0, 20], [0, 32], [0, 40]], w: [1.8, 2.5, 2.7, 2.3, 1.3], th: [0.8, 2.0, 2.5, 1.9, 0.5], p: 1.3 }], { ...o, groove: 0.35, chain: [T, LEG, 0.02, 0.2] });
     bumps(th, "vastus-lat", M.quads, [{ pts: [[62, 2], [70, 13], [68, 25], [52, 35], [30, 41]], w: [2.8, 3.6, 3.6, 2.8, 1.4], th: [1.0, 2.5, 2.7, 2.0, 0.6] }], { ...o, groove: 0.35 });
     bumps(th, "vastus-med", M.quads, [{ pts: [[-38, 18], [-48, 30], [-40, 37.5], [-22, 41.5]], w: [1.6, 2.9, 2.7, 1.4], th: [0.5, 2.6, 2.4, 0.6], p: 1.2 }], { ...o, groove: 0.4 });
@@ -686,14 +661,15 @@ export function sculptBody(frames: Frames): Sculpt {
   const sculpt = new Sculpt();
   A.emit(sculpt);
 
-  // Hair: the scalp offset inside a cap-shaped region.
-  sculpt.hairThickness = 0.5;
-  const hc = HL(-1.6, 2.6, 0);
+  // Hair: a short crop — the scalp offset above a hairline that rises from the nape to the forehead.
+  sculpt.hairThickness = 0.55;
   sculpt.hairRegion = (x, y, z) => {
-    const dx = (x - hc[0]) / 11.3;
-    const dy = (y - hc[1]) / 10.2;
-    const dz = z / 8.95;
-    return (Math.sqrt(dx * dx + dy * dy + dz * dz) - 1) * 9.5;
+    const lx = x - head.o[0];
+    const ly = y - head.o[1];
+    const lz = Math.abs(z - head.o[2]);
+    // Hairline height: temples recede a little at the sides.
+    const line = (lx > 0 ? 2.4 + 0.46 * lx : 2.4 + 0.78 * lx) - (lx > 2 ? Math.max(0, lz - 4) * 0.35 : 0);
+    return (line - ly) * 0.8;
   };
   sculpt.hairBox = { min: [head.o[0] - 14, head.o[1] - 6, -12], max: [head.o[0] + 12, head.o[1] + 14, 12] };
 

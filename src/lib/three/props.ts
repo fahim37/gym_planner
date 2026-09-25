@@ -3,7 +3,7 @@ import type { Prop } from "@/lib/anatomy/types";
 import { isEquipmentSlug } from "@/lib/equipment-catalog";
 import { buildEquipmentModel, type EquipmentModel } from "./equipment";
 import { buildExtraProp } from "./extra-props";
-import { toWorld, type BodyRig } from "./rig";
+import { toWorld, type BodyRig, type GripSpec, type Support } from "./rig";
 
 const iron = new THREE.MeshStandardMaterial({ color: 0x1f1f23, roughness: 0.55, metalness: 0.35 });
 const chrome = new THREE.MeshStandardMaterial({ color: 0xb8bcc4, roughness: 0.25, metalness: 0.9 });
@@ -81,19 +81,60 @@ const _d = new THREE.Vector3();
 
 type Follower = (rig: BodyRig) => void;
 
+const BAR_AXIS = new THREE.Vector3(0, 0, 1);
+const barGrip = (radius: number): GripSpec => ({ radius, axis: BAR_AXIS, style: "overhand" });
+const handle = (radius: number, style: GripSpec["style"] = "neutral"): GripSpec => ({ radius, style });
+
+/** Plug-in props held in the hands (see extra-props): how each hand grips them. */
+const EXTRA_GRIPS: Record<string, [GripSpec | null, GripSpec | null]> = {
+  "upper:ez-bar": [barGrip(0.014), barGrip(0.014)],
+  "upper:neutral-dumbbells": [handle(0.014), handle(0.014)],
+  "upper:landmine": [handle(0.025), handle(0.025)],
+  "upper:cable": [handle(0.014), handle(0.014)],
+  "upper:row-station": [handle(0.015), handle(0.015)],
+  "upper:dip-bars": [handle(0.02), handle(0.02)],
+  "upper:pec-deck": [handle(0.016), handle(0.016)],
+  "lower:held-dumbbell": [handle(0.014), handle(0.014)],
+  "lower:trap-bar": [handle(0.015), handle(0.015)],
+  "lower:hip-bar": [barGrip(0.014), barGrip(0.014)],
+  "lower:low-cable": [handle(0.014), handle(0.014)],
+  "lower:smith": [barGrip(0.014), barGrip(0.014)],
+  "lower:front-rack": [barGrip(0.014), barGrip(0.014)],
+  "core:ab-wheel": [handle(0.014), handle(0.014)],
+  "core:side-cable": [handle(0.014), handle(0.014)],
+  "core:medicine-ball": [handle(0.06), handle(0.06)],
+};
+
 /** Equipment for one exercise: static pieces plus pieces that follow the hands. */
 export class PropSet {
   readonly group = new THREE.Group();
   private readonly followers: Follower[] = [];
   private readonly disposers: (() => void)[] = [];
+  /** How each hand ([side 0, side 1]) holds the equipment; null = free hand. */
+  private readonly grips: [GripSpec | null, GripSpec | null] = [null, null];
+  /** Surfaces a free hand can rest on (benches, boxes). */
+  private readonly supports: Support[] = [];
+  private supportsSent: BodyRig | null = null;
 
   constructor(props: Prop[]) {
     for (const p of props) this.add(p);
   }
 
+  private grip(a: GripSpec | null, b: GripSpec | null = a) {
+    this.grips[0] ??= a;
+    this.grips[1] ??= b;
+  }
+
+  private support(x1: number, x2: number, top: number, z = 0, width = 0.3) {
+    const a = toWorld([Math.min(x1, x2), top, 0]);
+    const b = toWorld([Math.max(x1, x2), top, 0]);
+    this.supports.push({ y: a.y, minX: a.x, maxX: b.x, minZ: z - width / 2 - 0.1, maxZ: z + width / 2 + 0.1 });
+  }
+
   private add(p: Prop) {
     switch (p.type) {
       case "barbell": {
+        this.grip(barGrip(0.014));
         const bar = barbell(p.plate ?? "large");
         this.group.add(bar);
         this.followers.push((rig) => {
@@ -102,9 +143,8 @@ export class PropSet {
             bar.position.copy(j.chest).addScaledVector(j.up, 0.035).addScaledVector(j.chestForward, -0.09);
             bar.position.z = 0;
           } else {
-            bar.position.copy(j.sides[0].hand).add(j.sides[1].hand).multiplyScalar(0.5);
-            _a.copy(j.sides[0].wrist).add(j.sides[1].wrist).multiplyScalar(0.5);
-            bar.position.lerp(_a, 0.35);
+            // In the closed fists: the grip centres of both hands.
+            bar.position.copy(j.sides[0].grip).add(j.sides[1].grip).multiplyScalar(0.5);
             bar.position.z = 0;
           }
         });
@@ -112,6 +152,9 @@ export class PropSet {
       }
       case "dumbbell": {
         const count = p.hands === "near" || p.hands === "shared" ? 1 : 2;
+        if (p.hands === "shared") this.grip(handle(0.045));
+        else if (p.hands === "near") this.grip(handle(0.014), null);
+        else this.grip(handle(0.014));
         const bells = Array.from({ length: count }, () => dumbbell());
         bells.forEach((b) => this.group.add(b));
         this.followers.push((rig) => {
@@ -125,30 +168,30 @@ export class PropSet {
               b.quaternion.setFromUnitVectors(Z_AXIS, _d);
               return;
             }
+            // The handle sits in the closed fist, along the knuckles.
             const s = j.sides[i];
-            b.position.copy(s.hand).lerp(s.wrist, 0.3);
-            // Handle runs across the palm: perpendicular to the forearm, mostly sideways.
-            _d.subVectors(s.hand, s.elbow).normalize();
-            _a.set(0, 0, 1).addScaledVector(_d, -_d.z);
-            if (_a.lengthSq() < 0.05) _a.copy(j.chestForward);
-            b.quaternion.setFromUnitVectors(Z_AXIS, _a.normalize());
+            b.position.copy(s.grip);
+            b.quaternion.setFromUnitVectors(Z_AXIS, s.gripAxis);
           });
         });
         break;
       }
       case "kettlebell": {
+        this.grip(barGrip(0.012));
         const kb = kettlebell();
         this.group.add(kb);
         this.followers.push((rig) => {
           const j = rig.joints!;
-          kb.position.copy(j.sides[0].hand).add(j.sides[1].hand).multiplyScalar(0.5);
-          kb.position.z = 0;
           _d.subVectors(j.sides[0].hand, j.sides[0].elbow).normalize();
           kb.quaternion.setFromUnitVectors(_b.set(0, -1, 0), _d);
+          // The top of the handle arc (0.02 above the group origin) sits in the fists.
+          kb.position.copy(j.sides[0].grip).add(j.sides[1].grip).multiplyScalar(0.5).addScaledVector(_d, 0.02);
+          kb.position.z = 0;
         });
         break;
       }
       case "bench": {
+        this.support(p.from, p.to, p.top, (p.z ?? 0) / 100);
         const g = new THREE.Group();
         g.add(box(p.from, p.to, p.top, p.top + 8, 0.3, pad));
         const legW = 4;
@@ -173,12 +216,14 @@ export class PropSet {
         break;
       }
       case "box": {
+        this.support(p.from, p.to, p.top, (p.z ?? 0) / 100, (p.width ?? 40) / 100);
         const b = box(p.from, p.to, p.top, p.bottom ?? 250, (p.width ?? 40) / 100, pad);
         b.position.z = (p.z ?? 0) / 100;
         this.group.add(b);
         break;
       }
       case "pullupBar": {
+        this.grip(barGrip(0.016));
         const y = toWorld([p.x, p.y, 0]);
         this.group.add(rod(new THREE.Vector3(y.x, y.y, -0.6), new THREE.Vector3(y.x, y.y, 0.6), 0.016, chrome));
         for (const s of [1, -1]) {
@@ -203,13 +248,16 @@ export class PropSet {
         cable.position.copy(pulley);
         this.group.add(cable);
         const half = p.handle === "bar" ? 0.3 : p.handle === "rope" ? 0.07 : 0.06;
-        const handle = rod(new THREE.Vector3(0, 0, -half), new THREE.Vector3(0, 0, half), p.handle === "rope" ? 0.018 : 0.013, p.handle === "rope" ? cableMat : chrome);
-        this.group.add(handle);
+        if (p.handle === "bar") this.grip(barGrip(0.013));
+        else if (p.handle === "rope") this.grip(handle(0.018));
+        else this.grip(handle(0.013), null);
+        const handleMesh = rod(new THREE.Vector3(0, 0, -half), new THREE.Vector3(0, 0, half), p.handle === "rope" ? 0.018 : 0.013, p.handle === "rope" ? cableMat : chrome);
+        this.group.add(handleMesh);
         this.followers.push((rig) => {
           const j = rig.joints!;
-          if (p.handle === "single") handle.position.copy(j.sides[0].hand);
-          else handle.position.copy(j.sides[0].hand).add(j.sides[1].hand).multiplyScalar(0.5).setZ(0);
-          _d.subVectors(handle.position, pulley);
+          if (p.handle === "single") handleMesh.position.copy(j.sides[0].grip);
+          else handleMesh.position.copy(j.sides[0].grip).add(j.sides[1].grip).multiplyScalar(0.5).setZ(0);
+          _d.subVectors(handleMesh.position, pulley);
           const length = _d.length();
           cable.quaternion.setFromUnitVectors(_b.set(0, -1, 0), _d.normalize());
           cable.scale.set(1, length, 1);
@@ -223,6 +271,8 @@ export class PropSet {
         break;
       }
       case "extra": {
+        const g = EXTRA_GRIPS[p.kind];
+        if (g) this.grip(g[0], g[1]);
         const built = buildExtraProp(p.kind, p.params ?? {});
         if (!built) break;
         built.object.userData.external = true;
@@ -246,6 +296,12 @@ export class PropSet {
   }
 
   update(rig: BodyRig) {
+    if (this.supportsSent !== rig) {
+      rig.setSupports(this.supports);
+      this.supportsSent = rig;
+    }
+    // Close the hands first so followers read the grip centres of this pose.
+    rig.setGrips(this.grips);
     for (const f of this.followers) f(rig);
   }
 

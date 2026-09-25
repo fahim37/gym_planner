@@ -1,10 +1,24 @@
 import * as THREE from "three";
 import type { EquipmentSlug } from "@/lib/equipment-catalog";
-import { exerciseMat } from "./accessories";
+import { abWheel, exerciseMat, foamRoller, medicineBall } from "./accessories";
+import { landmine, trapBar, weightPlates } from "./bars-and-plates";
 import { adjustableBench, flatBench, powerRack } from "./benches";
 import { exerciseBike, rowingMachine, treadmill } from "./cardio";
+import { airBike, elliptical, stairClimber } from "./cardio-extra";
 import { barbell, dumbbells, ezCurlBar, kettlebell } from "./free-weights";
 import { cableMachine, latPulldown, legExtension, legPress, smithMachine } from "./machines";
+import { hackSquat, seatedCalfRaise } from "./plate-loaded";
+import { battleRopes, resistanceBands } from "./ropes-and-bands";
+import {
+  assistedPullUp,
+  chestPressMachine,
+  hipAbduction,
+  pecDeck,
+  seatedCableRow,
+  seatedLegCurl,
+  shoulderPressMachine,
+} from "./selectorized";
+import { dipStation, hyperextensionBench, plyoBox, preacherBench } from "./stations";
 
 /**
  * A procedurally built 3D model of one piece of gym equipment.
@@ -43,6 +57,30 @@ const BUILDERS: Partial<Record<EquipmentSlug, () => EquipmentModel>> = {
   "rowing-machine": rowingMachine,
   "exercise-bike": exerciseBike,
   "exercise-mat": exerciseMat,
+  "trap-bar": trapBar,
+  "weight-plates": weightPlates,
+  "medicine-ball": medicineBall,
+  landmine,
+  "dip-station": dipStation,
+  "preacher-bench": preacherBench,
+  "hyperextension-bench": hyperextensionBench,
+  "plyo-box": plyoBox,
+  "pec-deck": pecDeck,
+  "seated-cable-row": seatedCableRow,
+  "chest-press-machine": chestPressMachine,
+  "shoulder-press-machine": shoulderPressMachine,
+  "seated-leg-curl": seatedLegCurl,
+  "hack-squat": hackSquat,
+  "hip-abduction": hipAbduction,
+  "seated-calf-raise": seatedCalfRaise,
+  "assisted-pull-up": assistedPullUp,
+  elliptical,
+  "stair-climber": stairClimber,
+  "air-bike": airBike,
+  "resistance-bands": resistanceBands,
+  "ab-wheel": abWheel,
+  "battle-ropes": battleRopes,
+  "foam-roller": foamRoller,
 };
 
 /** Builds the model for one catalogue slug (browser only: textures use canvas). */

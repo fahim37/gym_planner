@@ -22,7 +22,7 @@ import { mats, textLabel } from "./materials";
 import { loadPlates, olympicBar, rubberFoot, sleeve } from "./parts";
 
 /** Sleeves spin while active and settle back to their rest orientation. */
-function spinner(groups: THREE.Group[], speed: number) {
+export function spinner(groups: THREE.Group[], speed: number) {
   const tick = new Ticker();
   let angle = 0;
   let omega = 0;
