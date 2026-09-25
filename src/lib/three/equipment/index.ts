@@ -25,7 +25,8 @@ export interface EquipmentModel {
   dispose(): void;
 }
 
-const BUILDERS: Record<EquipmentSlug, () => EquipmentModel> = {
+/** Partial while new catalogue entries are being modelled; missing ones render a neutral placeholder. */
+const BUILDERS: Partial<Record<EquipmentSlug, () => EquipmentModel>> = {
   barbell,
   dumbbells,
   kettlebell,
@@ -46,7 +47,26 @@ const BUILDERS: Record<EquipmentSlug, () => EquipmentModel> = {
 
 /** Builds the model for one catalogue slug (browser only: textures use canvas). */
 export function buildEquipmentModel(slug: EquipmentSlug): EquipmentModel {
-  return BUILDERS[slug]();
+  return (BUILDERS[slug] ?? placeholder)();
+}
+
+/** Stand-in for a catalogue entry that has no model yet: a soft grey plinth, no hotspots. */
+function placeholder(): EquipmentModel {
+  const group = new THREE.Group();
+  const geo = new THREE.BoxGeometry(0.8, 0.5, 0.5);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x3f3f46, roughness: 0.8 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.y = 0.25;
+  mesh.castShadow = true;
+  group.add(mesh);
+  return {
+    group,
+    hotspots: {},
+    dispose: () => {
+      geo.dispose();
+      mat.dispose();
+    },
+  };
 }
 
 /**

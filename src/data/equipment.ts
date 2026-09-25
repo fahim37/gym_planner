@@ -8,7 +8,8 @@ import {
 import type { EquipmentContent, EquipmentInfo, EquipmentSummary } from "@/lib/equipment-types";
 
 /** Guide content for every catalogue entry; `parts` must cover every catalogue part id. */
-const CONTENT: Record<EquipmentSlug, EquipmentContent> = {
+/** Partial while new catalogue entries are being written; entries without content are left out of the guide. */
+const CONTENT: Partial<Record<EquipmentSlug, EquipmentContent>> = {
   // ─────────────────────────── FREE WEIGHTS ───────────────────────────
   barbell: {
     summary: "The 20 kg bar behind squats, deadlifts, presses and rows — the backbone of strength training.",
@@ -804,8 +805,10 @@ export function parseCategory(value: string | null | undefined): EquipmentCatego
   return EQUIPMENT_CATEGORIES.find((c) => c.toLowerCase() === v || categorySlug(c) === v);
 }
 
-export const EQUIPMENT: EquipmentInfo[] = EQUIPMENT_CATALOG.map((entry) => {
-  const { parts: partText, ...content } = CONTENT[entry.slug];
+export const EQUIPMENT: EquipmentInfo[] = EQUIPMENT_CATALOG.flatMap((entry) => {
+  const written = CONTENT[entry.slug];
+  if (!written) return [];
+  const { parts: partText, ...content } = written;
   return {
     slug: entry.slug,
     name: entry.name,
