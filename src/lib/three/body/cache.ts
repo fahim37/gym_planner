@@ -57,7 +57,17 @@ export function loadBodyData(): Promise<BodyData> {
     const key = `${VERSION}-${source}-${tier}`;
     const cached = await readCache(key);
     const req: WorkerRequest = source === "sculpted" ? { kind: "sculpted", levels: SUBDIVISION[tier] } : { kind: "procedural", opts: MESH_TIERS[tier] };
-    const d = cached ?? (await generate(req));
+    let d = cached;
+    if (!d) {
+      try {
+        d = await generate(req);
+      } catch (err) {
+        // The sculpted asset failed (decode/decompression): fall back to the procedural body.
+        if (req.kind !== "sculpted") throw err;
+        console.warn("[body] sculpted body failed, using the procedural one", err);
+        d = await generate({ kind: "procedural", opts: MESH_TIERS[tier] });
+      }
+    }
     if (!cached) void writeCache(key, d);
     data = d;
     if (process.env.NODE_ENV !== "production") console.info("[body]", cached ? "cached" : "generated", d.stats);
@@ -85,6 +95,10 @@ async function generate(req: WorkerRequest): Promise<BodyData> {
       worker.onmessage = (e: MessageEvent<BodyData>) => {
         worker.terminate();
         resolve(e.data);
+      };
+      worker.onmessageerror = (e) => {
+        worker.terminate();
+        reject(e);
       };
       worker.onerror = (e) => {
         worker.terminate();
