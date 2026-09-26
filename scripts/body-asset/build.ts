@@ -63,9 +63,9 @@ const TARGETS: [string, number][] = [
   ["macrodetails/universal-male-young-maxmuscle-minweight", 0.6],
   ["macrodetails/universal-male-young-maxmuscle-averageweight", 0.4],
   ["macrodetails/proportions/male-young-maxmuscle-averageweight-idealproportions", 0.8],
-  ["torso/torso-vshape-incr", 0.8],
-  ["torso/torso-muscle-dorsi-incr", 0.9],
-  ["torso/torso-muscle-pectoral-incr", 0.7],
+  ["torso/torso-vshape-incr", 0.45],
+  ["torso/torso-muscle-dorsi-incr", 0.35],
+  ["torso/torso-muscle-pectoral-incr", 0.4],
   ["stomach/stomach-tone-incr", 1],
   ...["r", "l"].flatMap((s): [string, number][] => [
     [`armslegs/${s}-upperarm-muscle-incr`, 1],
@@ -218,7 +218,10 @@ const ourNeck = fo(B_NECK);
 const torsoScale = len(sub(ourNeck, ourHipC)) / len(sub(mhNeck, mhHipC));
 /** Overall size ratio (our bind figure vs MakeHuman), used for limb thickness. */
 const SIZE = 1.1;
-const TORSO = segmentMap(mhHipC, mhNeck, ourHipC, ourNeck, 1.13, [1, 0, 0], [1, 0, 0]);
+// The MakeHuman neck base sits a few cm above our rig's neck joint, so the shoulders
+// land close to the rig's shoulder joints without being pulled up (no shrug).
+const NECK_LIFT = 7;
+const TORSO = segmentMap(mhHipC, mhNeck, ourHipC, add(ourNeck, [0, NECK_LIFT, 0]), 0.96, [1, 0, 0], [1, 0, 0]);
 const maps = new Map<string, Affine>();
 for (const b of Object.keys(skel.bones)) maps.set(b, TORSO);
 // Head: scaled about the eyes and moved so the eyes sit where the rig's head expects them.
@@ -251,7 +254,9 @@ for (let i = 0; i < 2; i++) {
   const palmMh = mhPalm(s);
   // Shoulder girdle: from the (torso-mapped) sternal end out to our shoulder joint.
   const clav = bHead(`clavicle${s}`);
-  const girdle = segmentMap(clav, bHead(`upperarm01${s}`), apply(TORSO, clav), shoulder, q);
+  // Keep the shoulder mass a little below the rig joint (relaxed, not shrugged).
+  const girdle = segmentMap(clav, bHead(`upperarm01${s}`), apply(TORSO, clav), add(shoulder, [0, -1.5, 0]), q);
+  if (i === 0) console.log("shoulder: torso-mapped", apply(TORSO, bHead(`upperarm01${s}`)).map((x) => x.toFixed(1)).join(","), "rig", shoulder.map((x) => x.toFixed(1)).join(","));
   maps.set(`clavicle${s}`, girdle);
   maps.set(`shoulder01${s}`, girdle);
   const upper = segmentMap(bHead(`upperarm01${s}`), bHead(`lowerarm01${s}`), shoulder, elbow, q);
@@ -621,7 +626,7 @@ for (let v = 0; v < NV; v++) {
   extra[v * 4 + 3] = hairD;
   seg[v * 4 + 2] = Math.round(((shortD + 3) / 6) * 255);
   // A little volume: the crop on the scalp, the fabric of the shorts.
-  const lift = 0.45 * (1 - smooth(-0.4, 0.3, hairD)) + 0.3 * (1 - smooth(0.2, 0.6, shortD));
+  const lift = 0.45 * (1 - smooth(-0.4, 0.3, hairD)) + 0.22 * (1 - smooth(-1.2, 1.2, shortD));
   if (lift > 0) body[v] = add(p, mul(normals[v], lift));
 }
 

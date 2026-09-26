@@ -124,7 +124,7 @@ export class BodyRig {
     computeAnchors(data, this.uniforms.uAnchor.value);
     // The sculpted body is smooth: carve muscle borders in the shader and soften the fibres.
     const sculpted = !!data.stats.regions.sculpted;
-    this.uniforms.uDefine.value = sculpted ? 1 : 0;
+    this.uniforms.uDefine.value = sculpted ? 0.6 : 0;
     this.uniforms.uDetail.value = sculpted ? 0.55 : 1;
     const geometry = sharedGeometry(data);
     const body = new THREE.Mesh(geometry, createBodyMaterial(this.uniforms));

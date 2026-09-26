@@ -10,7 +10,14 @@ import type { Highlights } from "@/lib/three/rig";
 import type { Stage } from "@/lib/three/stage";
 import BottomSheet from "./BottomSheet";
 import ExerciseThumb from "./ExerciseThumb";
-import { ChevronRight } from "./icons";
+import { ChevronRight, CollapseIcon, ExpandIcon } from "./icons";
+
+type FullscreenEl = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
+type FullscreenDoc = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => void };
+const fullscreenElement = () => {
+  const d = document as FullscreenDoc;
+  return d.fullscreenElement ?? d.webkitFullscreenElement ?? null;
+};
 
 /** Relaxed A-pose so every muscle is visible and clickable. */
 const A_POSE: Pose = {
@@ -83,6 +90,8 @@ export default function BodyExplorer({ highlights = {}, navigate = true, autoRot
   const [ready, setReady] = useState(false);
   const selectedRef = useRef<MuscleId | null>(null);
   const highlightKey = JSON.stringify(highlights);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -218,6 +227,64 @@ export default function BodyExplorer({ highlights = {}, navigate = true, autoRot
     };
   }, [highlightKey, navigate, autoRotate, view, router]);
 
+  // Expanded view: real fullscreen where supported, a fixed overlay otherwise (iPhone).
+  const toggleExpanded = async () => {
+    const el = rootRef.current as FullscreenEl | null;
+    if (!expanded) {
+      setExpanded(true);
+      if (!el) return;
+      try {
+        if (el.requestFullscreen && document.fullscreenEnabled) await el.requestFullscreen({ navigationUI: "hide" });
+        else await el.webkitRequestFullscreen?.();
+      } catch {
+        // Fullscreen refused: the CSS overlay still covers the screen.
+      }
+    } else {
+      setExpanded(false);
+      const d = document as FullscreenDoc;
+      if (fullscreenElement()) {
+        if (d.exitFullscreen) d.exitFullscreen().catch(() => undefined);
+        else d.webkitExitFullscreen?.();
+      }
+    }
+  };
+
+  useEffect(() => {
+    const s = stageRef.current;
+    const canvas = canvasRef.current;
+    // Expanded: touch rotates and pinch-zooms the figure instead of scrolling the page.
+    if (canvas) canvas.style.touchAction = expanded ? "none" : "pan-y";
+    if (s?.controls) s.controls.enableZoom = expanded;
+    if (!expanded) return;
+    const root = document.documentElement;
+    root.classList.add("viewer-expanded");
+    let wasFullscreen = false;
+    const onFullscreenChange = () => {
+      if (fullscreenElement()) wasFullscreen = true;
+      else if (wasFullscreen) setExpanded(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      root.classList.remove("viewer-expanded");
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", onFullscreenChange);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [expanded, ready]);
+
+  // Leave fullscreen if the explorer unmounts while expanded.
+  useEffect(() => {
+    const el = rootRef.current;
+    return () => {
+      if (el && fullscreenElement() === el) (document as FullscreenDoc).exitFullscreen?.().catch(() => undefined);
+    };
+  }, []);
+
   const closeSheet = () => {
     selectedRef.current = null;
     stageRef.current?.rig.setHovered(null);
@@ -225,8 +292,24 @@ export default function BodyExplorer({ highlights = {}, navigate = true, autoRot
   };
 
   return (
-    <div className={`relative overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-white via-zinc-100 to-zinc-300 ${className ?? ""}`}>
-      <canvas ref={canvasRef} className="block h-full w-full touch-pan-y" aria-label="Interactive 3D muscle map" />
+    <div
+      ref={rootRef}
+      className={
+        expanded
+          ? "fixed inset-0 z-[100] overflow-hidden bg-gradient-to-b from-white via-zinc-100 to-zinc-300 pt-safe pb-safe"
+          : `relative overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-white via-zinc-100 to-zinc-300 ${className ?? ""}`
+      }
+    >
+      <canvas ref={canvasRef} className={`block h-full w-full ${expanded ? "touch-none" : "touch-pan-y"}`} aria-label="Interactive 3D muscle map" />
+      <button
+        type="button"
+        onClick={toggleExpanded}
+        aria-label={expanded ? "Exit full screen" : "Full screen"}
+        className="glass-hud absolute right-3 z-20 grid h-11 w-11 place-items-center rounded-full text-white transition-transform duration-300 ease-spring active:scale-90"
+        style={{ top: expanded ? "max(0.75rem, env(safe-area-inset-top))" : "0.75rem" }}
+      >
+        {expanded ? <CollapseIcon size={18} /> : <ExpandIcon size={18} />}
+      </button>
       {!ready && <div className="skeleton pointer-events-none absolute inset-0 opacity-60" />}
       <div
         ref={tipRef}
@@ -242,7 +325,7 @@ export default function BodyExplorer({ highlights = {}, navigate = true, autoRot
         )}
       </div>
       <p className="pointer-events-none absolute bottom-3 left-0 right-0 text-center text-xs font-medium text-zinc-500">
-        Drag to rotate · {navigate ? "tap a muscle to explore it" : "hover a muscle to name it"}
+        {expanded ? "Drag to rotate · pinch to zoom · " : "Drag to rotate · "}{navigate ? "tap a muscle to explore it" : "hover a muscle to name it"}
       </p>
       <BottomSheet open={selected !== null} onClose={closeSheet} label={selected ? MUSCLES[selected].name : "Muscle"}>
         {selected && <MuscleSheet id={selected} />}
