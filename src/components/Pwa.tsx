@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CheckIcon, CloseIcon } from "./icons";
 
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
 
@@ -108,13 +109,12 @@ export default function Pwa() {
     setInstallEvent(null);
   };
 
-  const card = "glass pointer-events-auto flex items-center gap-3 rounded-2xl px-4 py-3 text-sm shadow-xl animate-rise";
+  const card = "glass pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-[1.4rem] px-4 py-3 text-md leading-snug animate-rise";
 
   return (
     <div
       data-app-chrome
-      className="pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4"
-      style={{ bottom: "calc(var(--tabbar-offset, 0px) + 0.75rem)" }}
+      className="pwa-toasts pointer-events-none fixed inset-x-0 bottom-[calc(var(--tabbar-offset)+0.75rem)] z-50 flex flex-col items-center gap-2 px-4 md:bottom-[calc(var(--safe-bottom)+1rem)]"
       aria-live="polite"
     >
       {offline && (
@@ -125,12 +125,14 @@ export default function Pwa() {
       )}
       {toast && (
         <div className={card}>
-          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-400/20 text-emerald-300">✓</span>
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-400/20 text-emerald-300">
+            <CheckIcon size={15} strokeWidth={3} />
+          </span>
           <span className="text-zinc-200">{toast}</span>
         </div>
       )}
       {(installEvent || iosHint) && (
-        <div className={`${card} max-w-md`}>
+        <div className={`${card} py-2 pr-1.5`}>
           <span className="min-w-0 flex-1 text-zinc-200">
             {installEvent ? (
               <>
@@ -143,12 +145,21 @@ export default function Pwa() {
             )}
           </span>
           {installEvent && (
-            <button type="button" onClick={install} className="h-9 shrink-0 rounded-full bg-amber-300 px-4 text-sm font-bold text-zinc-900 active:scale-95">
+            <button
+              type="button"
+              onClick={install}
+              className="h-11 shrink-0 rounded-full bg-amber-300 px-5 text-sm font-bold text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-transform duration-300 ease-spring active:scale-95"
+            >
               Install
             </button>
           )}
-          <button type="button" onClick={dismiss} aria-label="Dismiss" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-zinc-400 hover:text-white">
-            ✕
+          <button
+            type="button"
+            onClick={dismiss}
+            aria-label="Dismiss"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-zinc-400 transition-transform duration-300 ease-spring hover:text-white active:scale-90"
+          >
+            <CloseIcon size={18} />
           </button>
         </div>
       )}

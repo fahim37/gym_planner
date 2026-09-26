@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ComponentType, type MouseEvent, type ReactNode } from "react";
 import { SITE } from "@/config/site";
+import { scrollBehavior } from "@/lib/motion";
 import { Logo } from "./Logo";
 import {
   currentKey,
@@ -61,7 +62,7 @@ function parentOf(pathname: string) {
 function scrollTopIfCurrent(e: MouseEvent, pathname: string, href: string) {
   if (pathname !== href) return;
   e.preventDefault();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo({ top: 0, behavior: scrollBehavior() });
 }
 
 export function SiteHeader() {
@@ -85,17 +86,17 @@ export function SiteHeader() {
     router.back();
   };
   return (
-    <header data-app-chrome className={`glass sticky top-0 z-30 pt-safe ${isFocusRoute(pathname) ? "hidden md:block" : ""}`}>
+    <header data-app-chrome className={`glass px-safe sticky top-0 z-30 pt-safe ${isFocusRoute(pathname) ? "hidden md:block" : ""}`}>
       <div className="mx-auto flex h-[var(--topbar-h)] max-w-6xl items-center justify-between gap-2 px-4">
         <div className="flex min-w-0 items-center">
           {parent && (
             <Link
               href={parent.href}
               onClick={goBack}
-              className="glass-chip -ml-1.5 flex h-10 items-center gap-0.5 rounded-full pl-1 pr-3.5 text-sm font-semibold text-amber-300 transition-transform duration-300 ease-spring active:scale-90 md:hidden"
+              className="glass-chip -ml-1.5 flex h-11 items-center gap-0.5 rounded-full pl-1.5 pr-4 text-base font-semibold text-amber-300 transition-transform duration-300 ease-spring active:scale-90 md:hidden"
             >
               <ChevronLeft size={22} />
-              <span className="max-w-[9rem] truncate">{backLabel ?? parent.label}</span>
+              <span className="max-w-[10rem] truncate">{backLabel ?? parent.label}</span>
             </Link>
           )}
           <Link
@@ -114,7 +115,7 @@ export function SiteHeader() {
                 key={t.href}
                 href={t.href}
                 aria-current={active ? "page" : undefined}
-                className={`rounded-full px-3.5 py-1.5 transition-transform duration-300 ease-spring active:scale-95 ${
+                className={`flex h-10 items-center rounded-full px-4 transition-transform duration-300 ease-spring active:scale-95 ${
                   active ? "glass-chip text-white" : "text-zinc-300 hover:bg-white/10 hover:text-white"
                 }`}
               >
@@ -126,7 +127,7 @@ export function SiteHeader() {
         <Link
           href="/exercises#search"
           aria-label="Search exercises"
-          className="glass-chip -mr-1 grid h-10 w-10 place-items-center rounded-full text-zinc-200 transition-transform duration-300 ease-spring active:scale-90 md:hidden"
+          className="glass-chip -mr-1.5 grid h-11 w-11 place-items-center rounded-full text-zinc-200 transition-transform duration-300 ease-spring active:scale-90 md:hidden"
         >
           <SearchIcon size={20} />
         </Link>
@@ -191,7 +192,7 @@ export function TabBar() {
       ref={navRef}
       data-app-chrome
       aria-label="Tabs"
-      className="group/bar pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(var(--safe-bottom)+var(--tabbar-gap))] md:hidden"
+      className="group/bar pointer-events-none fixed inset-x-0 bottom-0 z-40 pb-[calc(var(--safe-bottom)+var(--tabbar-gap))] pl-[max(0.75rem,var(--safe-left))] pr-[max(0.75rem,var(--safe-right))] md:hidden"
     >
       <div className="glass pointer-events-auto relative mx-auto h-[var(--tabbar-h)] max-w-md origin-bottom rounded-full p-1.5 transition-transform duration-500 ease-spring group-data-[compact]/bar:translate-y-1.5 group-data-[compact]/bar:scale-[0.84]">
         <ul className="relative grid h-full grid-cols-5">
@@ -210,7 +211,7 @@ export function TabBar() {
                   href={href}
                   onClick={(e) => openTab(e, href)}
                   aria-current={active ? "page" : undefined}
-                  className={`group flex h-full flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-semibold tracking-wide ${
+                  className={`group flex h-full flex-col items-center justify-center gap-0.5 rounded-full text-2xs font-semibold tracking-[-0.01em] ${
                     active ? "text-amber-300" : "text-zinc-300"
                   }`}
                 >

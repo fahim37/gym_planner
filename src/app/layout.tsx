@@ -39,11 +39,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <GlassEffects />
         <SiteHeader />
         {/* Bottom padding keeps every route's last content clear of the floating tab bar (phones). */}
-        <main className="flex flex-1 flex-col pb-[var(--tabbar-offset)]">
+        {/* Side padding keeps content clear of the notch in landscape (viewport-fit=cover). */}
+        <main className="px-safe flex flex-1 flex-col pb-[var(--tabbar-offset)]">
           <PageTransition>{children}</PageTransition>
           <ChromeOnly>
-            <footer className="px-4 py-8 text-center text-xs text-zinc-500">
-              <p>
+            <footer className="px-4 py-8 text-center text-xs leading-relaxed text-zinc-400">
+              <p className="mx-auto max-w-md">
                 {SITE.gym} · Workout guide. Check with a trainer or doctor before starting a new program, and stop if anything
                 hurts.
               </p>

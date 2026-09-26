@@ -35,6 +35,22 @@
 }
 
 @theme {
+  /*
+   * Type scale (phone-first). Tailwind's defaults cover the rest:
+   *   text-2xs   11px  uppercase badges only (bold, high contrast)
+   *   text-xs    12px  eyebrows, tiny captions
+   *   text-meta  13px  secondary / meta lines under a title
+   *   text-sm    14px  compact UI text (chips, buttons)
+   *   text-md    15px  body copy in dense lists (tips, mistakes, notes)
+   *   text-base  16px  body copy, list titles
+   */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.25rem;
+  --text-md: 0.9375rem;
+  --text-md--line-height: 1.45rem;
+
   /* Spring easings (CSS linear()). `ease-spring` settles with a small overshoot, `ease-spring-soft` without. */
   --ease-spring: linear(0, 0.006, 0.025 2.8%, 0.101 6.1%, 0.539 18.9%, 0.721 25.3%, 0.849 31.5%, 0.937 38.1%, 0.968 41.8%, 0.991 45.7%, 1.006 50.1%, 1.015 55%, 1.017 63.9%, 1.001 85.6%, 1);
   --ease-spring-soft: cubic-bezier(0.2, 0.9, 0.25, 1);
@@ -49,6 +65,12 @@
   body {
     background: var(--background);
     color: var(--foreground);
+  }
+
+  /* Keyboard focus: one clear amber ring everywhere (pointer taps don't show it). */
+  :where(a[href], button, input, select, textarea, summary, [role="button"], [role="tab"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid #fcd34d;
+    outline-offset: 2px;
   }
 
   /* Buttons and links respond immediately to taps (no double-tap zoom delay). */
@@ -273,6 +295,44 @@ html.low-power .ambient > span {
   }
 }
 
+/* Uppercase label above a title or a section ("EXERCISE LIBRARY", "EQUIPMENT YOU'LL NEED"). Colour comes from the page. */
+@utility eyebrow {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Section heading inside a detail page: a step up from an eyebrow, still quiet next to the display title. */
+@utility section-label {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-zinc-300);
+}
+
+/* Grows the touch area of a small control to at least 44×44px without changing its look.
+   (The control must not clip its overflow.) */
+@utility hit {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    top: min(0px, calc(50% - 22px));
+    bottom: min(0px, calc(50% - 22px));
+    left: min(0px, calc(50% - 22px));
+    right: min(0px, calc(50% - 22px));
+  }
+}
+
+@utility px-safe {
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
 @utility pt-safe {
   padding-top: var(--safe-top);
 }
@@ -294,6 +354,13 @@ html.viewer-expanded [data-app-chrome] {
 /* Full-screen flows (workout player) have no tab bar to clear. */
 main:has([data-focus-route]) {
   padding-bottom: 0;
+}
+/* …and their main button sits at the bottom, so notices move to the top there. */
+@media (max-width: 767.98px) {
+  body:has([data-focus-route]) .pwa-toasts {
+    top: calc(var(--safe-top) + 4.25rem);
+    bottom: auto;
+  }
 }
 
 /* ---------- Motion ---------- */
