@@ -650,6 +650,111 @@ const CORE: Exercise[] = [
       })(),
     },
   },
+  {
+    slug: "hanging-knee-raise",
+    name: "Hanging Knee Raise",
+    region: "Core",
+    primary: ["abs"],
+    secondary: ["obliques", "forearms"],
+    equipment: ["Pull-up bar"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    summary: "Hang from a bar and drive your knees up to your chest — lower abs and a stronger grip in one move.",
+    steps: [
+      "Hang from a pull-up bar with straight arms, hands shoulder-width apart.",
+      "Pull your shoulders down slightly and brace your abs to stop any swing.",
+      "Bend your knees and raise them toward your chest, curling your pelvis up at the top.",
+      "Lower your legs slowly until they hang straight again.",
+    ],
+    tips: ["Think \"knees to chest\", not \"knees to hips\" — the pelvis curl is what works the abs.", "Pause a second at the top."],
+    mistakes: ["Swinging for momentum", "Dropping the legs fast", "Stopping when the thighs reach level"],
+    breathing: "Exhale as you raise your knees, inhale as you lower them.",
+    prescription: { sets: "3", reps: "12", rest: "60 s" },
+    animation: {
+      props: [{ type: "pullupBar", x: 165, y: 15 }],
+      frames: repFrames(
+        { hip: [165, 138], torso: -2, arms: [{ ik: { x: 165, y: 20, z: 28 }, pole: [0, 1, 0.5] }], legs: [{ angles: [4, 4], footFollowsShin: true }] },
+        { hip: [158, 134], torso: 14, head: 6, arms: [{ ik: { x: 165, y: 20, z: 28 }, pole: [0, 1, 0.5] }], legs: [{ angles: [108, 12], footFollowsShin: true }] },
+        { go: 1, back: 1.5, hold: 0.4, cues: ["Knees to your chest", "Lower with control"] },
+      ),
+    },
+  },
+  {
+    slug: "cable-crunch",
+    name: "Kneeling Cable Crunch",
+    region: "Core",
+    primary: ["abs"],
+    secondary: ["obliques"],
+    equipment: ["Cable"],
+    gear: ["cable-machine", "exercise-mat"],
+    level: "Intermediate",
+    mechanics: "Isolation",
+    summary: "Weighted crunch on the cable stack — the easiest way to add load and keep progressing your abs.",
+    steps: [
+      "Attach a rope to a high pulley and kneel a step back from the machine.",
+      "Hold the rope ends beside your head, hands by your ears.",
+      "Keep your hips still and crunch down, curling your ribs toward your pelvis.",
+      "Squeeze your abs at the bottom, then uncurl slowly back up.",
+    ],
+    tips: ["Your hips stay where they are — only the spine curls.", "Bring your elbows toward your thighs."],
+    mistakes: ["Sitting back onto the heels to move the weight", "Pulling with the arms", "Keeping the back flat instead of curling"],
+    breathing: "Exhale hard as you crunch down, inhale on the way up.",
+    prescription: { sets: "3", reps: "12–15", rest: "60 s" },
+    animation: {
+      camera: "side",
+      props: [MAT, { type: "cable", pulley: [212, 24], handle: "rope" }],
+      frames: (() => {
+        const knee: [number, number] = [152, 243.5];
+        const thigh = 12;
+        const pose = (torso: number, head: number): Pose => ({
+          hip: pelvisFor(knee[0] - 45 * Math.sin(thigh * DEG), knee[1] - 45 * Math.cos(thigh * DEG), torso),
+          torso,
+          head,
+          arms: [handLocal(10, -12, 8, [1, 0.8, 0.5])],
+          legs: [{ angles: [thigh, -90], foot: 180 }],
+        });
+        return repFrames(pose(18, 0), pose(68, 18), { go: 1, back: 1.4, hold: 0.4, cues: ["Crunch down", "Uncurl slowly"] });
+      })(),
+    },
+  },
+  {
+    slug: "dead-hang",
+    name: "Dead Hang",
+    region: "Arms",
+    primary: ["forearms"],
+    secondary: ["lats", "upper-back"],
+    equipment: ["Pull-up bar"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    hold: true,
+    summary: "Just hang on — builds serious grip strength and decompresses the spine after a desk day.",
+    steps: [
+      "Grab a pull-up bar with an overhand grip, hands shoulder-width apart.",
+      "Lift your feet and hang with straight arms.",
+      "Keep your shoulders gently engaged — not shrugged up to your ears.",
+      "Breathe and hold for as long as you can, then step down.",
+    ],
+    tips: ["Squeeze the bar as hard as you can the whole time.", "Log your time and try to beat it every week."],
+    mistakes: ["Swinging", "Bending the elbows", "Letting the shoulders fully collapse into the ears"],
+    breathing: "Breathe slowly and steadily; don't hold your breath.",
+    prescription: { sets: "2", reps: "max time", rest: "60–90 s" },
+    animation: {
+      props: [{ type: "pullupBar", x: 165, y: 15 }],
+      frames: (() => {
+        const hang = (y: number, head: number): Pose => ({
+          hip: [165, y],
+          torso: -1,
+          head,
+          arms: [{ ik: { x: 165, y: 20, z: 28 }, pole: [0, 1, 0.5] }],
+          legs: [{ angles: [4, 6], footFollowsShin: true }],
+        });
+        return [
+          { pose: hang(139, 0), dur: 2.2, cue: "Hang long, grip hard", rep: true },
+          { pose: hang(137.5, -3), dur: 2.2, cue: "Breathe and hold" },
+        ];
+      })(),
+    },
+  },
 ];
 
 

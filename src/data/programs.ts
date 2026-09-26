@@ -44,6 +44,65 @@ const coreChallenge: ProgramDay[] = Array.from({ length: 7 }, (_, i) => {
 
 export const PROGRAMS: Program[] = [
   {
+    slug: "my-gym-plan-v2",
+    name: "My Gym Plan — v2",
+    tagline: "One full leg day, two upper days. Same lifts, heavier over time.",
+    description:
+      "Saturday legs, Sunday Upper A (heavy / horizontal), Thursday Upper B (incline / vertical), with a 6-minute forearm block after both upper days. Rest 2 min on squat and RDL, 90 s on big lifts, 60 s on small ones. Never cut exercise #1 or #2. Progress rule: finish every set at the top of the rep range, then add a rep or 2.5 kg. Weeks 1–3 on legs: 2 sets and goblet squats in week 1, 3 light sets in week 2.",
+    level: "Intermediate",
+    equipment: "Full gym",
+    daysPerWeek: 3,
+    accent: "from-rose-500 to-orange-300",
+    days: [
+      {
+        title: "Saturday — Legs",
+        focus: "Quads, hamstrings, glutes, calves, core",
+        exercises: [
+          ex("barbell-back-squat", 4, "6–8", 120),
+          ex("barbell-romanian-deadlift", 3, "8", 120),
+          ex("leg-press", 3, "10–12", 90),
+          ex("lying-leg-curl", 3, "10–12", 60),
+          ex("standing-machine-calf-raise", 4, "12–15", 60),
+          ex("hanging-knee-raise", 3, "12", 60),
+        ],
+      },
+      {
+        title: "Sunday — Upper A",
+        focus: "Heavy / horizontal + forearms",
+        exercises: [
+          ex("barbell-bench-press", 4, "6–8", 90),
+          ex("bent-over-barbell-row", 4, "8–10", 90),
+          ex("seated-dumbbell-shoulder-press", 3, "8–10", 90),
+          ex("lat-pulldown", 3, "10–12", 90),
+          ex("dumbbell-lateral-raise", 3, "12–15", 60),
+          ex("barbell-curl", 3, "10", 15),
+          ex("cable-triceps-pushdown", 3, "12", 60),
+          ex("farmers-walk", 3, "30–40 s", 60),
+          ex("reverse-barbell-curl", 3, "12", 60),
+          ex("dumbbell-wrist-curl", 3, "15", 45),
+          ex("dead-hang", 2, "max", 60),
+        ],
+      },
+      {
+        title: "Thursday — Upper B",
+        focus: "Incline / vertical + forearms",
+        exercises: [
+          ex("incline-dumbbell-press", 4, "8–10", 90),
+          ex("pull-up", 4, "8–10", 90),
+          ex("seated-cable-row", 3, "10–12", 90),
+          ex("seated-dumbbell-shoulder-press", 3, "10", 90),
+          ex("cable-face-pull", 3, "15", 60),
+          ex("dumbbell-hammer-curl", 3, "12", 15),
+          ex("overhead-cable-triceps-extension", 3, "12", 60),
+          ex("farmers-walk", 3, "30–40 s", 60),
+          ex("reverse-barbell-curl", 3, "12", 60),
+          ex("dumbbell-wrist-curl", 3, "15", 45),
+          ex("dead-hang", 2, "max", 60),
+        ],
+      },
+    ],
+  },
+  {
     slug: "beginner-full-body",
     name: "Beginner Full Body",
     tagline: "3 days a week. Learn the big lifts.",
