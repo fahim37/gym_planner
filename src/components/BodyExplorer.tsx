@@ -46,10 +46,10 @@ function MuscleSheet({ id }: { id: MuscleId }) {
   const total = primary.length + secondary.length;
   return (
     <div className="pb-2">
-      <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-400">{muscle.region}</p>
+      <p className="eyebrow text-red-400">{muscle.region}</p>
       <h2 className="display mt-1 text-4xl">{muscle.name}</h2>
       <p className="mt-0.5 text-sm italic text-zinc-400">{muscle.latin}</p>
-      <p className="mt-3 text-zinc-200">{muscle.function}</p>
+      <p className="mt-3 leading-relaxed text-zinc-200">{muscle.function}</p>
       {top.length > 0 && (
         <ul className="mt-4 space-y-2">
           {top.map((e) => (
@@ -59,7 +59,7 @@ function MuscleSheet({ id }: { id: MuscleId }) {
                 className="glass-chip flex items-center gap-3 rounded-[1.25rem] p-2 pr-3 transition-transform duration-300 ease-spring active:scale-[0.97]"
               >
                 <ExerciseThumb slug={e.slug} className="h-12 w-12 shrink-0 rounded-xl" />
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold">{e.name}</span>
+                <span className="min-w-0 flex-1 line-clamp-2 text-md font-semibold leading-snug">{e.name}</span>
                 <ChevronRight size={16} className="text-zinc-500" />
               </Link>
             </li>
@@ -68,7 +68,7 @@ function MuscleSheet({ id }: { id: MuscleId }) {
       )}
       <Link
         href={`/muscles/${id}`}
-        className="mt-4 flex h-12 items-center justify-center rounded-full bg-amber-300 text-sm font-black text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-transform duration-300 ease-spring active:scale-95"
+        className="mt-4 flex h-12 items-center justify-center rounded-full bg-amber-300 text-base font-black text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-transform duration-300 ease-spring active:scale-95"
       >
         See {total} exercise{total === 1 ? "" : "s"}
       </Link>
@@ -305,7 +305,7 @@ export default function BodyExplorer({ highlights = {}, navigate = true, autoRot
       ref={rootRef}
       className={
         expanded
-          ? "fixed inset-0 z-[100] overflow-hidden bg-gradient-to-b from-white via-zinc-100 to-zinc-300 pt-safe pb-safe"
+          ? "fixed inset-0 z-[100] overflow-hidden bg-gradient-to-b from-white via-zinc-100 to-zinc-300 px-safe pt-safe pb-safe"
           : `relative overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-white via-zinc-100 to-zinc-300 ${className ?? ""}`
       }
     >
@@ -329,12 +329,12 @@ export default function BodyExplorer({ highlights = {}, navigate = true, autoRot
         {hover && (
           <>
             <div className="whitespace-nowrap text-sm font-bold text-white">{MUSCLES[hover].name}</div>
-            <div className="whitespace-nowrap text-[11px] text-zinc-400">{MUSCLES[hover].latin}</div>
+            <div className="whitespace-nowrap text-xs text-zinc-300">{MUSCLES[hover].latin}</div>
           </>
         )}
       </div>
-      <p className="pointer-events-none absolute bottom-3 left-0 right-0 text-center text-xs font-medium text-zinc-500">
-        {"Drag to rotate · pinch to zoom · "}{navigate ? "tap a muscle to explore it" : "hover a muscle to name it"}
+      <p className="pointer-events-none absolute bottom-3 left-0 right-0 text-balance px-4 text-center text-xs font-medium text-zinc-600">
+        {"Drag to rotate · pinch to zoom · "}{navigate ? "tap a muscle" : "hover a muscle"}
       </p>
       <BottomSheet open={selected !== null} onClose={closeSheet} label={selected ? MUSCLES[selected].name : "Muscle"}>
         {selected && <MuscleSheet id={selected} />}

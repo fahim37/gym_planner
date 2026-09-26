@@ -26,11 +26,11 @@ export default function ContinueCard({ className = "" }: { className?: string })
     >
       <div className={`absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b ${program.accent}`} />
       <div className="min-w-0 flex-1 pl-1">
-        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300">Continue your program</p>
-        <p className="mt-1 truncate text-lg font-black">
+        <p className="eyebrow text-amber-300">Continue your program</p>
+        <p className="mt-1 line-clamp-2 text-lg font-black leading-snug">
           {program.name} · {day.title}
         </p>
-        <p className="text-xs text-zinc-400">
+        <p className="mt-0.5 text-meta text-zinc-400">
           {day.focus} · {day.exercises.length} exercises · {done.length}/{program.days.length} done
         </p>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">

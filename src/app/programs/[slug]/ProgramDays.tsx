@@ -13,17 +13,21 @@ export default function ProgramDays({ program }: { program: Program }) {
 
   return (
     <>
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-zinc-400">
-          {done.length} of {program.days.length} workouts complete
+      <div className="mt-6 flex min-h-11 flex-wrap items-center justify-between gap-x-3">
+        <p className="text-sm text-zinc-300">
+          <span className="font-bold tabular-nums text-white">{done.length}</span> of {program.days.length} workouts complete
         </p>
         {done.length > 0 && (
-          <button type="button" onClick={reset} className="h-9 rounded-full px-3 text-xs font-semibold text-zinc-500 hover:text-zinc-300">
+          <button
+            type="button"
+            onClick={reset}
+            className="-mr-3 h-11 rounded-full px-3 text-meta font-semibold text-zinc-400 transition-transform duration-300 ease-spring hover:text-zinc-200 active:scale-95"
+          >
             Reset progress
           </button>
         )}
       </div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+      <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/10">
         <div
           className={`h-full origin-left bg-gradient-to-r ${program.accent} transition-transform duration-700 ease-spring`}
           style={{ transform: `scaleX(${done.length / program.days.length})` }}
@@ -44,16 +48,23 @@ export default function ProgramDays({ program }: { program: Program }) {
               style={{ animationDelay: `${Math.min(i, 6) * 50}ms` }}
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="rounded-full bg-white px-4 py-1 text-lg font-black text-zinc-900 shadow-[inset_0_-2px_0_rgba(0,0,0,0.08)]">
-                    {day.title.toUpperCase()}
-                  </span>
-                  <span className="truncate text-sm text-zinc-400">{day.focus}</span>
-                  {complete && (
-                    <span className="flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-300">
-                      <CheckIcon size={12} strokeWidth={3} /> Done
-                    </span>
-                  )}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="rounded-full bg-white px-4 py-1 text-lg font-black uppercase text-zinc-900 shadow-[inset_0_-2px_0_rgba(0,0,0,0.08)]">
+                      {day.title}
+                    </h2>
+                    {complete && (
+                      <span className="flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-1 text-xs font-bold text-emerald-300">
+                        <CheckIcon size={12} strokeWidth={3} /> Done
+                      </span>
+                    )}
+                    {isNext && !complete && (
+                      <span className="rounded-full bg-amber-300/15 px-2.5 py-1 text-xs font-bold text-amber-300">Up next</span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-md text-zinc-300">
+                    {day.focus} · {day.exercises.length} exercises
+                  </p>
                 </div>
                 <Link
                   href={`/programs/${program.slug}/day/${n}`}
@@ -77,8 +88,8 @@ export default function ProgramDays({ program }: { program: Program }) {
                       >
                         <ExerciseThumb slug={x.slug} className="h-16 w-16 shrink-0 rounded-[0.9rem]" />
                         <div className="min-w-0 flex-1">
-                          <div className="truncate font-semibold">{e.name}</div>
-                          <div className="text-xs font-extrabold uppercase text-amber-300">
+                          <div className="line-clamp-2 font-semibold leading-snug">{e.name}</div>
+                          <div className="mt-0.5 text-xs font-extrabold uppercase tracking-wide text-amber-300">
                             {x.sets} sets × {x.reps}
                           </div>
                         </div>

@@ -13,9 +13,9 @@ export default async function EquipmentPage({ searchParams }: PageProps<"/equipm
   const initial = parseCategory(typeof category === "string" ? category : undefined);
   const groups = equipmentByCategory().map((g) => ({ ...g, items: g.items.map(summarizeEquipment) }));
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:py-10">
-      <SectionTitle kicker="Gym floor guide" title="Know your equipment" />
-      <p className="-mt-3 mb-6 max-w-2xl text-zinc-300">
+    <div className="mx-auto max-w-6xl px-4 pb-10 pt-6 md:py-10">
+      <SectionTitle as="h1" kicker="Gym floor guide" title="Know your equipment" />
+      <p className="-mt-2 mb-6 max-w-2xl leading-relaxed text-zinc-300">
         Spin every machine, bench and bar in 3D, tap any part to see what it does, and learn how to set it up
         safely before your first set.
       </p>

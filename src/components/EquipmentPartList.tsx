@@ -32,10 +32,10 @@ export default function EquipmentPartList({ parts }: { parts: EquipmentPart[] })
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-white">{p.label}</span>
-                  <span className="shrink-0 text-[11px] font-semibold text-zinc-500">{on ? "Showing" : "Show in 3D"}</span>
+                  <span className="text-base font-bold text-white">{p.label}</span>
+                  <span className={`shrink-0 text-xs font-semibold ${on ? "text-amber-300" : "text-zinc-400"}`}>{on ? "Showing" : "Show in 3D"}</span>
                 </span>
-                <span className={`mt-0.5 block text-sm text-zinc-400 ${on ? "" : "line-clamp-2"}`}>{p.description}</span>
+                <span className={`mt-0.5 block text-md text-zinc-300 ${on ? "" : "line-clamp-2"}`}>{p.description}</span>
               </span>
             </button>
           </li>

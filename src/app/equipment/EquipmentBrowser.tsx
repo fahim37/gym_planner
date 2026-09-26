@@ -30,12 +30,12 @@ export default function EquipmentBrowser({ groups, initial }: { groups: Group[];
     `flex min-h-11 shrink-0 snap-start items-center gap-1.5 rounded-full px-4 text-sm font-semibold ${SPRING} active:scale-95 ${
       active ? GLASS_ACTIVE : GLASS_CHIP
     }`;
-  const count = (active: boolean) => `text-xs ${active ? "text-zinc-700" : "text-zinc-500"}`;
+  const count = (active: boolean) => `text-meta tabular-nums ${active ? "text-zinc-700" : "text-zinc-400"}`;
 
   return (
     <>
       <div
-        className="-mx-4 mb-6 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0 [&::-webkit-scrollbar]:hidden"
+        className="-mx-4 mb-6 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 py-1 [mask-image:linear-gradient(90deg,#000_calc(100%-28px),transparent)] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0 sm:[mask-image:none] [&::-webkit-scrollbar]:hidden"
         role="toolbar"
         aria-label="Filter by category"
       >
@@ -54,7 +54,7 @@ export default function EquipmentBrowser({ groups, initial }: { groups: Group[];
           <section key={g.slug} aria-labelledby={`cat-${g.slug}`}>
             <h2 id={`cat-${g.slug}`} className="display mb-4 flex items-baseline gap-2 text-2xl sm:text-3xl">
               {g.category}
-              <span className="text-sm font-bold not-italic text-zinc-500">{g.items.length}</span>
+              <span className="text-sm font-bold not-italic tabular-nums text-zinc-400">{g.items.length}</span>
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
               {g.items.map((item) => (

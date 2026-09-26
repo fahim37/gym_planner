@@ -38,11 +38,11 @@ export default async function MusclePage({ params }: PageProps<"/muscles/[id]">)
           className="aspect-square w-full md:aspect-[4/5]"
         />
         <div className="animate-rise">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-400">{muscle.region}</p>
+          <p className="eyebrow text-red-400">{muscle.region}</p>
           <h1 className="display mt-2 text-[2.75rem] sm:text-6xl">{muscle.name}</h1>
           <p className="mt-1 italic text-zinc-400">{muscle.latin}</p>
-          <p className="mt-4 max-w-lg text-lg text-zinc-200 md:mt-5">{muscle.function}</p>
-          <p className="mt-5 text-sm text-zinc-400">
+          <p className="mt-4 max-w-lg text-lg leading-relaxed text-zinc-200 md:mt-5">{muscle.function}</p>
+          <p className="mt-4 text-md text-zinc-400">
             {primary.length} exercise{primary.length === 1 ? "" : "s"} target it directly, {secondary.length} more work it as a
             helper.
           </p>
@@ -61,7 +61,7 @@ export default async function MusclePage({ params }: PageProps<"/muscles/[id]">)
       )}
       {secondary.length > 0 && (
         <section className="mt-10 md:mt-12">
-          <h2 className="display mb-5 text-3xl text-zinc-400">Also works it</h2>
+          <h2 className="display mb-5 text-3xl text-zinc-300">Also works it</h2>
           <Carousel item="basis-[46%] sm:basis-[31%]">
             {secondary.map((e) => (
               <ExerciseCard key={e.slug} exercise={e} />

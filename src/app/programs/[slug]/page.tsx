@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MetaBadges } from "@/components/ui";
 import { getProgram, PROGRAMS } from "@/data/programs";
 import ProgramDays from "./ProgramDays";
 
@@ -27,11 +28,9 @@ export default async function ProgramPage({ params }: PageProps<"/programs/[slug
       </nav>
       <div className="surface animate-rise relative overflow-hidden rounded-[1.75rem] p-5 sm:p-8">
         <div className={`absolute inset-x-0 top-0 h-2 bg-gradient-to-r ${program.accent}`} />
-        <div className="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-          <span>{program.level}</span>·<span>{program.daysPerWeek}× per week</span>·<span>{program.equipment}</span>
-        </div>
+        <MetaBadges items={[program.level, `${program.daysPerWeek}× per week`, program.equipment]} />
         <h1 className="display mt-3 text-[2.5rem] sm:text-5xl">{program.name}</h1>
-        <p className="mt-3 max-w-2xl text-zinc-300">{program.description}</p>
+        <p className="mt-3 max-w-2xl leading-relaxed text-zinc-300">{program.description}</p>
       </div>
       <ProgramDays program={program} />
     </div>

@@ -251,7 +251,7 @@ export default function EquipmentViewer({ slug, name, parts, className }: Props)
   return (
     <div
       ref={rootRef}
-      className={full ? "fixed inset-0 z-[60] flex flex-col bg-zinc-950" : `flex flex-col gap-3 ${className ?? ""}`}
+      className={full ? "fixed inset-0 z-[60] flex flex-col bg-zinc-950 px-safe pt-safe" : `flex flex-col gap-3 ${className ?? ""}`}
     >
       <div
         className={`relative isolate overflow-hidden bg-gradient-to-b from-white to-zinc-200 ${
@@ -354,7 +354,7 @@ export default function EquipmentViewer({ slug, name, parts, className }: Props)
 
         {status === "ready" && !touched && !active && (
           <p className="pointer-events-none absolute inset-x-0 bottom-3 z-10 text-center">
-            <span className={`animate-rise inline-block rounded-full px-3 py-1.5 text-xs font-semibold ${GLASS_HUD}`}>
+            <span className={`animate-rise inline-block rounded-full px-3 py-1.5 text-meta font-semibold ${GLASS_HUD}`}>
               Drag to spin · pinch to zoom{hasHotspots ? " · tap a part" : ""}
             </span>
           </p>
@@ -375,7 +375,7 @@ export default function EquipmentViewer({ slug, name, parts, className }: Props)
                 {activeIndex + 1}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                <p className="text-2xs font-bold uppercase tracking-widest text-zinc-400">
                   Part {activeIndex + 1} of {parts.length}
                 </p>
                 <h3 key={active.id} className="animate-fade text-base font-bold leading-tight">
@@ -398,7 +398,7 @@ export default function EquipmentViewer({ slug, name, parts, className }: Props)
                 </button>
               </div>
             </div>
-            <p key={active.id} className="animate-fade mt-2 text-sm leading-relaxed text-zinc-300">
+            <p key={active.id} className="animate-fade mt-2 text-md leading-relaxed text-zinc-200">
               {active.description}
             </p>
           </section>

@@ -132,24 +132,24 @@ function RestPanel({
             <span ref={numRef} className={`block font-black tabular-nums leading-none ${initial >= 60 ? "text-3xl" : "text-4xl"}`}>
               {initial >= 60 ? fmt(initial) : initial}
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Rest</span>
+            <span className="text-2xs font-bold uppercase tracking-[0.16em] text-zinc-400">Rest</span>
           </div>
         </div>
         {next && upNext ? (
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300">Up next</p>
+            <p className="eyebrow text-amber-300">Up next</p>
             <div className="glass-chip mt-2 flex items-center gap-3 rounded-[1.25rem] p-2">
               <ExerciseThumb slug={next.slug} eager className="h-14 w-14 shrink-0 rounded-[0.9rem]" />
               <div className="min-w-0">
-                <div className="truncate text-sm font-bold">{next.name}</div>
-                <div className="text-xs font-extrabold uppercase text-zinc-400">
+                <div className="line-clamp-2 text-sm font-bold leading-snug">{next.name}</div>
+                <div className="mt-0.5 text-xs font-extrabold uppercase text-zinc-300">
                   Set {upNext.set} of {upNext.item.sets} · {repsLabel(upNext.item.reps)}
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-zinc-400">Last set coming up. Finish strong.</p>
+          <p className="text-md text-zinc-300">Last set coming up. Finish strong.</p>
         )}
       </div>
       <div className="mt-4 grid grid-cols-[auto_1fr] gap-2">
@@ -207,8 +207,8 @@ function Slide({ item, live, onPrev, onNext }: { item?: ProgramExercise; live: b
         </button>
         <Link href={`/exercises/${exercise.slug}`} className="min-w-0 flex-1 text-center">
           <Title className="truncate text-xl font-bold sm:text-2xl">{exercise.name}</Title>
-          <p className="truncate text-xs text-zinc-400">
-            {exercise.primary.map((m) => MUSCLES[m].name).join(" · ")} · <span className="text-amber-300">How to ›</span>
+          <p className="truncate text-meta text-zinc-400">
+            {exercise.primary.map((m) => MUSCLES[m].name).join(" · ")} · <span className="font-semibold text-amber-300">How to ›</span>
           </p>
         </Link>
         <button
@@ -390,7 +390,7 @@ export default function WorkoutPlayer({ program, day }: { program: Program; day:
           ].map((s) => (
             <div key={s.label} className="surface rounded-[1.25rem] p-3">
               <div className="text-2xl font-black tabular-nums text-amber-300">{s.value}</div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">{s.label}</div>
+              <div className="text-2xs font-bold uppercase tracking-widest text-zinc-400">{s.label}</div>
             </div>
           ))}
         </div>
@@ -445,7 +445,7 @@ export default function WorkoutPlayer({ program, day }: { program: Program; day:
           <p className="truncate text-sm font-bold">
             {plan.title} · Exercise {index + 1}/{items.length}
           </p>
-          <p className="text-[11px] text-zinc-400">
+          <p className="text-xs text-zinc-400">
             <Elapsed since={startedAt} />
             {screenOn && <span className="ml-1.5 text-emerald-300/80">· screen stays on</span>}
           </p>
@@ -500,7 +500,7 @@ export default function WorkoutPlayer({ program, day }: { program: Program; day:
         </div>
         {hint && items.length > 1 && (
           <div className="animate-fade pointer-events-none absolute inset-x-0 top-16 flex justify-center">
-            <span className="glass-hud flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold">
+            <span className="glass-hud flex items-center gap-2 rounded-full px-3.5 py-2 text-meta font-semibold">
               <SwipeIcon size={18} className="animate-nudge" /> Swipe to switch exercise
             </span>
           </div>
@@ -523,7 +523,7 @@ export default function WorkoutPlayer({ program, day }: { program: Program; day:
           <div key={`${index}-${set}`} className="animate-rise">
             <div className="flex items-end justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+                <p className="eyebrow text-zinc-300">
                   Set {set} of {item.sets}
                 </p>
                 <p
@@ -551,7 +551,7 @@ export default function WorkoutPlayer({ program, day }: { program: Program; day:
               {set === item.sets && !nextItem ? "Finish workout" : "Set done"}
               <CheckIcon size={22} strokeWidth={3} />
             </button>
-            <p className="mt-2 truncate text-center text-xs text-zinc-400">
+            <p className="mt-2.5 truncate text-center text-meta text-zinc-400">
               {upNext
                 ? `Then ${item.rest}s rest · next: ${upNext.item === item ? `set ${upNext.set}` : getExercise(upNext.item.slug)!.name}`
                 : "Last set of the workout"}
@@ -564,7 +564,7 @@ export default function WorkoutPlayer({ program, day }: { program: Program; day:
         {(close) => (
           <div className="pb-2 text-center">
             <h2 className="display text-3xl">End workout?</h2>
-            <p className="mt-2 text-sm text-zinc-400">
+            <p className="mt-2 text-md text-zinc-300">
               You&apos;ve done {setsDone} of {totalSets} sets. This session won&apos;t be marked complete.
             </p>
             <div className="mt-5 grid gap-2">
