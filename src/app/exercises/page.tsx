@@ -17,7 +17,7 @@ export default async function ExercisesPage({ searchParams }: PageProps<"/exerci
   };
   return (
     <div className="mx-auto max-w-6xl px-4 pb-10 pt-6 md:py-10">
-      <SectionTitle kicker="Exercise library" title="Every move, animated" />
+      <SectionTitle as="h1" kicker="Exercise library" title="Every move, animated" />
       <ExerciseBrowser initial={initial} />
     </div>
   );

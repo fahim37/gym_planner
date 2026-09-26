@@ -377,7 +377,7 @@ export default function ExerciseViewer({
   const showStrip = !bare && !compact && !failed;
   const stage = "bg-gradient-to-b from-white via-zinc-100 to-zinc-300";
   const rootClass = expanded
-    ? `fixed inset-0 z-[100] flex flex-col pt-safe pb-safe ${stage}`
+    ? `fixed inset-0 z-[100] flex flex-col px-safe pt-safe pb-safe ${stage}`
     : `relative flex flex-col overflow-hidden rounded-[1.75rem] ${stage} ${className ?? ""}`;
   const pickedRole = picked ? (primary.includes(picked) ? "primary" : secondary.includes(picked) ? "secondary" : "none") : null;
 
@@ -389,8 +389,8 @@ export default function ExerciseViewer({
           type="button"
           onClick={() => changeView(v)}
           aria-pressed={view === v}
-          className={`rounded-full font-semibold capitalize transition-transform duration-300 ease-spring active:scale-90 ${
-            size === "sm" ? "h-10 px-2.5 text-[11px]" : "h-11 px-3.5 text-xs"
+          className={`hit rounded-full font-semibold capitalize transition-transform duration-300 ease-spring active:scale-90 ${
+            size === "sm" ? "h-10 px-3 text-xs" : "h-11 px-4 text-sm"
           } ${view === v ? "bg-white text-zinc-900 shadow-[0_2px_8px_rgba(0,0,0,0.3)]" : "text-white hover:bg-white/10"}`}
         >
           {v}
@@ -424,18 +424,18 @@ export default function ExerciseViewer({
           <>
             <div className="pointer-events-none absolute left-3 right-24 top-3 flex flex-col items-start gap-1">
               {cue && (
-                <span key={cue} className="glass-hud animate-fade rounded-full px-3 py-1.5 text-xs font-semibold">
+                <span key={cue} className="glass-hud animate-fade rounded-full px-3 py-1.5 text-meta font-semibold">
                   {cue}
                 </span>
               )}
               {!playing && ready && (
-                <span className="animate-fade rounded-full bg-amber-300 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,.6),0_4px_12px_-2px_rgba(0,0,0,.25)]">
+                <span className="animate-fade rounded-full bg-amber-300 px-2.5 py-1 text-2xs font-black uppercase tracking-wider text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,.6),0_4px_12px_-2px_rgba(0,0,0,.25)]">
                   Paused
                 </span>
               )}
             </div>
             <div className="glass-hud pointer-events-none absolute right-3 top-3 rounded-[1.1rem] px-3 py-1.5 text-right">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-400">{hold ? "Hold" : "Reps"}</div>
+              <div className="text-2xs font-semibold uppercase tracking-wider text-zinc-300">{hold ? "Hold" : "Reps"}</div>
               <div className="text-xl font-black tabular-nums text-amber-300">{hold ? `${seconds}s` : reps}</div>
             </div>
             <div
@@ -447,7 +447,7 @@ export default function ExerciseViewer({
               {hovered && (
                 <>
                   <div className="whitespace-nowrap text-sm font-bold text-white">{MUSCLES[hovered].name}</div>
-                  <div className="whitespace-nowrap text-[11px] text-zinc-400">
+                  <div className="whitespace-nowrap text-xs text-zinc-300">
                     {primary.includes(hovered) ? "Target" : secondary.includes(hovered) ? "Also working" : "Click for details"}
                   </div>
                 </>
@@ -465,7 +465,7 @@ export default function ExerciseViewer({
               <div
                 className="animate-fade pointer-events-none absolute inset-x-0 bottom-16 flex justify-center"
               >
-                <span className="glass-hud rounded-full px-3 py-1.5 text-[11px] font-semibold">
+                <span className="glass-hud rounded-full px-3 py-1.5 text-xs font-semibold">
                   {canRotate ? "Drag to rotate · tap a muscle" : "Tap a muscle · tap to pause"}
                 </span>
               </div>
@@ -482,7 +482,7 @@ export default function ExerciseViewer({
                 />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-bold">{MUSCLES[picked].name}</div>
-                  <div className="truncate text-[11px] text-zinc-400">
+                  <div className="truncate text-xs text-zinc-300">
                     {pickedRole === "primary" ? "Target muscle" : pickedRole === "secondary" ? "Also working" : "Not worked in this move"}
                   </div>
                 </div>
@@ -499,7 +499,7 @@ export default function ExerciseViewer({
                   type="button"
                   onClick={() => performance.now() - pickedAt.current > 400 && pick(null)}
                   aria-label="Close"
-                  className="grid h-11 w-9 shrink-0 place-items-center rounded-xl text-zinc-400 hover:text-white"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-zinc-300 hover:text-white"
                 >
                   <CloseIcon size={18} />
                 </button>

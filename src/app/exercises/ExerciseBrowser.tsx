@@ -7,6 +7,7 @@ import { ExerciseCard } from "@/components/ui";
 import { EXERCISES } from "@/data/exercises";
 import { EQUIPMENT_TYPES, LEVELS, type Equipment, type Level } from "@/lib/exercise-types";
 import { REGIONS, type BodyRegion } from "@/lib/muscles";
+import { scrollBehavior } from "@/lib/motion";
 import { currentKey, isReturnVisit, replaceTop, saveTabUrl } from "@/lib/nav-memory";
 import { findExercises } from "@/lib/queries";
 
@@ -29,14 +30,14 @@ function Pill({ active, onClick, children, count }: { active: boolean; onClick: 
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex h-9 shrink-0 snap-start items-center gap-1.5 whitespace-nowrap rounded-full pl-3.5 text-[13px] font-semibold transition-[transform,background-color,color] duration-300 ease-spring active:scale-90 ${
-        count === undefined ? "pr-3.5" : "pr-1.5"
-      } ${active ? "bg-amber-300 text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]" : "glass-chip text-zinc-200 hover:bg-white/10"}`}
+      className={`hit flex h-10 shrink-0 snap-start items-center gap-1.5 whitespace-nowrap rounded-full pl-4 text-sm font-semibold transition-[transform,background-color,color] duration-300 ease-spring active:scale-90 ${
+        count === undefined ? "pr-4" : "pr-1.5"
+      } ${active ? "bg-amber-300 text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]" : "glass-chip text-zinc-100 hover:bg-white/10"}`}
     >
       {children}
       {count !== undefined && (
         <span
-          className={`grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-[11px] font-bold tabular-nums ${
+          className={`grid h-7 min-w-7 place-items-center rounded-full px-1.5 text-xs font-bold tabular-nums ${
             active ? "bg-zinc-900/15 text-zinc-900" : "bg-white/10 text-zinc-300"
           }`}
         >
@@ -112,12 +113,12 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
   useEffect(() => {
     const row = chipsRef.current;
     const el = row?.querySelector<HTMLElement>("[aria-pressed=true]");
-    if (row && el) row.scrollTo({ left: el.offsetLeft - (row.clientWidth - el.offsetWidth) / 2, behavior: "smooth" });
+    if (row && el) row.scrollTo({ left: el.offsetLeft - (row.clientWidth - el.offsetWidth) / 2, behavior: scrollBehavior() });
   }, [region]);
 
   const pickRegion = (r?: BodyRegion) => {
     setRegion(r);
-    if (window.scrollY > 200) window.scrollTo({ top: 0, behavior: "smooth" });
+    if (window.scrollY > 200) window.scrollTo({ top: 0, behavior: scrollBehavior() });
   };
 
   const clearAll = () => {
@@ -147,8 +148,8 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
               onFocus={() => setFocused(true)}
               onBlur={() => window.setTimeout(() => setFocused(false), 150)}
               onKeyDown={(e) => e.key === "Enter" && inputRef.current?.blur()}
-              placeholder="Search exercises or muscles"
-              className="glass-chip h-11 w-full rounded-full pl-10 pr-10 text-base outline-none placeholder:text-zinc-400 focus:bg-white/10 md:text-sm [&::-webkit-search-cancel-button]:hidden"
+              placeholder="Exercise or muscle"
+              className="glass-chip h-11 w-full rounded-full pl-10 pr-11 text-base outline-none placeholder:text-zinc-400 focus:bg-white/10 [&::-webkit-search-cancel-button]:hidden"
             />
             {q && (
               <button
@@ -158,9 +159,11 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
                   inputRef.current?.focus();
                 }}
                 aria-label="Clear search"
-                className="absolute right-1 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-zinc-400 hover:text-white"
+                className="absolute right-0 top-0 grid h-11 w-11 place-items-center rounded-full text-zinc-300 hover:text-white active:scale-90"
               >
-                <CloseIcon size={16} />
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-white/15">
+                  <CloseIcon size={14} strokeWidth={2.5} />
+                </span>
               </button>
             )}
           </label>
@@ -182,7 +185,8 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
         </div>
 
         {focused && !q && (
-          <div className="flex flex-wrap gap-1.5 px-1 pb-1 animate-fade">
+          <div className="-mx-2 -my-0.5 flex items-center gap-2 overflow-x-auto px-3 py-0.5 no-scrollbar animate-fade [mask-image:linear-gradient(90deg,#000_calc(100%-28px),transparent)] md:flex-wrap md:overflow-visible md:[mask-image:none]">
+            <span className="shrink-0 text-meta font-semibold text-zinc-400">Try</span>
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
@@ -192,7 +196,7 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
                   setQ(s);
                   inputRef.current?.blur();
                 }}
-                className="h-8 rounded-full bg-white/5 px-3 text-xs font-semibold text-zinc-300 ring-1 ring-white/10 active:scale-95"
+                className="hit h-9 shrink-0 whitespace-nowrap rounded-full bg-white/5 px-3.5 text-meta font-semibold text-zinc-200 ring-1 ring-white/10 transition-transform duration-300 ease-spring hover:bg-white/10 active:scale-95"
               >
                 {s}
               </button>
@@ -203,7 +207,7 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
         {/* Body parts: one swipeable row with live counts; the right edge fades to show there's more. */}
         <div
           ref={chipsRef}
-          className="-mx-2 flex snap-x scroll-px-2 gap-1.5 overflow-x-auto px-2 no-scrollbar [mask-image:linear-gradient(90deg,#000_calc(100%-28px),transparent)] md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:[mask-image:none]"
+          className="-mx-2 -my-0.5 flex snap-x scroll-px-2 gap-2 overflow-x-auto px-2 py-0.5 no-scrollbar [mask-image:linear-gradient(90deg,#000_calc(100%-28px),transparent)] md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:[mask-image:none]"
         >
           <Pill active={!region} onClick={() => pickRegion(undefined)} count={regionCounts.all}>
             All
@@ -216,13 +220,22 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
         </div>
 
         <div className="hidden space-y-3 md:block">
-          <Options value={equipment} options={EQUIPMENT} onChange={setEquipment} />
-          <Options value={level} options={LEVELS} onChange={setLevel} />
+          {(
+            [
+              ["Equipment", <Options key="e" value={equipment} options={EQUIPMENT} onChange={setEquipment} />],
+              ["Level", <Options key="l" value={level} options={LEVELS} onChange={setLevel} />],
+            ] as const
+          ).map(([label, options]) => (
+            <div key={label} className="flex items-start gap-4">
+              <span className="section-label w-24 shrink-0 pt-2.5">{label}</span>
+              {options}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Result count and the active filters, each removable with one tap. */}
-      <div className="mb-3 mt-3 flex min-h-8 flex-wrap items-center gap-1.5 md:mt-0">
+      <div className="mb-3 mt-4 flex min-h-9 flex-wrap items-center gap-2 md:mt-0">
         <p className="mr-auto text-sm text-zinc-400" aria-live="polite">
           <span className="font-bold tabular-nums text-white">{results.length}</span> exercise{results.length === 1 ? "" : "s"}
         </p>
@@ -230,24 +243,30 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
           <button
             type="button"
             onClick={() => setEquipment(undefined)}
-            className="flex h-8 items-center gap-1 rounded-full bg-amber-300/15 pl-3 pr-2 text-xs font-semibold text-amber-200 ring-1 ring-amber-300/40 active:scale-95"
+            aria-label={`Remove filter: ${equipment}`}
+            className="hit flex h-9 items-center gap-1 rounded-full bg-amber-300/15 pl-3.5 pr-2.5 text-meta font-semibold text-amber-200 ring-1 ring-amber-300/40 transition-transform duration-300 ease-spring active:scale-95"
           >
             {equipment}
-            <CloseIcon size={13} />
+            <CloseIcon size={14} />
           </button>
         )}
         {level && (
           <button
             type="button"
             onClick={() => setLevel(undefined)}
-            className="flex h-8 items-center gap-1 rounded-full bg-amber-300/15 pl-3 pr-2 text-xs font-semibold text-amber-200 ring-1 ring-amber-300/40 active:scale-95"
+            aria-label={`Remove filter: ${level}`}
+            className="hit flex h-9 items-center gap-1 rounded-full bg-amber-300/15 pl-3.5 pr-2.5 text-meta font-semibold text-amber-200 ring-1 ring-amber-300/40 transition-transform duration-300 ease-spring active:scale-95"
           >
             {level}
-            <CloseIcon size={13} />
+            <CloseIcon size={14} />
           </button>
         )}
         {anyFilter && (
-          <button type="button" onClick={clearAll} className="h-8 rounded-full px-2.5 text-xs font-semibold text-amber-300 hover:bg-white/5">
+          <button
+            type="button"
+            onClick={clearAll}
+            className="hit -mr-1 h-9 rounded-full px-3 text-meta font-semibold text-amber-300 transition-transform duration-300 ease-spring hover:bg-white/5 active:scale-95"
+          >
             Clear all
           </button>
         )}
@@ -262,27 +281,51 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
           ))}
         </div>
       ) : (
-        <div className="surface rounded-[1.75rem] p-8 text-center text-zinc-400">
-          <p className="text-pretty">
-            No exercises match{q ? <> &ldquo;{q}&rdquo;</> : null}
-            {region ? ` in ${region}` : ""}.
+        <div className="surface flex flex-col items-center rounded-[1.75rem] px-6 py-10 text-center">
+          <span className="grid h-14 w-14 place-items-center rounded-full bg-white/[0.07] text-zinc-300">
+            <SearchIcon size={26} />
+          </span>
+          <h2 className="mt-4 text-lg font-bold text-white">No matches</h2>
+          <p className="mt-1 max-w-xs text-md text-zinc-400">
+            Nothing matches{q ? <> &ldquo;{q}&rdquo;</> : null}
+            {region ? ` in ${region}` : ""}
+            {equipment || level ? " with these filters" : ""}. Try a shorter word or a muscle name.
           </p>
-          <button type="button" onClick={clearAll} className="glass-chip mt-4 h-11 rounded-full px-5 text-sm font-bold text-white transition-transform duration-300 ease-spring active:scale-90">
+          <button
+            type="button"
+            onClick={clearAll}
+            className="mt-5 h-12 rounded-full bg-amber-300 px-6 text-base font-bold text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-transform duration-300 ease-spring hover:bg-amber-200 active:scale-95"
+          >
             Show all exercises
           </button>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {SUGGESTIONS.slice(0, 5).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => {
+                  clearAll();
+                  setQ(s);
+                }}
+                className="hit h-9 rounded-full bg-white/5 px-3.5 text-meta font-semibold text-zinc-200 ring-1 ring-white/10 transition-transform duration-300 ease-spring hover:bg-white/10 active:scale-95"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
       <BottomSheet open={sheet} onClose={() => setSheet(false)} label="Filter exercises">
         {(close) => (
           <div className="space-y-6 pb-2">
-            <h2 className="display text-2xl">Filters</h2>
+            <h2 className="display text-3xl">Filters</h2>
             <div>
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">Equipment</h3>
+              <h3 className="section-label mb-3">Equipment</h3>
               <Options value={equipment} options={EQUIPMENT} onChange={setEquipment} />
             </div>
             <div>
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">Level</h3>
+              <h3 className="section-label mb-3">Level</h3>
               <Options value={level} options={LEVELS} onChange={setLevel} />
             </div>
             <div className="flex gap-2">
@@ -292,14 +335,14 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
                   setEquipment(undefined);
                   setLevel(undefined);
                 }}
-                className="glass-chip h-12 rounded-full px-5 text-sm font-bold transition-transform duration-300 ease-spring active:scale-90"
+                className="glass-chip h-12 rounded-full px-5 text-base font-bold transition-transform duration-300 ease-spring active:scale-90"
               >
                 Reset
               </button>
               <button
                 type="button"
                 onClick={close}
-                className="h-12 flex-1 rounded-full bg-amber-300 text-sm font-black text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-transform duration-300 ease-spring active:scale-95"
+                className="h-12 flex-1 rounded-full bg-amber-300 text-base font-black text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-transform duration-300 ease-spring active:scale-95"
               >
                 Show {results.length} exercise{results.length === 1 ? "" : "s"}
               </button>

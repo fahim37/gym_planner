@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import ExerciseViewer from "@/components/ExerciseViewer";
 import { ChevronRight, DumbbellIcon, MachineIcon, MatIcon, RackIcon, ClockIcon } from "@/components/icons";
 import ShareButton from "@/components/ShareButton";
-import { Carousel, ExerciseCard } from "@/components/ui";
+import { Carousel, ExerciseCard, MetaBadges } from "@/components/ui";
 import { EXERCISES, getExercise } from "@/data/exercises";
 import { equipmentForExercise, type EquipmentCategory } from "@/lib/equipment-catalog";
 import { programsUsing, relatedExercises } from "@/lib/queries";
@@ -57,7 +57,7 @@ export default async function ExercisePage({ params }: PageProps<"/exercises/[sl
             hold={e.hold}
             className="h-[clamp(24rem,62svh,40rem)] w-full lg:aspect-square lg:h-auto"
           />
-          <div className="mt-3 flex items-center justify-center gap-5 px-4 text-xs text-zinc-400">
+          <div className="mt-3 flex items-center justify-center gap-5 px-4 text-meta text-zinc-400">
             <span className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-full bg-red-600" /> Target
             </span>
@@ -70,19 +70,11 @@ export default async function ExercisePage({ params }: PageProps<"/exercises/[sl
 
         <div className="px-4 pt-5 lg:px-0 lg:pt-0">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wider">
-              <span className="glass-chip rounded-full px-2.5 py-1 text-zinc-200">{e.level}</span>
-              <span className="glass-chip rounded-full px-2.5 py-1 text-zinc-200">{e.mechanics}</span>
-              {e.equipment.map((q) => (
-                <span key={q} className="glass-chip rounded-full px-2.5 py-1 text-zinc-200">
-                  {q}
-                </span>
-              ))}
-            </div>
-            <ShareButton title={e.name} text={e.summary} className="-mt-1.5" />
+            <MetaBadges items={[e.level, e.mechanics, ...e.equipment]} className="pt-1.5" />
+            <ShareButton title={e.name} text={e.summary} className="-mt-1" />
           </div>
-          <h1 className="display mt-3 text-4xl sm:text-5xl">{e.name}</h1>
-          <p className="mt-3 text-zinc-300">{e.summary}</p>
+          <h1 className="display mt-3 text-[2.5rem] sm:text-5xl">{e.name}</h1>
+          <p className="mt-3 text-[1.0625rem] leading-relaxed text-zinc-300">{e.summary}</p>
 
           <div className="mt-6 grid grid-cols-3 gap-2 text-center">
             {[
@@ -90,16 +82,16 @@ export default async function ExercisePage({ params }: PageProps<"/exercises/[sl
               { label: e.hold ? "Hold" : "Reps", value: e.prescription.reps },
               { label: "Rest", value: e.prescription.rest },
             ].map((s) => (
-              <div key={s.label} className="surface rounded-[1.25rem] p-3">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">{s.label}</div>
-                <div className="mt-1 text-lg font-black leading-tight text-amber-300">{s.value}</div>
+              <div key={s.label} className="surface flex flex-col justify-center rounded-[1.25rem] px-2 py-3">
+                <div className="text-2xs font-bold uppercase tracking-widest text-zinc-400">{s.label}</div>
+                <div className={`mt-1 font-black leading-tight text-amber-300 ${s.value.length > 9 ? "text-base" : "text-xl"}`}>{s.value}</div>
               </div>
             ))}
           </div>
 
           {gear.length > 0 && (
             <section className="mt-7">
-              <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">Equipment you&apos;ll need</h2>
+              <h2 className="section-label">Equipment you&apos;ll need</h2>
               <div className="-mx-4 mt-3 flex snap-x gap-2 overflow-x-auto px-4 pb-1 no-scrollbar lg:mx-0 lg:flex-wrap lg:px-0">
                 {gear.map((g) => {
                   const Icon = CATEGORY_ICON[g.category];
@@ -113,8 +105,8 @@ export default async function ExercisePage({ params }: PageProps<"/exercises/[sl
                         <Icon size={22} />
                       </span>
                       <span>
-                        <span className="block whitespace-nowrap text-sm font-bold">{g.name}</span>
-                        <span className="block text-[11px] text-zinc-500">{g.category}</span>
+                        <span className="block whitespace-nowrap text-md font-bold">{g.name}</span>
+                        <span className="block text-meta text-zinc-400">{g.category}</span>
                       </span>
                       <ChevronRight size={16} className="text-zinc-500" />
                     </Link>
@@ -135,13 +127,13 @@ export default async function ExercisePage({ params }: PageProps<"/exercises/[sl
 
           {programs.length > 0 && (
             <div className="mt-7">
-              <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">Part of these programs</h2>
+              <h2 className="section-label">Part of these programs</h2>
               <div className="mt-3 flex flex-wrap gap-2">
                 {programs.map((p) => (
                   <Link
                     key={p.slug}
                     href={`/programs/${p.slug}`}
-                    className="glass-chip flex h-10 items-center gap-1 rounded-full pl-4 pr-2.5 text-sm font-semibold text-amber-300 transition-transform duration-300 ease-spring active:scale-90"
+                    className="glass-chip flex h-11 items-center gap-1 rounded-full pl-4 pr-3 text-sm font-semibold text-amber-300 transition-transform duration-300 ease-spring hover:bg-white/10 active:scale-90"
                   >
                     {p.name}
                     <ChevronRight size={16} />

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { ChevronRight } from "@/components/icons";
+import { NoteList, Steps } from "@/components/ui";
 import { MUSCLES, type MuscleId } from "@/lib/muscles";
 
 type TabId = "how" | "tips" | "mistakes" | "muscles";
@@ -81,7 +82,7 @@ export default function ExerciseDetails({ steps, tips, mistakes, breathing, prim
               aria-selected={tab === t.id}
               aria-controls={`panel-${t.id}`}
               onClick={() => select(t.id)}
-              className={`relative h-10 rounded-full text-[13px] font-bold transition-transform duration-300 ease-spring active:scale-90 ${
+              className={`relative h-11 rounded-full text-sm font-bold transition-transform duration-300 ease-spring active:scale-90 ${
                 tab === t.id ? "text-zinc-900" : "text-zinc-300"
               }`}
             >
@@ -98,18 +99,9 @@ export default function ExerciseDetails({ steps, tips, mistakes, breathing, prim
         onPointerCancel={() => (swipe.current = null)}
       >
         <section id="panel-how" role="tabpanel" aria-labelledby="tab-how" className={panel("how")}>
-          <h2 className="mb-3 hidden text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 lg:block">How to do it</h2>
-          <ol className="space-y-3">
-            {steps.map((step, i) => (
-              <li key={i} className="flex gap-3">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-amber-300 text-sm font-black text-zinc-900">
-                  {i + 1}
-                </span>
-                <span className="pt-0.5 text-zinc-200">{step}</span>
-              </li>
-            ))}
-          </ol>
-          <div className="mt-5 rounded-2xl bg-sky-500/10 p-4 text-sm text-zinc-300 ring-1 ring-sky-400/30">
+          <h2 className="section-label mb-4 hidden lg:block">How to do it</h2>
+          <Steps steps={steps} />
+          <div className="mt-5 rounded-[1.25rem] bg-sky-500/10 p-4 text-md text-zinc-200 ring-1 ring-sky-400/30">
             <span className="font-bold text-sky-300">Breathing: </span>
             {breathing}
           </div>
@@ -117,45 +109,35 @@ export default function ExerciseDetails({ steps, tips, mistakes, breathing, prim
 
         <div className="lg:grid lg:grid-cols-2 lg:gap-3">
           <section id="panel-tips" role="tabpanel" aria-labelledby="tab-tips" className={panel("tips")}>
-            <div className="rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-400/30">
-              <h3 className="text-sm font-bold text-emerald-300">✓ Pro tips</h3>
-              <ul className="mt-2 space-y-2 text-sm text-zinc-300">
-                {tips.map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
-              </ul>
-            </div>
+            <NoteList tone="good" title="Pro tips" items={tips} />
           </section>
           <section id="panel-mistakes" role="tabpanel" aria-labelledby="tab-mistakes" className={panel("mistakes")}>
-            <div className="rounded-2xl bg-red-500/10 p-4 ring-1 ring-red-400/30">
-              <h3 className="text-sm font-bold text-red-300">✗ Common mistakes</h3>
-              <ul className="mt-2 space-y-2 text-sm text-zinc-300">
-                {mistakes.map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
-              </ul>
-            </div>
+            <NoteList tone="bad" title="Common mistakes" items={mistakes} />
           </section>
         </div>
 
         <section id="panel-muscles" role="tabpanel" aria-labelledby="tab-muscles" className={panel("muscles")}>
-          <h2 className="mb-3 hidden text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 lg:block">Muscles worked</h2>
+          <h2 className="section-label mb-3 hidden lg:block">Muscles worked</h2>
           <ul className="space-y-2">
             {[...primary.map((id) => ({ id, main: true })), ...secondary.map((id) => ({ id, main: false }))].map(({ id, main }) => (
               <li key={id}>
                 <Link
                   href={`/muscles/${id}`}
-                  className="surface flex items-center gap-3 rounded-[1.25rem] p-3 transition-transform duration-300 ease-spring hover:bg-white/[0.07] active:scale-[0.98]"
+                  className="surface flex items-center gap-3 rounded-[1.25rem] px-4 py-3 transition-transform duration-300 ease-spring hover:bg-white/[0.07] active:scale-[0.98]"
                 >
                   <span className={`h-3 w-3 shrink-0 rounded-full ${main ? "bg-red-600" : "bg-orange-300"}`} />
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline gap-2">
-                      <span className="font-bold">{MUSCLES[id].name}</span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span className="text-base font-bold">{MUSCLES[id].name}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-2xs font-bold uppercase tracking-wider ${
+                          main ? "bg-red-600/20 text-red-300" : "bg-orange-300/15 text-orange-200"
+                        }`}
+                      >
                         {main ? "Target" : "Also working"}
                       </span>
                     </span>
-                    <span className="mt-0.5 block text-xs text-zinc-400">{MUSCLES[id].function}</span>
+                    <span className="mt-1 block text-meta text-zinc-400">{MUSCLES[id].function}</span>
                   </span>
                   <ChevronRight size={18} className="shrink-0 text-zinc-500" />
                 </Link>
