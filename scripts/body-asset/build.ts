@@ -63,9 +63,9 @@ const TARGETS: [string, number][] = [
   ["macrodetails/universal-male-young-maxmuscle-minweight", 0.6],
   ["macrodetails/universal-male-young-maxmuscle-averageweight", 0.4],
   ["macrodetails/proportions/male-young-maxmuscle-averageweight-idealproportions", 0.8],
-  ["torso/torso-vshape-incr", 0.45],
-  ["torso/torso-muscle-dorsi-incr", 0.35],
-  ["torso/torso-muscle-pectoral-incr", 0.4],
+  ["torso/torso-vshape-incr", 0.55],
+  ["torso/torso-muscle-dorsi-incr", 0.5],
+  ["torso/torso-muscle-pectoral-incr", 0.65],
   ["stomach/stomach-tone-incr", 1],
   ...["r", "l"].flatMap((s): [string, number][] => [
     [`armslegs/${s}-upperarm-muscle-incr`, 1],
@@ -226,14 +226,19 @@ const maps = new Map<string, Affine>();
 for (const b of Object.keys(skel.bones)) maps.set(b, TORSO);
 // Head: scaled about the eyes and moved so the eyes sit where the rig's head expects them.
 const HEAD_SCALE = 1.1;
+/**
+ * The rig's head joint sits almost at eye level, which left the chin resting on the
+ * trapezius (no visible neck). The head mesh is raised above it so the neck shows.
+ */
+const HEAD_RAISE = 5;
 const mhEyeMid = mid(jointPos(skel.bones["eye.R"].head), jointPos(skel.bones["eye.L"].head));
 const sculptEyes = sculptBody(frames).eyes as V3[];
-const targetEyeMid = mid(sculptEyes[0], sculptEyes[1]);
+const targetEyeMid = add(mid(sculptEyes[0], sculptEyes[1]), [0, HEAD_RAISE, 0]);
 const HEAD = segmentMap(mhEyeMid, add(mhEyeMid, [0, 10, 0]), targetEyeMid, add(targetEyeMid, [0, 10 * HEAD_SCALE, 0]), HEAD_SCALE, [1, 0, 0], [1, 0, 0]);
 const blendMap = (a: Affine, b: Affine, t: number): Affine => a.map((x, i) => x + (b[i] - x) * t);
 for (const b of Object.keys(skel.bones)) if (ourBone(b) === B_HEAD) maps.set(b, HEAD);
-maps.set("neck01", blendMap(TORSO, HEAD, 0.15));
-maps.set("neck02", blendMap(TORSO, HEAD, 0.5));
+maps.set("neck01", blendMap(TORSO, HEAD, 0.1));
+maps.set("neck02", blendMap(TORSO, HEAD, 0.45));
 maps.set("neck03", blendMap(TORSO, HEAD, 0.85));
 
 /** Hand frame helpers: palm normal from the knuckle line (points out of the palm). */
@@ -609,13 +614,13 @@ for (let v = 0; v < NV; v++) {
     }
   }
   // The face and scalp carry no muscle map or ink.
-  if (p[1] > fo(B_NECK)[1] + 6 && p[0] > fo(B_HEAD)[0] - 12) {
-    if (info[v * 4] !== 255 && p[1] > fo(B_HEAD)[1] - 8) {
+  if (p[1] > fo(B_NECK)[1] + 6 + HEAD_RAISE && p[0] > fo(B_HEAD)[0] - 12) {
+    if (info[v * 4] !== 255 && p[1] > fo(B_HEAD)[1] - 8 + HEAD_RAISE) {
       info[v * 4] = 255;
       seg[v * 4] = 255;
       seg[v * 4 + 1] = 255;
     }
-    if (p[1] > fo(B_HEAD)[1] - 9) extra[v * 4] = 99;
+    if (p[1] > fo(B_HEAD)[1] - 9 + HEAD_RAISE) extra[v * 4] = 99;
   }
   info[v * 4 + 1] = material;
   if (material !== MAT_SKIN) {
