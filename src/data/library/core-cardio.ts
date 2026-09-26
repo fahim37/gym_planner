@@ -539,7 +539,7 @@ const CORE: Exercise[] = [
           arms,
           legs: [{ angles: [-45, -45], foot: 45 }],
         });
-        return repFrames(pose(45, 0), pose(132, 12), { go: 1.4, back: 1.1, hold: 0.3, cues: ["Hinge down slowly", "Squeeze your glutes to rise"] });
+        return repFrames(pose(45, 0), pose(124, 12), { go: 1.4, back: 1.1, hold: 0.3, cues: ["Hinge down slowly", "Squeeze your glutes to rise"] });
       })(),
     },
   },
