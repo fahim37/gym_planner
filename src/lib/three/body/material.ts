@@ -336,9 +336,11 @@ export function createBodyMaterial(u: BodyUniforms) {
 		normal = normalize( abs( det ) * normal - grad );
 	}
 
-	// Skin micro-detail (pores, fine creases): only where a pixel is small enough to resolve
-	// it, so zoomed-out views stay clean and cheap.
+	// Skin micro-detail (pores, fine creases) and the six-pack relief: one height field,
+	// bump-mapped once. The height is gathered in branches (for cost) but differentiated
+	// outside them: derivatives inside non-uniform control flow are undefined at the edges.
 	{
+		float hSkin = 0.0;
 		float px = length( fwidth( vSkinP ) );
 		float fade = matIs( 0.0 ) * ( 1.0 - smoothstep( 0.025, 0.09, px ) );
 		if ( fade > 0.001 ) {
@@ -346,40 +348,32 @@ export function createBodyMaterial(u: BodyUniforms) {
 			// Pores: small, sparse pits; plus a finer, shallow crease texture.
 			float pore = smoothstep( 0.6, 0.85, skinNoise( q ) );
 			float fine = skinNoise( q * 2.9 + 17.0 ) - 0.5;
-			float h = ( fine * 0.35 - pore ) * 0.0001 * fade;
-			vec3 sx = dFdx( -vViewPosition );
-			vec3 sy = dFdy( -vViewPosition );
-			vec3 r1 = cross( sy, normal );
-			vec3 r2 = cross( normal, sx );
-			float det = dot( sx, r1 );
-			vec3 grad = sign( det ) * ( dFdx( h ) * r1 + dFdy( h ) * r2 );
-			normal = normalize( abs( det ) * normal - grad );
+			hSkin += ( fine * 0.35 - pore ) * 0.0001 * fade;
 		}
-	}
-
-	// Six-pack: the rectus abdominis pattern (linea alba, three tendinous bands, the side
-	// edges) as a smooth relief in bind space, crisp at any mesh resolution.
-	if ( uAbs.z > 0.0 ) {
-		float span = uAbs.y - uAbs.x;
-		float t = ( vSkinP.y - uAbs.x ) / span;
-		float u = abs( vSkinP.z );
-		float win = smoothstep( 0.2, 0.6, vBindN.x ) * ( 1.0 - smoothstep( 8.0, 10.0, u ) ) * smoothstep( 0.1, 0.22, t ) * ( 1.0 - smoothstep( 0.9, 1.02, t ) ) * matIs( 0.0 );
-		if ( win > 0.001 ) {
-			float alba = exp( -pow( u / 0.75, 2.0 ) );
-			float bands = exp( -pow( ( t - 0.3 - 0.012 * u ) * span / 0.75, 2.0 ) )
-				+ exp( -pow( ( t - 0.52 - 0.012 * u ) * span / 0.75, 2.0 ) )
-				+ exp( -pow( ( t - 0.74 - 0.012 * u ) * span / 0.75, 2.0 ) );
-			bands = min( bands, 1.0 ) * ( 1.0 - smoothstep( 5.5, 7.5, u ) );
-			float side = exp( -pow( ( u - 8.0 ) / 0.9, 2.0 ) );
-			float h = -( 0.45 * alba + 0.55 * bands + 0.35 * side ) * win * 0.0035 * uAbs.z;
-			vec3 sx = dFdx( -vViewPosition );
-			vec3 sy = dFdy( -vViewPosition );
-			vec3 r1 = cross( sy, normal );
-			vec3 r2 = cross( normal, sx );
-			float det = dot( sx, r1 );
-			vec3 grad = sign( det ) * ( dFdx( h ) * r1 + dFdy( h ) * r2 );
-			normal = normalize( abs( det ) * normal - grad );
+		// Six-pack: the rectus abdominis pattern (linea alba, three tendinous bands, the side
+		// edges) in bind space, crisp at any mesh resolution.
+		if ( uAbs.z > 0.0 ) {
+			float span = uAbs.y - uAbs.x;
+			float t = ( vSkinP.y - uAbs.x ) / span;
+			float u = abs( vSkinP.z );
+			float win = smoothstep( 0.2, 0.6, vBindN.x ) * ( 1.0 - smoothstep( 8.0, 10.0, u ) ) * smoothstep( 0.1, 0.22, t ) * ( 1.0 - smoothstep( 0.9, 1.02, t ) ) * matIs( 0.0 );
+			if ( win > 0.0 ) {
+				float alba = exp( -pow( u / 0.75, 2.0 ) );
+				float bands = exp( -pow( ( t - 0.3 - 0.012 * u ) * span / 0.75, 2.0 ) )
+					+ exp( -pow( ( t - 0.52 - 0.012 * u ) * span / 0.75, 2.0 ) )
+					+ exp( -pow( ( t - 0.74 - 0.012 * u ) * span / 0.75, 2.0 ) );
+				bands = min( bands, 1.0 ) * ( 1.0 - smoothstep( 5.5, 7.5, u ) );
+				float side = exp( -pow( ( u - 8.0 ) / 0.9, 2.0 ) );
+				hSkin -= ( 0.45 * alba + 0.55 * bands + 0.35 * side ) * win * 0.0035 * uAbs.z;
+			}
 		}
+		vec3 sx = dFdx( -vViewPosition );
+		vec3 sy = dFdy( -vViewPosition );
+		vec3 r1 = cross( sy, normal );
+		vec3 r2 = cross( normal, sx );
+		float det = dot( sx, r1 );
+		vec3 grad = sign( det ) * ( dFdx( hSkin ) * r1 + dFdy( hSkin ) * r2 );
+		normal = normalize( abs( det ) * normal - grad );
 	}
 	}`,
       )
