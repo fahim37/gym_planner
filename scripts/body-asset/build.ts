@@ -67,9 +67,17 @@ const TARGETS: [string, number, "up"?][] = [
   ["macrodetails/universal-male-young-maxmuscle-averageweight", 0.2],
   ["macrodetails/proportions/male-young-maxmuscle-averageweight-idealproportions", 0.8],
   ["torso/torso-vshape-incr", 0.55],
-  ["torso/torso-muscle-dorsi-incr", 0.5],
-  ["torso/torso-muscle-pectoral-incr", 0.65],
+  ["torso/torso-muscle-dorsi-incr", 0.7],
+  ["torso/torso-muscle-pectoral-incr", 0.9],
   ["stomach/stomach-tone-incr", 1],
+  // Gym-built proportions: fuller arms, thighs and glutes, a thicker neck, a tighter waist and
+  // calves in proportion to the thighs.
+  ["measure/measure-upperarm-circ-incr", 0.5],
+  ["measure/measure-thigh-circ-incr", 0.6],
+  ["measure/measure-calf-circ-decr", 0.4],
+  ["measure/measure-neck-circ-incr", 0.9],
+  ["measure/measure-waist-circ-decr", 0.25],
+  ["buttocks/buttocks-volume-incr", 0.3],
   // Face: lean (athlete-low face fat, no double chin), a defined jaw and cheekbones.
   ["head/head-square", 0.35],
   ["head/head-fat-decr", 0.6],
@@ -104,6 +112,10 @@ const TARGETS: [string, number, "up"?][] = [
     [`armslegs/${s}-lowerarm-muscle-incr`, 0.8],
     [`armslegs/${s}-upperleg-muscle-incr`, 0.9],
     [`armslegs/${s}-lowerleg-muscle-incr`, 0.8],
+    // Lean limbs: the muscle shapes show instead of a smooth, plump outline.
+    [`armslegs/${s}-upperleg-fat-decr`, 0.7],
+    [`armslegs/${s}-lowerleg-fat-decr`, 0.4],
+    [`armslegs/${s}-upperarm-fat-decr`, 0.5],
   ]),
 ];
 
@@ -748,6 +760,36 @@ function faceTone(v: number, p: V3, n: V3): number {
   return Math.max(-1, Math.min(1, t));
 }
 
+/**
+ * Nipples: MakeHuman models each one as a small, densely ringed bump on the pec. Found as the
+ * densest cluster of vertices near where it sits on this build, with an areola tone around it
+ * (pinkish brown, ~2.6 cm across).
+ */
+const nipples: V3[] = [1, -1].map((sg) => {
+  const cand: number[] = [];
+  for (let v = 0; v < NV; v++) if (Math.hypot(body[v][1] - 142, body[v][2] * sg - 8.8) < 2.5 && body[v][0] > 5) cand.push(v);
+  let best = cand[0];
+  let bc = -1;
+  for (const v of cand) {
+    let c = 0;
+    for (const u of cand) if (len(sub(body[u], body[v])) < 0.7) c++;
+    if (c > bc) {
+      bc = c;
+      best = v;
+    }
+  }
+  return [...body[best]] as V3;
+});
+console.log("nipples", nipples.map((q) => q.map((x) => x.toFixed(1)).join(",")).join(" | "));
+const nippleTone = (p: V3) => {
+  let t = 0;
+  for (const q of nipples) {
+    const d = len(sub(p, q));
+    if (d < 2) t = Math.max(t, 0.72 * (1 - smooth(1.0, 1.6, d)) + 0.18 * (1 - smooth(0.2, 0.45, d)));
+  }
+  return t;
+};
+
 const info = new Uint8Array(NV * 4);
 const fibre = new Int8Array(NV * 4);
 const extra = new Float32Array(NV * 4);
@@ -777,7 +819,7 @@ for (let v = 0; v < NV; v++) {
   fuv[v * 2 + 1] = st.uv ? st.uv[1] : 0;
   const browD = browAt(p, normals[v]);
   const hairD = Math.min(hairAt(p), browD);
-  seg[v * 4 + 3] = Math.round((faceTone(v, p, normals[v]) + 1) * 127.5);
+  seg[v * 4 + 3] = Math.round((Math.min(1, faceTone(v, p, normals[v]) + nippleTone(p)) + 1) * 127.5);
   const shortD = shortsAt(a);
   let material = MAT_SKIN;
   if (hairD < 0.1) material = MAT_HAIR;
@@ -848,7 +890,41 @@ for (let v = 0; v < NV; v++) {
     absMax = Math.max(absMax, depth);
     absN++;
   }
-  console.log("abs sculpt", absN, "vertices, max depth", absMax.toFixed(2));
+  console.log("abs sculpt", absN, "vertices, max depth", absMax.toFixed(2), "abs anat y", yMin.toFixed(1), yMax.toFixed(1));
+}
+
+// Pecs: the base chest is a smooth plate. Sculpt the lower edge of the pectorals — a soft
+// fold just under the rim measured on this mesh (level from the sternum to below the nipple,
+// then sweeping up into the armpit) with a little fullness above it — and a shallow groove
+// down the sternum between them.
+{
+  const RIM: [number, number][] = [
+    [0, 138.6], [2, 138.1], [5, 138.1], [8, 138.2], [10, 138.9], [12, 140.3], [14, 142.0], [15.5, 144.5], [17, 148],
+  ];
+  const rimAt = (u: number) => {
+    let k = 1;
+    while (k < RIM.length - 1 && RIM[k][0] < u) k++;
+    const [u0, y0] = RIM[k - 1];
+    const [u1, y1] = RIM[k];
+    return y0 + (y1 - y0) * Math.min(1, Math.max(0, (u - u0) / (u1 - u0)));
+  };
+  let pecN = 0;
+  for (let v = 0; v < NV; v++) {
+    const p = body[v];
+    const n = normals[v];
+    const u = Math.abs(p[2]);
+    if (n[0] < 0 || u > 18 || p[1] < 130 || p[1] > 156 || p[0] < 0) continue;
+    const s = p[1] - rimAt(u); // > 0 on the pec
+    const side = smooth(0.8, 3.5, u) * (1 - smooth(15.5, 17.5, u)) * smooth(0, 0.4, n[0]);
+    const fold = 0.5 * Math.exp(-(((s + 0.3) / 1.0) ** 2));
+    const full = 0.22 * smooth(0, 2.5, s) * (1 - smooth(5, 10, s));
+    const sternum = 0.3 * Math.exp(-((u / 1.0) ** 2)) * smooth(137, 140, p[1]) * (1 - smooth(150, 154, p[1]));
+    const d = (full - fold) * side - sternum;
+    if (d === 0) continue;
+    body[v] = add(p, mul(n, d));
+    pecN++;
+  }
+  console.log("pec sculpt", pecN, "vertices");
 }
 
 // Ambient occlusion of the fitted mesh: surface points above each vertex's tangent
@@ -884,6 +960,20 @@ for (let v = 0; v < NV; v++) {
             if (h > 0.1) occ += (h - 0.1) * f;
           }
     extra[v * 4 + 1] = Math.max(0.35, 1 - (tot > 0 ? (occ / tot) * 2.2 : 0));
+  }
+  // Single vertices in a crease (the spine, the crotch) can come out much darker than their
+  // neighbours and render as specks: limit each to a little below its neighbourhood.
+  const nb: Set<number>[] = Array.from({ length: NV }, () => new Set());
+  for (let f = 0; f < bodyQuads.length; f += 4)
+    for (let k = 0; k < 4; k++) {
+      nb[bodyQuads[f + k]].add(bodyQuads[f + ((k + 1) % 4)]);
+      nb[bodyQuads[f + ((k + 1) % 4)]].add(bodyQuads[f + k]);
+    }
+  const ao = Float64Array.from({ length: NV }, (_, v) => extra[v * 4 + 1]);
+  for (let v = 0; v < NV; v++) {
+    let m = 0;
+    for (const u of nb[v]) m += ao[u];
+    extra[v * 4 + 1] = Math.max(ao[v], m / nb[v].size - 0.12);
   }
 }
 
