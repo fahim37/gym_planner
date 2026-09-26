@@ -103,6 +103,7 @@ export class BodyRig {
       uLine: { value: 1 },
       uFade: { value: 1 },
       uDefine: { value: 0 },
+      uAbs: { value: new THREE.Vector3() },
       uAnchor: { value: Array.from({ length: (MUSCLE_COUNT + 1) * 2 }, () => new THREE.Vector3()) },
     };
     this.syncPalette();
@@ -124,8 +125,20 @@ export class BodyRig {
     computeAnchors(data, this.uniforms.uAnchor.value);
     // The sculpted body is smooth: carve muscle borders in the shader and soften the fibres.
     const sculpted = !!data.stats.regions.sculpted;
-    this.uniforms.uDefine.value = sculpted ? 1 : 0;
-    this.uniforms.uDetail.value = sculpted ? 0.8 : 1;
+    this.uniforms.uDefine.value = sculpted ? 0.3 : 0;
+    this.uniforms.uDetail.value = sculpted ? 0.6 : 1;
+    this.uniforms.uAbs.value.set(0, 1, 0);
+    if (sculpted) {
+      // The abs' height range on the front of the body (bind space, cm) anchors the six-pack relief.
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let v = 0; v < data.info.length / 4; v++)
+        if (data.info[v * 4] === MUSCLE_INDEX.abs && data.normal[v * 3] > 0.5) {
+          lo = Math.min(lo, data.position[v * 3 + 1] * 100);
+          hi = Math.max(hi, data.position[v * 3 + 1] * 100);
+        }
+      if (hi > lo) this.uniforms.uAbs.value.set(lo, hi, 1);
+    }
     const geometry = sharedGeometry(data);
     const body = new THREE.Mesh(geometry, createBodyMaterial(this.uniforms));
     body.customDepthMaterial = createBodyDepthMaterial(this.uniforms);

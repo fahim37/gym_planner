@@ -28,6 +28,8 @@ export interface BodyUniforms {
   uFade: { value: number };
   /** Muscle-border definition carved in the shader (sculpted body). */
   uDefine: { value: number };
+  /** Six-pack relief (sculpted body): abs bottom and top height in bind space (cm), strength. */
+  uAbs: { value: THREE.Vector3 };
   /** Per (muscle, side) centre in bind space (cm): the local origin of the fibre projection. */
   uAnchor: { value: THREE.Vector3[] };
 }
@@ -99,6 +101,8 @@ varying vec3 vFibreView;
 varying vec3 vEye;
 varying float vMargin;
 varying float vDefineW;
+varying vec3 vSkinP;
+varying vec3 vBindN;
 `;
 
 const BODY_FRAG_PARS = /* glsl */ `
@@ -114,6 +118,7 @@ uniform vec3 uHair;
 uniform float uLine;
 uniform float uFade;
 uniform float uDefine;
+uniform vec3 uAbs;
 varying float vMargin;
 varying float vDefineW;
 varying vec3 vHi;
@@ -127,8 +132,25 @@ varying float vShortD;
 varying vec2 vFibreUv;
 varying vec3 vFibreView;
 varying vec3 vEye;
+varying vec3 vSkinP;
+varying vec3 vBindN;
 vec4 gFibre;
 vec3 gHi;
+// Value noise in bind space (cm) for the skin's micro-detail.
+float skinHash( vec3 p ) {
+	p = fract( p * 0.1031 );
+	p += dot( p, p.zyx + 31.32 );
+	return fract( ( p.x + p.y ) * p.z );
+}
+float skinNoise( vec3 p ) {
+	vec3 i = floor( p );
+	vec3 f = fract( p );
+	f = f * f * ( 3.0 - 2.0 * f );
+	return mix(
+		mix( mix( skinHash( i ), skinHash( i + vec3( 1, 0, 0 ) ), f.x ), mix( skinHash( i + vec3( 0, 1, 0 ) ), skinHash( i + vec3( 1, 1, 0 ) ), f.x ), f.y ),
+		mix( mix( skinHash( i + vec3( 0, 0, 1 ) ), skinHash( i + vec3( 1, 0, 1 ) ), f.x ), mix( skinHash( i + vec3( 0, 1, 1 ) ), skinHash( i + vec3( 1, 1, 1 ) ), f.x ), f.y ),
+		f.z );
+}
 `;
 
 /** Material ids (see sdf.ts MAT_*): skin, shorts, hair, eye, nail, lip. */
@@ -188,7 +210,11 @@ export function createBodyMaterial(u: BodyUniforms) {
 		vShortD = aSeg.z / 255.0 * 6.0 - 3.0;
 		vMargin = aSeg.y / 255.0;
 		// Full grooves between two muscles, faint ones where a muscle meets bare skin.
-		vDefineW = 1.0;
+		// Full grooves only between two muscles; where a muscle meets unmapped skin (the neck,
+		// the face) a faint one, so the border never breaks up into specks.
+		vDefineW = ( mid < ${MUSCLE_COUNT} && mid2 < ${MUSCLE_COUNT} ) ? 1.0 : 0.15;
+		vSkinP = position * 100.0;
+		vBindN = normal;
 		vEye = aFibre.xyz * 2.0;
 		vec3 fib = aFibre.xyz;
 		// Project the fibre pattern about the muscle's own centre: a short lever arm keeps the
@@ -248,6 +274,12 @@ export function createBodyMaterial(u: BodyUniforms) {
 			base = mix( base, base * vec3( 1.04, 0.8, 0.76 ), clamp( fl, 0.0, 0.6 ) * 0.6 );
 			base = mix( base, base * vec3( 0.8, 0.76, 0.79 ), max( -fl, 0.0 ) * 0.6 );
 			base = mix( base, uSkin * vec3( 0.84, 0.6, 0.58 ), smoothstep( 0.62, 0.92, fl ) * 0.72 );
+			// Lash line along the lids.
+			base = mix( base, uHair * 0.45, smoothstep( 0.62, 0.95, -fl ) * 0.9 );
+			// Subtle mottling so the skin isn't a flat colour.
+			float mot = skinNoise( vSkinP * 0.8 ) - 0.5;
+			base *= 1.0 + mot * 0.08 * skin;
+			base = mix( base, base * vec3( 1.02, 0.95, 0.94 ), max( skinNoise( vSkinP * 0.35 + 5.0 ) - 0.35, 0.0 ) * 0.5 * skin );
 		}
 		// Cavity of the carved muscle borders.
 		base *= 1.0 - uDefine * 0.14 * ( 1.0 - smoothstep( 0.0, 0.45, vMargin ) ) * vDefineW * skin;
@@ -302,6 +334,52 @@ export function createBodyMaterial(u: BodyUniforms) {
 		float det = dot( sx, r1 );
 		vec3 grad = sign( det ) * ( dFdx( h ) * r1 + dFdy( h ) * r2 );
 		normal = normalize( abs( det ) * normal - grad );
+	}
+
+	// Skin micro-detail (pores, fine creases): only where a pixel is small enough to resolve
+	// it, so zoomed-out views stay clean and cheap.
+	{
+		float px = length( fwidth( vSkinP ) );
+		float fade = matIs( 0.0 ) * ( 1.0 - smoothstep( 0.025, 0.09, px ) );
+		if ( fade > 0.001 ) {
+			vec3 q = vSkinP * 9.0;
+			// Pores: small, sparse pits; plus a finer, shallow crease texture.
+			float pore = smoothstep( 0.6, 0.85, skinNoise( q ) );
+			float fine = skinNoise( q * 2.9 + 17.0 ) - 0.5;
+			float h = ( fine * 0.35 - pore ) * 0.0001 * fade;
+			vec3 sx = dFdx( -vViewPosition );
+			vec3 sy = dFdy( -vViewPosition );
+			vec3 r1 = cross( sy, normal );
+			vec3 r2 = cross( normal, sx );
+			float det = dot( sx, r1 );
+			vec3 grad = sign( det ) * ( dFdx( h ) * r1 + dFdy( h ) * r2 );
+			normal = normalize( abs( det ) * normal - grad );
+		}
+	}
+
+	// Six-pack: the rectus abdominis pattern (linea alba, three tendinous bands, the side
+	// edges) as a smooth relief in bind space, crisp at any mesh resolution.
+	if ( uAbs.z > 0.0 ) {
+		float span = uAbs.y - uAbs.x;
+		float t = ( vSkinP.y - uAbs.x ) / span;
+		float u = abs( vSkinP.z );
+		float win = smoothstep( 0.2, 0.6, vBindN.x ) * ( 1.0 - smoothstep( 8.0, 10.0, u ) ) * smoothstep( 0.1, 0.22, t ) * ( 1.0 - smoothstep( 0.9, 1.02, t ) ) * matIs( 0.0 );
+		if ( win > 0.001 ) {
+			float alba = exp( -pow( u / 0.75, 2.0 ) );
+			float bands = exp( -pow( ( t - 0.3 - 0.012 * u ) * span / 0.75, 2.0 ) )
+				+ exp( -pow( ( t - 0.52 - 0.012 * u ) * span / 0.75, 2.0 ) )
+				+ exp( -pow( ( t - 0.74 - 0.012 * u ) * span / 0.75, 2.0 ) );
+			bands = min( bands, 1.0 ) * ( 1.0 - smoothstep( 5.5, 7.5, u ) );
+			float side = exp( -pow( ( u - 8.0 ) / 0.9, 2.0 ) );
+			float h = -( 0.45 * alba + 0.55 * bands + 0.35 * side ) * win * 0.0035 * uAbs.z;
+			vec3 sx = dFdx( -vViewPosition );
+			vec3 sy = dFdy( -vViewPosition );
+			vec3 r1 = cross( sy, normal );
+			vec3 r2 = cross( normal, sx );
+			float det = dot( sx, r1 );
+			vec3 grad = sign( det ) * ( dFdx( h ) * r1 + dFdy( h ) * r2 );
+			normal = normalize( abs( det ) * normal - grad );
+		}
 	}
 	}`,
       )

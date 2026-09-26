@@ -47,7 +47,7 @@ import {
 } from "../../src/lib/three/body/skeleton";
 import { FINGERS } from "../../src/lib/three/body/hand";
 import { MAT_HAIR, MAT_SHORTS, MAT_SKIN } from "../../src/lib/three/body/sdf";
-import { MUSCLE_INDEX_GLUTES } from "../../src/lib/three/body/muscle-index";
+import { MUSCLE_INDEX, MUSCLE_INDEX_GLUTES } from "../../src/lib/three/body/muscle-index";
 import { encodeAsset, type AssetData } from "../../src/lib/three/body/asset/format";
 
 type V3 = [number, number, number];
@@ -60,8 +60,8 @@ mkdirSync(CACHE, { recursive: true });
 /** Morph targets and weights: a lean, muscular young man. */
 const TARGETS: [string, number][] = [
   ["macrodetails/caucasian-male-young", 1],
-  ["macrodetails/universal-male-young-maxmuscle-minweight", 0.6],
-  ["macrodetails/universal-male-young-maxmuscle-averageweight", 0.4],
+  ["macrodetails/universal-male-young-maxmuscle-minweight", 0.8],
+  ["macrodetails/universal-male-young-maxmuscle-averageweight", 0.2],
   ["macrodetails/proportions/male-young-maxmuscle-averageweight-idealproportions", 0.8],
   ["torso/torso-vshape-incr", 0.55],
   ["torso/torso-muscle-dorsi-incr", 0.5],
@@ -71,7 +71,6 @@ const TARGETS: [string, number][] = [
   ["head/head-square", 0.35],
   ["chin/chin-prominent-incr", 0.3],
   ["chin/chin-width-incr", 0.4],
-  ["eyebrows/eyebrows-trans-down", 0.15],
   ["neck/neck-scale-horiz-incr", 0.3],
   ...["r", "l"].flatMap((s): [string, number][] => [
     [`cheek/${s}-cheek-bones-incr`, 0.3],
@@ -526,7 +525,9 @@ const browAt = (p: V3, n: V3) => {
     const dy = p[1] - e.c[1];
     const yc = 1.6 + 0.6 * smooth(-2, 1.1, u) - 0.5 * smooth(1.2, 3.2, u);
     const th = 0.4 - 0.29 * smooth(-1.7, 3.2, u);
-    d = Math.min(d, Math.max(Math.abs(dy - yc) - th, -1.85 - u, u - 3.2));
+    // Real brows fade out upwards and have a firmer lower edge.
+    const across = dy > yc ? (dy - yc - th) * 0.55 : yc - dy - th;
+    d = Math.min(d, Math.max(across, (-1.85 - u) * 0.6, u - 3.2));
   }
   return d > 2.5 ? 3 : Math.max(0.035, 0.035 + d * 0.5);
 };
@@ -648,8 +649,34 @@ const soft: Soft[] = (() => {
 })();
 
 /**
+ * Lash line: the roots of MakeHuman's lash helper strips (upper and lower lid margins).
+ * Painted onto the lids (a dark, soft line) instead of rendering the strips as solid cards.
+ */
+const lashRoots: { p: V3; w: number }[] = [];
+for (const side of ["r", "l"])
+  for (const row of [1, 2]) {
+    const g = groups.get(`helper-${side}-eyelashes-${row}`)!;
+    const eye = eyes[side === "r" ? 0 : 1];
+    const ds = [...g].map((i) => len(sub(fitted[i], eye.c)));
+    const r0 = Math.min(...ds);
+    const r1 = Math.max(...ds);
+    [...g].forEach((i, k) => {
+      if (ds[k] < r0 + 0.3 * (r1 - r0)) lashRoots.push({ p: fitted[i], w: row === 1 ? 1 : 0.22 });
+    });
+  }
+const lashAt = (p: V3) => {
+  let best = 0;
+  for (const { p: q, w } of lashRoots) {
+    const d = len(sub(p, q));
+    if (d < 0.4) best = Math.max(best, w * (1 - smooth(0.1, 0.35, d)));
+  }
+  return best;
+};
+
+/**
  * Face colouring (-1…1, stored in seg.w): > 0 warms/reddens the skin (cheeks, nose, ears),
- * ≥ 0.6 turns into lip colour, < 0 shades it (under the eyes, a light stubble shadow).
+ * ≥ 0.62 turns into lip colour, < 0 shades it (under the eyes, a light stubble shadow) and
+ * ≤ -0.62 is the lash line.
  * The lips follow this head's measured profile (plus MOUTH_DROP): a cupid's-bow upper lip
  * from 6.2 cm below the eyes, the mouth line at 7.85, a curved lower lip, corners 2.35 cm out.
  */
@@ -678,6 +705,11 @@ function faceTone(v: number, p: V3, n: V3): number {
   t -= 0.6 * g(u - 3.1, r[1] + 1.35, 1.2, 0.45) * smooth(-2, 0, r[0]); // under the eyes
   t -= 0.22 * Math.min(1, perioral) * smooth(-3.5, -5, r[1]); // stubble shadow
   t = t * (1 - lip) + (0.62 + 0.38 * lip) * lip;
+  // Lash line: ≤ -0.62 darkens towards the lash colour (see the material).
+  if (Math.abs(r[1]) < 2.5 && u > 0.8 && u < 6) {
+    const lash = lashAt(p);
+    if (lash > 0) t = Math.min(t, -0.62 - 0.38 * lash);
+  }
   return Math.max(-1, Math.min(1, t));
 }
 
@@ -736,8 +768,9 @@ for (let v = 0; v < NV; v++) {
     }
     if (p[1] > fo(B_HEAD)[1] - 9 + HEAD_RAISE) extra[v * 4] = 99;
   }
-  // Face and scalp skin: smooth, no muscle-fibre relief.
+  // Face and scalp skin: smooth, no muscle-fibre relief; brows only a hint of hair texture.
   if (material === MAT_SKIN && p[1] - fittedEyeMid[1] > -12 && p[0] - fittedEyeMid[0] > -22) info[v * 4 + 2] = 0;
+  if (material === MAT_HAIR && browD < hairAt(p)) info[v * 4 + 2] = 50;
   info[v * 4 + 1] = material;
   if (material !== MAT_SKIN) {
     fibre[v * 4 + 3] = material;
@@ -749,6 +782,42 @@ for (let v = 0; v < NV; v++) {
   // A little volume: the crop on the scalp, the fabric of the shorts.
   const lift = (browD < hairAt(p) ? 0 : 0.3) * (1 - smooth(-1.2, 0.1, hairD)) + 0.22 * (1 - smooth(-1.2, 1.2, shortD));
   if (lift > 0) body[v] = add(p, mul(normals[v], lift));
+}
+
+// Six-pack: the base sculpt's abdomen is smooth. Sculpt the rectus abdominis into the mesh —
+// the linea alba down the middle, three tendinous bands (one at the navel, two above) and
+// the side edges — as soft dents along the normal, windowed over the abs' extent on the
+// muscle map (anatomy positions) so there are no hard edges.
+{
+  let yMin = Infinity;
+  let yMax = -Infinity;
+  for (let v = 0; v < NV; v++)
+    if (info[v * 4] === MUSCLE_INDEX.abs && normals[v][0] > 0.5) {
+      yMin = Math.min(yMin, anat[v][1]);
+      yMax = Math.max(yMax, anat[v][1]);
+    }
+  const span = yMax - yMin;
+  let absMax = 0;
+  let absN = 0;
+  for (let v = 0; v < NV; v++) {
+    const a = anat[v];
+    const n = normals[v];
+    const u = Math.abs(a[2]);
+    if (n[0] < 0.3 || u > 10.5 || a[1] < yMin - 2 || a[1] > yMax + 2) continue;
+    const t = (a[1] - yMin) / span;
+    const win = smooth(0.2, 0.6, n[0]) * (1 - smooth(8, 10, u)) * smooth(0.1, 0.22, t) * (1 - smooth(0.9, 1.02, t));
+    if (win <= 0) continue;
+    const alba = Math.exp(-((u / 1.0) ** 2));
+    let bands = 0;
+    for (const tb of [0.3, 0.52, 0.74]) bands += Math.exp(-((((t - tb - 0.012 * u) * span) / 1.1) ** 2));
+    bands *= 1 - smooth(5.5, 7.5, u);
+    const side = Math.exp(-(((u - 8.0) / 1.2) ** 2));
+    const depth = (0.45 * alba + 0.55 * Math.min(1, bands) + 0.35 * side) * win;
+    body[v] = sub(body[v], mul(n, depth));
+    absMax = Math.max(absMax, depth);
+    absN++;
+  }
+  console.log("abs sculpt", absN, "vertices, max depth", absMax.toFixed(2));
 }
 
 // Ambient occlusion of the fitted mesh: surface points above each vertex's tangent
@@ -834,58 +903,16 @@ let minY = Infinity;
 for (const p of body) minY = Math.min(minY, p[1]);
 console.log("vertices", NV, "quads", bodyQuads.length / 4, "min y", minY.toFixed(2), "torso scale", torsoScale.toFixed(3));
 console.log("eyes", eyes.map((e) => e.c.map((x) => x.toFixed(1)).join(",") + " r" + e.r.toFixed(2)).join(" | "), "head joint", fo(B_HEAD).map((x) => x.toFixed(1)).join(","));
-// Eyelashes: MakeHuman's lash helper strips, shortened towards the lid and made
-// two-sided (a back copy with reversed winding), in the hair material.
-const lashQuads: number[] = [];
-const lashPos: V3[] = [];
-for (const side of ["r", "l"])
-  for (const row of [1]) {
-    const g = `helper-${side}-eyelashes-${row}`;
-    const faces: number[][] = [];
-    {
-      let cur = "";
-      for (const line of obj.split("\n")) {
-        if (line.startsWith("g ")) cur = line.slice(2).trim();
-        else if (cur === g && line.startsWith("f ")) faces.push(line.trim().split(/\s+/).slice(1).map((t) => parseInt(t, 10) - 1));
-      }
-    }
-    const vs = [...new Set(faces.flat())];
-    const eye = eyes[side === "r" ? 0 : 1];
-    const dist = new Map(vs.map((i) => [i, len(sub(fitted[i], eye.c))]));
-    const r0 = Math.min(...dist.values());
-    const keep = 0.5;
-    const local = new Map<number, number>();
-    for (const i of vs) {
-      const d = dist.get(i)!;
-      const dir = mul(sub(fitted[i], eye.c), 1 / d);
-      local.set(i, lashPos.length);
-      lashPos.push(add(eye.c, mul(dir, r0 + (d - r0) * keep)));
-    }
-    const base = lashPos.length;
-    for (const i of vs) lashPos.push(lashPos[local.get(i)!]);
-    for (const f of faces) {
-      lashQuads.push(...f.map((i) => NV + local.get(i)!));
-      lashQuads.push(...[...f].reverse().map((i) => NV + base + (local.get(i)! - (base - vs.length))));
-    }
-  }
-const LN = lashPos.length;
-const grow = <T extends Uint8Array | Int8Array | Float32Array>(a: T, per: number, fill: (o: T, i: number) => void): T => {
-  const o = new (a.constructor as new (n: number) => T)(a.length + LN * per);
-  o.set(a);
-  for (let i = NV; i < NV + LN; i++) fill(o, i);
-  return o;
-};
-console.log("eyelash vertices", LN, "quads", lashQuads.length / 4);
 const asset: AssetData = {
-  position: Float32Array.from([...body, ...lashPos].flat()),
-  quads: Uint32Array.from([...bodyQuads, ...lashQuads]),
-  bones: grow(bones, 4, (o, i) => (o[i * 4] = B_HEAD)),
-  weights: grow(weights, 4, (o, i) => (o[i * 4] = 255)),
-  info: grow(info, 4, (o, i) => o.set([255, MAT_HAIR, 255, 0], i * 4)),
-  fibre: grow(fibre, 4, (o, i) => o.set([0, 127, 0, MAT_HAIR], i * 4)),
-  extra: grow(extra, 4, (o, i) => o.set([99, 1, 0, -3], i * 4)),
-  fuv: grow(fuv, 2, (o, i) => o.set([1e6, 0], i * 2)),
-  seg: grow(seg, 4, (o, i) => o.set([255, 255, 255, 128], i * 4)),
+  position: Float32Array.from(body.flat()),
+  quads: Uint32Array.from(bodyQuads),
+  bones,
+  weights,
+  info,
+  fibre,
+  extra,
+  fuv,
+  seg,
   eyes: eyes.map((e) => ({ c: e.c, r: e.r })),
 };
 const bin = encodeAsset(asset);
