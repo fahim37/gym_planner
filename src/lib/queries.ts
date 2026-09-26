@@ -1,7 +1,8 @@
 import { EXERCISES } from "@/data/exercises";
 import { PROGRAMS } from "@/data/programs";
 import type { Equipment, Exercise, ExerciseSummary, Level } from "@/lib/exercise-types";
-import { MUSCLES, type BodyRegion, type MuscleId } from "@/lib/muscles";
+import { type BodyRegion, type MuscleId } from "@/lib/muscles";
+import { searchExercises } from "@/lib/search/engine";
 
 export interface ExerciseFilter {
   q?: string;
@@ -17,24 +18,20 @@ export function summarize(e: Exercise): ExerciseSummary {
   return rest;
 }
 
+/**
+ * Exercises matching every given filter. With a query, results are ranked by the
+ * smart search (typos, gym slang, phrases); every word of the query must match.
+ */
 export function findExercises(filter: ExerciseFilter = {}): Exercise[] {
-  const q = filter.q?.trim().toLowerCase();
-  return EXERCISES.filter((e) => {
-    if (filter.region && e.region !== filter.region) return false;
-    if (filter.muscle && !e.primary.includes(filter.muscle) && !e.secondary.includes(filter.muscle)) return false;
-    if (filter.equipment && !e.equipment.includes(filter.equipment)) return false;
-    if (filter.level && e.level !== filter.level) return false;
-    if (q) {
-      const haystack = [e.name, e.summary, e.region, ...e.equipment, ...[...e.primary, ...e.secondary].map((m) => MUSCLES[m].name)]
-        .join(" ")
-        .toLowerCase()
-        .replace(/[-–]/g, " ");
-      // Forgiving: "curls" finds "curl", "pull-ups" finds "pull up".
-      const words = q.replace(/[-–]/g, " ").split(/\s+/).filter(Boolean);
-      if (!words.every((w) => haystack.includes(w) || (w.length > 3 && w.endsWith("s") && haystack.includes(w.slice(0, -1))))) return false;
-    }
-    return true;
-  });
+  const where = (e: Exercise) =>
+    (!filter.region || e.region === filter.region) &&
+    (!filter.muscle || e.primary.includes(filter.muscle) || e.secondary.includes(filter.muscle)) &&
+    (!filter.equipment || e.equipment.includes(filter.equipment)) &&
+    (!filter.level || e.level === filter.level);
+  if (!filter.q?.trim()) return EXERCISES.filter(where);
+  return searchExercises(filter.q, { where, related: false })
+    .hits.filter((h) => h.full)
+    .map((h) => h.exercise);
 }
 
 /** Exercises for a muscle, strongest emphasis first. */

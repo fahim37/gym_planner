@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import BottomSheet from "@/components/BottomSheet";
 import { CloseIcon, FilterIcon, SearchIcon } from "@/components/icons";
 import { ExerciseCard } from "@/components/ui";
@@ -9,13 +9,13 @@ import { EQUIPMENT_TYPES, LEVELS, type Equipment, type Level } from "@/lib/exerc
 import { REGIONS, type BodyRegion } from "@/lib/muscles";
 import { scrollBehavior } from "@/lib/motion";
 import { currentKey, isReturnVisit, replaceTop, saveTabUrl } from "@/lib/nav-memory";
-import { findExercises } from "@/lib/queries";
+import { useExerciseSearch } from "@/lib/search/use-search";
 
 /** Equipment types that at least one exercise uses, in catalogue order. */
 const EQUIPMENT: Equipment[] = EQUIPMENT_TYPES.filter((t) => EXERCISES.some((e) => e.equipment.includes(t)));
 
 /** Quick searches shown under an empty search box. */
-const SUGGESTIONS = ["Squat", "Bench press", "Curl", "Row", "Pull-up", "Plank", "Deadlift", "Shoulder press"];
+const SUGGESTIONS = ["Squat", "Bench press", "Leg day", "Six pack", "No equipment", "Pull-up", "Lower back", "Deadlift", "Booty", "Shoulder press"];
 
 export interface BrowserState {
   q?: string;
@@ -76,11 +76,20 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
   const inputRef = useRef<HTMLInputElement>(null);
   const chipsRef = useRef<HTMLDivElement>(null);
 
-  const results = useMemo(() => findExercises({ q, region, equipment, level }), [q, region, equipment, level]);
-  const regionCounts = useMemo(() => {
-    const all = findExercises({ q, equipment, level });
-    return { all: all.length, ...Object.fromEntries(REGIONS.map((r) => [r, all.filter((e) => e.region === r).length])) } as Record<string, number>;
-  }, [q, equipment, level]);
+  // Smart search (typos, gym slang, meaning) over the equipment/level filters; body part on top.
+  const search = useExerciseSearch(q, { equipment, level });
+  const hits = useMemo(() => (region ? search.hits.filter((h) => h.exercise.region === region) : search.hits), [search.hits, region]);
+  const results = hits.map((h) => h.exercise);
+  /** Index of the first "close match" (partial or related), shown under its own heading. */
+  const closeFrom = q.trim() ? hits.findIndex((h) => !h.full || h.related) : -1;
+  const regionCounts = useMemo(
+    () =>
+      ({
+        all: search.hits.length,
+        ...Object.fromEntries(REGIONS.map((r) => [r, search.hits.filter((h) => h.exercise.region === r).length])),
+      }) as Record<string, number>,
+    [search.hits],
+  );
   const extraFilters = (equipment ? 1 : 0) + (level ? 1 : 0);
   const anyFilter = Boolean(q || region || equipment || level);
 
@@ -148,7 +157,7 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
               onFocus={() => setFocused(true)}
               onBlur={() => window.setTimeout(() => setFocused(false), 150)}
               onKeyDown={(e) => e.key === "Enter" && inputRef.current?.blur()}
-              placeholder="Exercise or muscle"
+              placeholder="Exercise, muscle or goal"
               className="glass-chip h-11 w-full rounded-full pl-10 pr-11 text-base outline-none placeholder:text-zinc-400 focus:bg-white/10 [&::-webkit-search-cancel-button]:hidden"
             />
             {q && (
@@ -238,6 +247,19 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
       <div className="mb-3 mt-4 flex min-h-9 flex-wrap items-center gap-2 md:mt-0">
         <p className="mr-auto text-sm text-zinc-400" aria-live="polite">
           <span className="font-bold tabular-nums text-white">{results.length}</span> exercise{results.length === 1 ? "" : "s"}
+          {search.didYouMean && (
+            <>
+              {" · "}Did you mean{" "}
+              <button
+                type="button"
+                onClick={() => setQ(search.didYouMean!)}
+                className="font-semibold text-amber-300 underline decoration-amber-300/40 underline-offset-4 hover:decoration-amber-300"
+              >
+                {search.didYouMean}
+              </button>
+              ?
+            </>
+          )}
         </p>
         {equipment && (
           <button
@@ -275,9 +297,14 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
       {results.length ? (
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
           {results.map((e, i) => (
-            <div key={e.slug} className={animate ? "animate-rise" : undefined} style={animate ? { animationDelay: `${Math.min(i, 10) * 35}ms` } : undefined}>
-              <ExerciseCard exercise={e} />
-            </div>
+            <Fragment key={e.slug}>
+              {i === closeFrom && (
+                <h2 className="section-label col-span-full mt-3 first:mt-0">{closeFrom === 0 ? "No exact match — closest results" : "Close matches"}</h2>
+              )}
+              <div className={animate ? "animate-rise" : undefined} style={animate ? { animationDelay: `${Math.min(i, 10) * 35}ms` } : undefined}>
+                <ExerciseCard exercise={e} />
+              </div>
+            </Fragment>
           ))}
         </div>
       ) : (
@@ -289,7 +316,7 @@ export default function ExerciseBrowser({ initial }: { initial: BrowserState }) 
           <p className="mt-1 max-w-xs text-md text-zinc-400">
             Nothing matches{q ? <> &ldquo;{q}&rdquo;</> : null}
             {region ? ` in ${region}` : ""}
-            {equipment || level ? " with these filters" : ""}. Try a shorter word or a muscle name.
+            {equipment || level ? " with these filters" : ""}. Try a muscle, a goal like “leg day”, or fewer words.
           </p>
           <button
             type="button"

@@ -248,6 +248,8 @@ describe("every API route", () => {
     const res = await mod.GET!(req(path), ctx(params));
     expect(res.headers.get("content-type"), url).toMatch(/application\/json/);
     await res.json();
-    expect(res.status, url).toBe(dynamic.length ? 404 : 200);
+    // /api/search needs a query (400) and a server-side Gemini key (503 without one).
+    const expected = url === "/api/search" ? [400, 503] : [dynamic.length ? 404 : 200];
+    expect(expected, url).toContain(res.status);
   });
 });
