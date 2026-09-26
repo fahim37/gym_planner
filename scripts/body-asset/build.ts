@@ -57,8 +57,11 @@ const BASE = "https://raw.githubusercontent.com/makehumancommunity/makehuman/mas
 const CACHE = join(tmpdir(), "ironform-body-asset", "makehuman");
 mkdirSync(CACHE, { recursive: true });
 
-/** Morph targets and weights: a lean, muscular young man. */
-const TARGETS: [string, number][] = [
+/**
+ * Morph targets and weights: a lean, muscular young man. A third element "up" applies only
+ * the upward part of a target (the eye-height targets open both lids; we lift only the upper).
+ */
+const TARGETS: [string, number, "up"?][] = [
   ["macrodetails/caucasian-male-young", 1],
   ["macrodetails/universal-male-young-maxmuscle-minweight", 0.8],
   ["macrodetails/universal-male-young-maxmuscle-averageweight", 0.2],
@@ -67,7 +70,7 @@ const TARGETS: [string, number][] = [
   ["torso/torso-muscle-dorsi-incr", 0.5],
   ["torso/torso-muscle-pectoral-incr", 0.65],
   ["stomach/stomach-tone-incr", 1],
-  // Face: a stronger jaw and cheekbones, a lower brow ridge and a calmer (less wide-open) eye.
+  // Face: a stronger jaw and cheekbones.
   ["head/head-square", 0.35],
   ["chin/chin-prominent-incr", 0.3],
   ["chin/chin-width-incr", 0.4],
@@ -75,7 +78,7 @@ const TARGETS: [string, number][] = [
   ...["r", "l"].flatMap((s): [string, number][] => [
     [`cheek/${s}-cheek-bones-incr`, 0.3],
   ]),
-  // Mouth ~0.6 cm lower and a slightly shorter chin: a natural upper-lip length (MOUTH_DROP).
+  // Mouth ~0.6 cm lower and a slightly shorter chin: a natural upper-lip length.
   ["mouth/mouth-trans-down", 0.6],
   ["chin/chin-height-decr", 0.4],
   ["mouth/mouth-angles-up", 0.35],
@@ -83,6 +86,13 @@ const TARGETS: [string, number][] = [
   ["mouth/mouth-lowerlip-volume-incr", 0.25],
   ["eyes/r-eye-scale-incr", 0.2],
   ["eyes/l-eye-scale-incr", 0.2],
+  // A relaxed, open gaze: the base upper lid covers ~40% of the iris (a squint). Lift it so it
+  // just overlaps the top of the iris; the lower lid stays where it is.
+  ...["r", "l"].flatMap((s): [string, number, "up"][] => [
+    [`eyes/${s}-eye-height1-incr`, 0.45, "up"],
+    [`eyes/${s}-eye-height2-incr`, 0.85, "up"],
+    [`eyes/${s}-eye-height3-incr`, 0.55, "up"],
+  ]),
   ...["r", "l"].flatMap((s): [string, number][] => [
     [`armslegs/${s}-upperarm-muscle-incr`, 1],
     [`armslegs/${s}-upperarm-shoulder-muscle-incr`, 1],
@@ -91,9 +101,6 @@ const TARGETS: [string, number][] = [
     [`armslegs/${s}-lowerleg-muscle-incr`, 0.8],
   ]),
 ];
-
-/** How far mouth-trans-down moves the lips (cm, after the head's 1.1 scale). */
-const MOUTH_DROP = 0.6 * 0.91 * 1.1;
 
 function fetchText(path: string): string {
   const file = join(CACHE, path.replace(/\//g, "__"));
@@ -129,11 +136,12 @@ const bodyQuads: number[] = [];
     }
   }
 }
-for (const [t, w] of TARGETS) {
+for (const [t, w, only] of TARGETS) {
   for (const line of fetchText(`targets/${t}.target`).split("\n")) {
     if (!line || line[0] === "#") continue;
     const p = line.trim().split(/\s+/);
     if (p.length < 4) continue;
+    if (only === "up" && +p[2] <= 0) continue;
     const v = mhV[+p[0]];
     v[0] += w * +p[1];
     v[1] += w * +p[2];
@@ -178,6 +186,10 @@ const len = (a: V3) => Math.sqrt(dot(a, a));
 const norm = (a: V3): V3 => mul(a, 1 / (len(a) || 1));
 const mid = (a: V3, b: V3): V3 => mul(add(a, b), 0.5);
 const perpTo = (v: V3, axis: V3): V3 => norm(sub(v, mul(axis, dot(v, axis))));
+const smooth = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
 
 /** Affine map: p → o + R·(k·axial + q·radial) of (p − a), stored as a 3×4 matrix. */
 type Affine = number[];
@@ -511,25 +523,32 @@ const hairAt = (p: V3) => {
   return Math.max(-3, Math.min(3, d * 0.2));
 };
 /**
- * Eyebrows: a signed distance (< 0 inside) to a natural male brow above each eye, in the
- * eye's frame (u outward from the eye centre, cm): a full, slightly lower head over the
- * inner corner, a gentle arch above the outer iris and a tapered tail. Scaled for a soft,
- * feathered edge and floored so skin shows through a little, like real brow hair.
+ * Eyebrows: a signed distance (< 0 inside) to a natural, relaxed male brow above each eye, in
+ * the eye's frame (u outward from the eye centre, cm). It lies on the brow ridge — lower edge
+ * ~1.6 cm above the eye centre at the head, ~1.9 cm at the peak — starting just inside the
+ * inner corner of the eye with a soft, rounded head, rising gently to its peak above the outer
+ * iris and tapering into a thin tail; a clear gap is left above the nose. Scaled for a
+ * feathered edge and floored so skin shows through (most at the head), like real brow hair.
  */
 const browAt = (p: V3, n: V3) => {
   if (n[0] < 0.2) return 3;
-  let d = 3;
+  let best = 3;
   for (const e of eyes) {
     if (p[0] < e.c[0] - 3) continue;
     const u = (p[2] - e.c[2]) * Math.sign(e.c[2]);
     const dy = p[1] - e.c[1];
-    const yc = 1.6 + 0.6 * smooth(-2, 1.1, u) - 0.5 * smooth(1.2, 3.2, u);
-    const th = 0.4 - 0.29 * smooth(-1.7, 3.2, u);
+    const yc = 1.95 + 0.22 * smooth(-1.6, 1.0, u) - 0.14 * smooth(1.4, 2.9, u);
+    const th = 0.27 - 0.05 * smooth(-1.5, 0.3, u) - 0.17 * smooth(0.9, 2.8, u);
     // Real brows fade out upwards and have a firmer lower edge.
-    const across = dy > yc ? (dy - yc - th) * 0.55 : yc - dy - th;
-    d = Math.min(d, Math.max(across, (-1.85 - u) * 0.6, u - 3.2));
+    const across = dy > yc ? (dy - yc - th) * 0.6 : (yc - dy - th) * 0.85;
+    const along = Math.max((-1.65 - u) * 0.6, u - 2.8);
+    const d = across > 0 && along > 0 ? Math.hypot(across, along) : Math.max(across, along);
+    if (d > 2.5) continue;
+    // Density: a sparse head, a full body, a lighter tail.
+    const dens = 0.5 + 0.35 * smooth(-1.6, -0.4, u) - 0.25 * smooth(1.6, 2.8, u);
+    best = Math.min(best, Math.max(0.035 + (1 - dens) * 0.13, 0.035 + d * 0.5));
   }
-  return d > 2.5 ? 3 : Math.max(0.035, 0.035 + d * 0.5);
+  return best;
 };
 const shortsAt = (p: V3) => {
   const sb = sculpt.shortsBox!;
@@ -649,10 +668,11 @@ const soft: Soft[] = (() => {
 })();
 
 /**
- * Lash line: the roots of MakeHuman's lash helper strips (upper and lower lid margins).
- * Painted onto the lids (a dark, soft line) instead of rendering the strips as solid cards.
+ * Lash lines: the roots of MakeHuman's lash helper strips (strip 2 = the upper lid margin,
+ * strip 1 = the lower). Painted onto the lids instead of rendering the strips as solid cards:
+ * a soft dark line along the upper lid, only a faint shade along the lower one.
  */
-const lashRoots: { p: V3; w: number }[] = [];
+const lashRoots: { p: V3; upper: boolean; w: number }[] = [];
 for (const side of ["r", "l"])
   for (const row of [1, 2]) {
     const g = groups.get(`helper-${side}-eyelashes-${row}`)!;
@@ -661,24 +681,32 @@ for (const side of ["r", "l"])
     const r0 = Math.min(...ds);
     const r1 = Math.max(...ds);
     [...g].forEach((i, k) => {
-      if (ds[k] < r0 + 0.3 * (r1 - r0)) lashRoots.push({ p: fitted[i], w: row === 1 ? 1 : 0.22 });
+      // Lashes thin out towards the inner corner.
+      const u = (fitted[i][2] - eye.c[2]) * Math.sign(eye.c[2]);
+      if (ds[k] < r0 + 0.3 * (r1 - r0)) lashRoots.push({ p: fitted[i], upper: row === 2, w: smooth(-1.2, -0.5, u) });
     });
   }
+/** Closeness (0…1) to the upper and lower lash roots. */
 const lashAt = (p: V3) => {
-  let best = 0;
-  for (const { p: q, w } of lashRoots) {
+  let up = 0;
+  let lo = 0;
+  for (const { p: q, upper, w: root } of lashRoots) {
     const d = len(sub(p, q));
-    if (d < 0.4) best = Math.max(best, w * (1 - smooth(0.1, 0.35, d)));
+    if (d >= 0.35) continue;
+    const w = root * (upper ? 1 - smooth(0.1, 0.32, d) : 1 - smooth(0.06, 0.22, d));
+    if (upper) up = Math.max(up, w);
+    else lo = Math.max(lo, w);
   }
-  return best;
+  return { up, lo };
 };
 
 /**
  * Face colouring (-1…1, stored in seg.w): > 0 warms/reddens the skin (cheeks, nose, ears),
  * ≥ 0.62 turns into lip colour, < 0 shades it (under the eyes, a light stubble shadow) and
- * ≤ -0.62 is the lash line.
- * The lips follow this head's measured profile (plus MOUTH_DROP): a cupid's-bow upper lip
- * from 6.2 cm below the eyes, the mouth line at 7.85, a curved lower lip, corners 2.35 cm out.
+ * ≤ -0.62 is the upper lash line.
+ * The lips follow the vermilion measured on this mesh (cm below the eyes): the mouth line at
+ * 8.4, the upper border at 7.0 on the midline with a small cupid's bow, the lower border at
+ * 9.6; both lips taper into the corners 2.45 cm out, the upper one faster.
  */
 function faceTone(v: number, p: V3, n: V3): number {
   const r = sub(p, fittedEyeMid);
@@ -689,26 +717,26 @@ function faceTone(v: number, p: V3, n: V3): number {
   let perioral = 0;
   for (const [b, w] of vw[v]) if (b === "jaw" || b.startsWith("oris") || b.startsWith("risorius") || b.startsWith("levator")) perioral += w;
   // Lips.
-  const k = Math.min(1, u / 2.35);
-  const y = r[1] + MOUTH_DROP;
-  const top = -6.2 + 0.14 * Math.exp(-(((u - 0.55) / 0.3) ** 2)) - 0.5 * k * k;
-  // Upper lip down to the mouth line (the fold 7.85 cm below the eyes), then the lower lip,
-  // narrower, down to 9.15 cm.
-  const bottom = -9.15 + 1.25 * k * k;
-  const inside = Math.min(y - bottom, top - y, 2.35 - u);
-  const lip = r[0] > 1.2 ? smooth(-0.06, 0.12, inside) : 0;
+  const k = Math.min(1, u / 2.45);
+  const hU = 1.36 * Math.max(0, 1 - k ** 2.2) ** 0.6 + 0.07 * Math.exp(-(((u - 0.45) / 0.22) ** 2)) - 0.05 * Math.exp(-((u / 0.18) ** 2));
+  const hL = 1.1 * Math.max(0, 1 - k * k) ** 0.55;
+  const dm = r[1] + 8.4;
+  const inside = dm > 0 ? hU - dm : hL + dm;
+  // A defined upper border, a softer lower one, fading out at the corners.
+  const lip = r[0] > 1.2 ? smooth(-0.06, dm > 0 ? 0.12 : 0.26, inside) * (1 - smooth(2.25, 2.6, u)) : 0;
   let t = 0;
-  t += 0.5 * g(u - 3.6, r[1] + 3.1, 1.7, 1.4) * front; // cheeks
-  t += 0.35 * g(u, r[1] + 4.3, 1.0, 1.0) * smooth(1.5, 3, r[0]); // nose tip
+  t += 0.4 * g(u - 3.6, r[1] + 3.1, 1.7, 1.4) * front; // cheeks
+  t += 0.3 * g(u, r[1] + 4.3, 1.0, 1.0) * smooth(1.5, 3, r[0]); // nose tip
   t += 0.45 * smooth(6.4, 7.6, u) * smooth(-6, -4.5, r[1]) * (1 - smooth(1.5, 3, r[1])) * smooth(-11, -8, r[0]) * (1 - smooth(-4, -2, r[0])); // ears
   t += 0.12 * g(u, r[1] + 10.3, 2, 1.2) * front; // chin
-  t -= 0.6 * g(u - 3.1, r[1] + 1.35, 1.2, 0.45) * smooth(-2, 0, r[0]); // under the eyes
-  t -= 0.22 * Math.min(1, perioral) * smooth(-3.5, -5, r[1]); // stubble shadow
+  t -= 0.3 * g(u - 2.9, r[1] + 1.45, 1.1, 0.4) * smooth(-2, 0, r[0]); // under the eyes
+  t -= 0.14 * Math.min(1, perioral) * smooth(-3.5, -5, r[1]); // stubble shadow
   t = t * (1 - lip) + (0.62 + 0.38 * lip) * lip;
-  // Lash line: ≤ -0.62 darkens towards the lash colour (see the material).
+  // Lash lines: the upper one ≤ -0.62 darkens towards the lash colour (see the material).
   if (Math.abs(r[1]) < 2.5 && u > 0.8 && u < 6) {
     const lash = lashAt(p);
-    if (lash > 0) t = Math.min(t, -0.62 - 0.38 * lash);
+    if (lash.lo > 0) t = Math.min(t, -0.28 * lash.lo);
+    if (lash.up > 0) t = Math.min(t, -0.62 - 0.38 * lash.up);
   }
   return Math.max(-1, Math.min(1, t));
 }
@@ -718,10 +746,6 @@ const fibre = new Int8Array(NV * 4);
 const extra = new Float32Array(NV * 4);
 const fuv = new Float32Array(NV * 2);
 const seg = new Uint8Array(NV * 4);
-const smooth = (a: number, b: number, x: number) => {
-  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return t * t * (3 - 2 * t);
-};
 for (let v = 0; v < NV; v++) {
   const p = body[v];
   const a = anat[v];

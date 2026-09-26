@@ -30,6 +30,8 @@ export interface BodyUniforms {
   uDefine: { value: number };
   /** Six-pack relief (sculpted body): abs bottom and top height in bind space (cm), strength. */
   uAbs: { value: THREE.Vector3 };
+  /** Brow hair detail (sculpted body): eye level in bind space (cm), strength. */
+  uBrow: { value: THREE.Vector2 };
   /** Per (muscle, side) centre in bind space (cm): the local origin of the fibre projection. */
   uAnchor: { value: THREE.Vector3[] };
 }
@@ -119,6 +121,7 @@ uniform float uLine;
 uniform float uFade;
 uniform float uDefine;
 uniform vec3 uAbs;
+uniform vec2 uBrow;
 varying float vMargin;
 varying float vDefineW;
 varying vec3 vHi;
@@ -156,7 +159,21 @@ float skinNoise( vec3 p ) {
 /** Material ids (see sdf.ts MAT_*): skin, shorts, hair, eye, nail, lip. */
 const MATERIAL_FN = /* glsl */ `
 float shortsAmt() { return 1.0 - smoothstep( 0.3, 0.55, vShortD ); }
-float hairAmt() { return 1.0 - smoothstep( 0.0, 0.26, vHairD ); }
+float gHair;
+float hairAmt() { return gHair; }
+// Hair coverage from the baked distance field, its edges broken into strands where they
+// resolve on screen: fine strands along the brows (sloping up and out), an irregular hairline.
+// Called once, outside any branch (it takes screen-space derivatives).
+float hairField() {
+	float a = 1.0 - smoothstep( 0.0, 0.26, vHairD );
+	float px = length( fwidth( vSkinP ) );
+	float res = 1.0 - smoothstep( 0.03, 0.09, px );
+	float brow = uBrow.y * smoothstep( 0.4, 0.7, vBindN.x ) * ( 1.0 - smoothstep( uBrow.x + 3.2, uBrow.x + 4.0, vSkinP.y ) );
+	vec3 q = mix( vSkinP * 4.0, vec3( vSkinP.x * 2.0, ( vSkinP.y - 0.25 * abs( vSkinP.z ) ) * 11.0, abs( vSkinP.z ) * 1.5 ), brow );
+	float n = skinNoise( q ) - 0.5;
+	float edge = 4.0 * a * ( 1.0 - a );
+	return clamp( a + n * res * ( 1.1 * edge + 0.6 * brow * a ), 0.0, 1.0 );
+}
 float matIs(float id) {
   if (id < 0.5) return clamp(1.0 - shortsAmt() - vMat.z - vMat.w - vLip - hairAmt(), 0.0, 1.0);
   if (id < 1.5) return shortsAmt();
@@ -234,6 +251,7 @@ export function createBodyMaterial(u: BodyUniforms) {
         "#include <color_fragment>",
         `#include <color_fragment>
 	gFibre = texture2D( uFibreMap, vFibreUv );
+	gHair = hairField();
 	// Highlight membership is per vertex; resolve it at its interpolated 0.5 isoline with a
 	// pixel-wide antialiased edge, so region borders run through edge midpoints instead of
 	// following the triangle stair-steps.
@@ -251,7 +269,9 @@ export function createBodyMaterial(u: BodyUniforms) {
 		vec3 base = uSkin;
 		base = mix( base, uSkin * vec3( 1.04, 1.03, 1.03 ) + 0.01, vSurf.y * 0.35 );
 		base = mix( base, uSkin * vec3( 0.86, 0.62, 0.59 ), lip );
-		base = mix( base, uSkin * 1.12 + 0.04, nail + eye );
+		base = mix( base, uSkin * 1.12 + 0.04, nail );
+		// Sclera: a soft, slightly warm off-white (never skin-coloured).
+		base = mix( base, vec3( 0.58, 0.53, 0.49 ), eye );
 		base = mix( base, uShorts, shorts );
 		base = mix( base, uHair, hair );
 		// Iris and pupil from the eye-local position (exact under interpolation → always round).
@@ -264,8 +284,14 @@ export function createBodyMaterial(u: BodyUniforms) {
 			float fleck = texture2D( uFibreMap, vec2( atan( vEye.z, vEye.y ) * 1.3, ir * 3.0 ) ).a;
 			vec3 irisCol = mix( vec3( 0.25, 0.18, 0.13 ), vec3( 0.08, 0.06, 0.05 ), smoothstep( 0.3, 0.63, ir ) ) * ( 0.8 + 0.4 * fleck );
 			base = mix( base, mix( irisCol, vec3( 0.012 ), pupil ), iris );
-			// Sclera: slightly warm, darker towards the corners.
-			base = mix( base, base * vec3( 0.86, 0.84, 0.82 ) * mix( 0.62, 0.95, front ), eye );
+			// Pink caruncle in the inner corner (towards the nose: the side opposite the eye's own).
+			float inner = -sign( vSkinP.z ) * vEye.z;
+			base = mix( base, vec3( 0.62, 0.36, 0.34 ), smoothstep( 0.85, 1.25, inner ) * 0.7 * eye );
+			// Darker towards the corners, and a band of shadow under the upper lid and lashes,
+			// following the lid's arc (eye-local cm: ~0.5 above the gaze at the centre).
+			float lidY = 0.5 - 0.8 * vEye.z * vEye.z / 1.69;
+			float lidShade = 1.0 - 0.5 * smoothstep( lidY - 0.32, lidY + 0.02, vEye.y );
+			base = mix( base, base * mix( 0.55, 0.95, front ) * lidShade, eye );
 		}
 		base *= 1.0 + vTone * 0.06;
 		// Living skin: warmer cheeks, nose, ears and lips; soft shade under the eyes and stubble.
@@ -273,9 +299,10 @@ export function createBodyMaterial(u: BodyUniforms) {
 			float fl = vFlush * skin;
 			base = mix( base, base * vec3( 1.04, 0.8, 0.76 ), clamp( fl, 0.0, 0.6 ) * 0.6 );
 			base = mix( base, base * vec3( 0.8, 0.76, 0.79 ), max( -fl, 0.0 ) * 0.6 );
-			base = mix( base, uSkin * vec3( 0.84, 0.6, 0.58 ), smoothstep( 0.62, 0.92, fl ) * 0.72 );
-			// Lash line along the lids.
-			base = mix( base, uHair * 0.45, smoothstep( 0.62, 0.95, -fl ) * 0.9 );
+			// Lips: a muted rose, ramping in over the whole lip range (no hard mask edge).
+			base = mix( base, uSkin * vec3( 0.82, 0.58, 0.6 ), clamp( ( fl - 0.62 ) / 0.3, 0.0, 1.0 ) * 0.62 );
+			// Lash line along the upper lid.
+			base = mix( base, uHair * 0.55, smoothstep( 0.62, 0.95, -fl ) * 0.75 );
 			// Subtle mottling so the skin isn't a flat colour.
 			float mot = skinNoise( vSkinP * 0.8 ) - 0.5;
 			base *= 1.0 + mot * 0.08 * skin;
@@ -304,7 +331,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 	roughnessFactor = mix( roughnessFactor, 0.62, matIs( 2.0 ) );
 	roughnessFactor = mix( roughnessFactor, 0.12, matIs( 3.0 ) );
 	roughnessFactor = mix( roughnessFactor, 0.3, matIs( 4.0 ) );
-	roughnessFactor = mix( roughnessFactor, 0.42, max( vLip, smoothstep( 0.62, 0.92, vFlush ) * matIs( 0.0 ) ) );
+	roughnessFactor = mix( roughnessFactor, 0.42, max( vLip, clamp( ( vFlush - 0.62 ) / 0.3, 0.0, 1.0 ) * matIs( 0.0 ) ) );
 	roughnessFactor = mix( roughnessFactor, 0.42, clamp( gHi.x + gHi.y, 0.0, 1.0 ) * ( 1.0 - matIs( 1.0 ) ) );`,
       )
       .replace(

@@ -290,12 +290,19 @@ function subdivide(s: Mesh): Mesh {
   return m;
 }
 
-/** Eyeball: a UV sphere around the asset's eye centre, iris coordinates in the fibre slot. */
+/**
+ * Eyeball: a UV sphere around the asset's eye centre, iris coordinates in the fibre slot. It
+ * fills the socket (the helper sphere touches the lid margins, so it sits just inside them)
+ * and its gaze is lowered a few degrees: a relaxed look, the iris tucked under the upper lid.
+ */
 function addEyes(parts: Mesh[], eyes: AssetData["eyes"]) {
   const SEG = 28;
   const RING = 18;
+  const tilt = (3 * Math.PI) / 180;
+  const ct = Math.cos(tilt);
+  const st = Math.sin(tilt);
   for (const e of eyes) {
-    const r = Math.min(1.25, e.r * 0.7);
+    const r = e.r * 0.9;
     const n = (RING + 1) * (SEG + 1);
     const m: Mesh = {
       n,
@@ -317,11 +324,13 @@ function addEyes(parts: Mesh[], eyes: AssetData["eyes"]) {
         const ph = (2 * Math.PI * j) / SEG;
         const d = [Math.cos(th), Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph)];
         for (let c = 0; c < 3; c++) m.pos[v * 3 + c] = e.c[c] + d[c] * r;
+        // Eye-local coordinates: x along the (lowered) gaze, y up, z sideways.
+        const local = [d[0] * ct - d[1] * st, d[0] * st + d[1] * ct, d[2]];
         m.bones[v * 4] = B_HEAD;
         m.weights[v * 4] = 255;
         m.info[v * 4] = 255;
         m.info[v * 4 + 1] = MAT_EYE;
-        for (let c = 0; c < 3; c++) m.fibre[v * 4 + c] = Math.round(Math.max(-1, Math.min(1, (d[c] * r) / 2)) * 127);
+        for (let c = 0; c < 3; c++) m.fibre[v * 4 + c] = Math.round(Math.max(-1, Math.min(1, (local[c] * r) / 2)) * 127);
         m.fibre[v * 4 + 3] = MAT_EYE;
         m.extra[v * 4] = 99;
         m.extra[v * 4 + 1] = 1;

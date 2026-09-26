@@ -4,6 +4,7 @@ import type { Skeleton, Vec3 } from "@/lib/anatomy/types";
 import { loadBodyData, meshTier, peekBodyData, type BodyData } from "./body/cache";
 import { createBodyDepthMaterial, createBodyMaterial, createPickMaterial, MUSCLE_COUNT, type BodyUniforms } from "./body/material";
 import { MUSCLE_INDEX, muscleAt } from "./body/muscle-index";
+import { MAT_EYE } from "./body/sdf";
 import { BONE_COUNT, BoneSolver, emptyJoints, fillJoints, type GripSpec, type Support, type WorldJoints } from "./body/skeleton";
 import { fibreNormalMap } from "./body/textures";
 
@@ -104,6 +105,7 @@ export class BodyRig {
       uFade: { value: 1 },
       uDefine: { value: 0 },
       uAbs: { value: new THREE.Vector3() },
+      uBrow: { value: new THREE.Vector2() },
       uAnchor: { value: Array.from({ length: (MUSCLE_COUNT + 1) * 2 }, () => new THREE.Vector3()) },
     };
     this.syncPalette();
@@ -128,6 +130,7 @@ export class BodyRig {
     this.uniforms.uDefine.value = sculpted ? 0.3 : 0;
     this.uniforms.uDetail.value = sculpted ? 0.6 : 1;
     this.uniforms.uAbs.value.set(0, 1, 0);
+    this.uniforms.uBrow.value.set(0, 0);
     if (sculpted) {
       // The abs' height range on the front of the body (bind space, cm) anchors the six-pack relief.
       let lo = Infinity;
@@ -138,6 +141,15 @@ export class BodyRig {
           hi = Math.max(hi, data.position[v * 3 + 1] * 100);
         }
       if (hi > lo) this.uniforms.uAbs.value.set(lo, hi, 1);
+      // Eye level (bind space, cm) anchors the brow hair detail.
+      let ey = 0;
+      let en = 0;
+      for (let v = 0; v < data.info.length / 4; v++)
+        if (data.info[v * 4 + 1] === MAT_EYE) {
+          ey += data.position[v * 3 + 1] * 100;
+          en++;
+        }
+      if (en) this.uniforms.uBrow.value.set(ey / en, 1);
     }
     const geometry = sharedGeometry(data);
     const body = new THREE.Mesh(geometry, createBodyMaterial(this.uniforms));
