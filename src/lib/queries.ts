@@ -25,10 +25,13 @@ export function findExercises(filter: ExerciseFilter = {}): Exercise[] {
     if (filter.equipment && !e.equipment.includes(filter.equipment)) return false;
     if (filter.level && e.level !== filter.level) return false;
     if (q) {
-      const haystack = [e.name, e.summary, e.region, ...e.equipment, ...e.primary.map((m) => MUSCLES[m].name)]
+      const haystack = [e.name, e.summary, e.region, ...e.equipment, ...[...e.primary, ...e.secondary].map((m) => MUSCLES[m].name)]
         .join(" ")
-        .toLowerCase();
-      if (!q.split(/\s+/).every((word) => haystack.includes(word))) return false;
+        .toLowerCase()
+        .replace(/[-–]/g, " ");
+      // Forgiving: "curls" finds "curl", "pull-ups" finds "pull up".
+      const words = q.replace(/[-–]/g, " ").split(/\s+/).filter(Boolean);
+      if (!words.every((w) => haystack.includes(w) || (w.length > 3 && w.endsWith("s") && haystack.includes(w.slice(0, -1))))) return false;
     }
     return true;
   });

@@ -298,6 +298,36 @@ main:has([data-focus-route]) {
 
 /* ---------- Motion ---------- */
 
+/* Typography: balanced headings, no orphan words, long words never overflow. */
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+p,
+li,
+dd {
+  text-wrap: pretty;
+}
+body {
+  overflow-wrap: break-word;
+}
+
+/* The card you opened glows briefly when you come back to the list. */
+.nav-return {
+  animation: nav-return 1.3s ease-out;
+}
+@keyframes nav-return {
+  0%,
+  35% {
+    box-shadow: 0 0 0 3px rgb(252 211 77 / 0.95), 0 0 34px rgb(252 211 77 / 0.45);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(252 211 77 / 0);
+  }
+}
+
 @keyframes page-in {
   from {
     opacity: 0;

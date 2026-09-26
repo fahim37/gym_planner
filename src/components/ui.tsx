@@ -18,6 +18,11 @@ export function MuscleChip({ id, emphasis }: { id: MuscleId; emphasis: "primary"
   );
 }
 
+/** "10–12 each leg" → "10–12/side": prescriptions that fit on one line of a card. */
+export function shortReps(reps: string) {
+  return reps.replace(/\s*(each|per)\s+(leg|side|arm)/i, "/side").replace(/\s*hold$/i, "");
+}
+
 /** Card in the style of a workout poster: 3D still, bold name, reps and sets. Fits two across on a phone. */
 export function ExerciseCard({ exercise, sets, reps }: { exercise: Exercise; sets?: string; reps?: string }) {
   return (
@@ -32,14 +37,11 @@ export function ExerciseCard({ exercise, sets, reps }: { exercise: Exercise; set
         </span>
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-3 sm:gap-2 sm:p-4">
-        <h3 className="display text-[15px] leading-none text-zinc-900 [text-shadow:0_1px_0_#fde68a] sm:text-lg">{exercise.name}</h3>
-        <div className="flex flex-wrap gap-x-2 text-[10px] font-extrabold uppercase text-zinc-800 sm:gap-x-3 sm:text-xs">
-          <span>
-            {reps ?? exercise.prescription.reps} {exercise.hold ? "" : "reps"}
-          </span>
-          <span className="text-zinc-400">·</span>
-          <span>{sets ?? exercise.prescription.sets} sets</span>
-        </div>
+        <h3 className="display text-balance text-[15px] leading-[1.05] text-zinc-900 [text-shadow:0_1px_0_#fde68a] sm:text-lg">{exercise.name}</h3>
+        <p className="truncate text-[11px] font-extrabold uppercase tabular-nums text-zinc-800 sm:text-xs">
+          {sets ?? exercise.prescription.sets} × {shortReps(reps ?? exercise.prescription.reps)}
+          {exercise.hold || /s\b|min|max|sec/i.test(reps ?? exercise.prescription.reps) ? "" : " reps"}
+        </p>
         <div className="mt-auto flex flex-wrap gap-1 pt-1">
           {exercise.primary.map((m, i) => (
             <span

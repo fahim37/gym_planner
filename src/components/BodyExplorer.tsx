@@ -141,9 +141,10 @@ export default function BodyExplorer({ highlights = {}, navigate = true, autoRot
       if (s.controls) {
         s.controls.autoRotate = autoRotate;
         s.controls.autoRotateSpeed = 1.2;
-        s.controls.enableZoom = false;
+        s.controls.enableZoom = true;
       }
-      // OrbitControls claims every touch; let vertical swipes scroll the page (horizontal drags still rotate).
+      // OrbitControls claims every touch; let vertical swipes scroll the page (horizontal drags
+      // still rotate, and a two-finger pinch zooms the figure).
       canvas.style.touchAction = "pan-y";
       observer = new ResizeObserver(([e]) => s.resize(e.contentRect.width, e.contentRect.height));
       observer.observe(canvas);
@@ -254,8 +255,16 @@ export default function BodyExplorer({ highlights = {}, navigate = true, autoRot
     const canvas = canvasRef.current;
     // Expanded: touch rotates and pinch-zooms the figure instead of scrolling the page.
     if (canvas) canvas.style.touchAction = expanded ? "none" : "pan-y";
-    if (s?.controls) s.controls.enableZoom = expanded;
-    if (!expanded) return;
+    if (s?.controls) s.controls.enableZoom = true;
+    if (!expanded) {
+      // Collapsed: the mouse wheel scrolls the page instead of zooming (pinch still zooms).
+      const el = rootRef.current;
+      const onWheel = (e: WheelEvent) => {
+        if (!e.ctrlKey) e.stopPropagation();
+      };
+      el?.addEventListener("wheel", onWheel, { capture: true });
+      return () => el?.removeEventListener("wheel", onWheel, { capture: true });
+    }
     const root = document.documentElement;
     root.classList.add("viewer-expanded");
     let wasFullscreen = false;
@@ -325,7 +334,7 @@ export default function BodyExplorer({ highlights = {}, navigate = true, autoRot
         )}
       </div>
       <p className="pointer-events-none absolute bottom-3 left-0 right-0 text-center text-xs font-medium text-zinc-500">
-        {expanded ? "Drag to rotate · pinch to zoom · " : "Drag to rotate · "}{navigate ? "tap a muscle to explore it" : "hover a muscle to name it"}
+        {"Drag to rotate · pinch to zoom · "}{navigate ? "tap a muscle to explore it" : "hover a muscle to name it"}
       </p>
       <BottomSheet open={selected !== null} onClose={closeSheet} label={selected ? MUSCLES[selected].name : "Muscle"}>
         {selected && <MuscleSheet id={selected} />}

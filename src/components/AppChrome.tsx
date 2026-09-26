@@ -1,9 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, type ComponentType, type MouseEvent, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type ComponentType, type MouseEvent, type ReactNode } from "react";
 import { SITE } from "@/config/site";
+import {
+  currentKey,
+  isReturnVisit,
+  markReturnVisit,
+  readStack,
+  recordVisit,
+  rememberLink,
+  restoreScroll,
+  saveScroll,
+  saveTabUrl,
+  tabUrl,
+} from "@/lib/nav-memory";
 import {
   BodyIcon,
   CalendarIcon,
@@ -53,7 +65,24 @@ function scrollTopIfCurrent(e: MouseEvent, pathname: string, href: string) {
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const parent = parentOf(pathname);
+  // "Back" returns to wherever you came from (list, muscle, program…) with its scroll and filters.
+  const [backLabel, setBackLabel] = useState<string | null>(null);
+  const parentHref = parent?.href;
+  useEffect(() => {
+    // Next frame: the page's own effect records this visit in the stack first.
+    const raf = requestAnimationFrame(() => {
+      const prev = readStack().at(-2);
+      setBackLabel(prev && parentHref && prev.split("?")[0] !== parentHref ? "Back" : null);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [pathname, parentHref]);
+  const goBack = (e: MouseEvent) => {
+    if (readStack().length < 2) return;
+    e.preventDefault();
+    router.back();
+  };
   return (
     <header data-app-chrome className={`glass sticky top-0 z-30 pt-safe ${isFocusRoute(pathname) ? "hidden md:block" : ""}`}>
       <div className="mx-auto flex h-[var(--topbar-h)] max-w-6xl items-center justify-between gap-2 px-4">
@@ -61,10 +90,11 @@ export function SiteHeader() {
           {parent && (
             <Link
               href={parent.href}
+              onClick={goBack}
               className="glass-chip -ml-1.5 flex h-10 items-center gap-0.5 rounded-full pl-1 pr-3.5 text-sm font-semibold text-amber-300 transition-transform duration-300 ease-spring active:scale-90 md:hidden"
             >
               <ChevronLeft size={22} />
-              {parent.label}
+              <span className="max-w-[9rem] truncate">{backLabel ?? parent.label}</span>
             </Link>
           )}
           <Link href="/" className={`min-h-11 shrink-0 items-center gap-2 ${parent ? "hidden md:flex" : "flex"}`}>
@@ -109,6 +139,15 @@ export function SiteHeader() {
  */
 export function TabBar() {
   const pathname = usePathname();
+  const router = useRouter();
+  /** Tabs keep their place: a tab you left comes back with its filters and scroll position. */
+  const openTab = (e: MouseEvent, href: string) => {
+    if (pathname === href) return scrollTopIfCurrent(e, pathname, href);
+    if (href === "/" || e.metaKey || e.ctrlKey) return;
+    e.preventDefault();
+    markReturnVisit(true);
+    router.push(tabUrl(href));
+  };
   const navRef = useRef<HTMLElement>(null);
   const hidden = isFocusRoute(pathname);
 
@@ -167,7 +206,7 @@ export function TabBar() {
               <li key={href} className="relative">
                 <Link
                   href={href}
-                  onClick={(e) => scrollTopIfCurrent(e, pathname, href)}
+                  onClick={(e) => openTab(e, href)}
                   aria-current={active ? "page" : undefined}
                   className={`group flex h-full flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-semibold tracking-wide ${
                     active ? "text-amber-300" : "text-zinc-300"
@@ -196,6 +235,44 @@ export function ChromeOnly({ children }: { children: ReactNode }) {
 /** Re-mounts on navigation so each page fades in. Opacity only: transforms would break fixed children. */
 export function PageTransition({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+
+  // Navigation memory: scroll positions, tapped links, the in-app back stack.
+  useEffect(() => {
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    const onPop = () => markReturnVisit(true);
+    let queued = false;
+    const onScroll = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        if (!isReturnVisit()) saveScroll();
+      });
+    };
+    const onClick = (e: globalThis.MouseEvent) => {
+      const a = (e.target as Element | null)?.closest?.("a[href]");
+      const href = a?.getAttribute("href");
+      if (!href?.startsWith("/")) return;
+      saveScroll();
+      rememberLink(href);
+    };
+    window.addEventListener("popstate", onPop);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, []);
+
+  useEffect(() => {
+    recordVisit(currentKey());
+    const tab = `/${pathname.split("/")[1] ?? ""}`;
+    if (tab !== "/" && pathname === tab) saveTabUrl(tab, currentKey());
+    if (isReturnVisit()) restoreScroll();
+  }, [pathname]);
+
   return (
     <div key={pathname} className="animate-page flex-1">
       {children}
