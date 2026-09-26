@@ -33,7 +33,7 @@ export interface Palette {
 
 export function createPalette(): Palette {
   return {
-    skin: new THREE.MeshStandardMaterial({ color: 0xc9cad0 }),
+    skin: new THREE.MeshStandardMaterial({ color: 0xd0ccc8 }),
     shorts: new THREE.MeshStandardMaterial({ color: 0x141417 }),
     hair: new THREE.MeshStandardMaterial({ color: 0x3b3531 }),
     primary: new THREE.MeshStandardMaterial({ color: 0xd8211a, emissive: 0x8a0f05, emissiveIntensity: 0.35 }),
@@ -332,7 +332,7 @@ function sharedGeometry(d: BodyData) {
   g.setAttribute("aFibre", new THREE.BufferAttribute(d.fibre, 4, true));
   g.setAttribute("aExtra", new THREE.BufferAttribute(d.extra, 4));
   g.setAttribute("aFibreUv", new THREE.BufferAttribute(d.fuv, 2));
-  g.setAttribute("aSeg", new THREE.BufferAttribute(d.seg, 2));
+  g.setAttribute("aSeg", new THREE.BufferAttribute(d.seg, 4));
   g.setIndex(new THREE.BufferAttribute(d.index, 1));
   g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.95, 0), 1.3);
   geometry = g;

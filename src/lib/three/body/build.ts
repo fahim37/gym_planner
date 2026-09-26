@@ -26,7 +26,7 @@ export interface BodyData {
   extra: Float32Array;
   /** Per vertex: fibre surface coordinates (cm, along / across); x > 1e5 = none (shader projects). */
   fuv: Float32Array;
-  /** Per vertex: second-nearest muscle index (255 = none) and dominance margin (0..255). */
+  /** Per vertex: second-nearest muscle index (255 = none), dominance margin (0..255), shorts edge distance code, spare. */
   seg: Uint8Array;
   index: Uint32Array;
   /** Bind matrices (column-major, metres) of every bone. */
@@ -164,7 +164,7 @@ export function buildBodyData(opts: BuildOptions = {}): BodyData {
   const fibre = new Int8Array(nv * 4);
   const extra = new Float32Array(nv * 4);
   const fuv = new Float32Array(nv * 2);
-  const seg = new Uint8Array(nv * 2);
+  const seg = new Uint8Array(nv * 4);
   const index = new Uint32Array(nt);
   let vo = 0;
   let to = 0;
@@ -195,8 +195,7 @@ export function buildBodyData(opts: BuildOptions = {}): BodyData {
         fibre[dst * 4 + 3] = b.fibre[v * 4 + 3];
         fuv[dst * 2] = b.fuv[v * 2];
         fuv[dst * 2 + 1] = b.fuv[v * 2 + 1];
-        seg[dst * 2] = b.seg[v * 2];
-        seg[dst * 2 + 1] = b.seg[v * 2 + 1];
+        for (let k = 0; k < 4; k++) seg[dst * 4 + k] = b.seg[v * 4 + k];
       }
     }
     const tr = m.tris;
@@ -286,7 +285,7 @@ class Baker {
     const fibre = new Int8Array(n * 4);
     const extra = new Float32Array(n * 4);
     const fuv = new Float32Array(n * 2);
-    const seg = new Uint8Array(n * 2);
+    const seg = new Uint8Array(n * 4);
     const S = this.sculpt;
     const D = this.D;
     const meta = S.meta;
@@ -343,12 +342,13 @@ class Baker {
         const wf = Math.exp(-dd / 0.45);
         if (wf > 1e-3) {
           let tendon = 0;
-          if (m.tendon[0] > 0 && t < m.tendon[0]) tendon = 1 - smooth(m.tendon[0] * 0.45, m.tendon[0], t);
-          if (m.tendon[1] > 0 && t > 1 - m.tendon[1]) tendon = Math.max(tendon, smooth(1 - m.tendon[1], 1 - m.tendon[1] * 0.45, t));
+          // Long, gentle tendon fades: no visible bands where the muscle belly ends.
+          if (m.tendon[0] > 0 && t < m.tendon[0] * 1.3) tendon = 1 - smooth(0, m.tendon[0] * 1.3, t);
+          if (m.tendon[1] > 0 && t > 1 - m.tendon[1] * 1.3) tendon = Math.max(tendon, smooth(1 - m.tendon[1] * 1.3, 1, t));
           wSumF += wf;
           tendonSum += wf * tendon;
           if (S.layerOf(i) === L_MUSCLE || m.fibre > 0) {
-            fibreSum += wf * m.fibre * (1 - tendon);
+            fibreSum += wf * m.fibre * (1 - 0.6 * tendon);
             let dx: number;
             let dy: number;
             let dz: number;
@@ -431,6 +431,8 @@ class Baker {
       if (y > 150 && this.chains.headCoord(x, y, z) > 6.5) line = 99;
       // …nor on the sternal notch, where three small groups meet in a knot of lines.
       if (y > 147 && y < 160 && Math.abs(z) < 3.5 && x > 0) line = 99;
+      // …nor down the spine, where the erector columns drew a zipper of lines.
+      if (y > 85 && y < 165 && Math.abs(z) < 4.5 && x < 0) line = 99;
       // Signed distance to the hairline: the shader blends hair colour from its
       // interpolated value, so the hairline is a smooth curve, not triangle edges.
       const hb = S.hairBox;
@@ -501,8 +503,15 @@ class Baker {
         fz /= l2;
       }
       info[v * 4] = muscle;
-      seg[v * 2] = muscle2;
-      seg[v * 2 + 1] = Math.round(Math.min(1, Math.max(0, margin)) * 255);
+      seg[v * 4] = muscle2;
+      seg[v * 4 + 1] = Math.round(Math.min(1, Math.max(0, margin)) * 255);
+      // Signed distance to the shorts' edge (−3..3 → 0..255): the shader draws the hem and
+      // waistband from its interpolated value, a smooth line instead of triangle edges.
+      const sb = S.shortsBox;
+      let sd = 3;
+      if (S.shortsRegion && sb && x > sb.min[0] && y > sb.min[1] && z > sb.min[2] && x < sb.max[0] && y < sb.max[1] && z < sb.max[2]) sd = Math.max(-3, Math.min(3, S.shortsRegion(x, y, z)));
+      seg[v * 4 + 2] = Math.round(((sd + 3) / 6) * 255);
+      seg[v * 4 + 3] = 0;
       info[v * 4 + 1] = material;
       info[v * 4 + 2] = Math.round(Math.min(1, Math.max(0, fibreStrength)) * 255);
       info[v * 4 + 3] = Math.round(Math.min(1, Math.max(0, tendon)) * 255);
@@ -627,8 +636,8 @@ function fillMuscleSpecks(info: Uint8Array, seg: Uint8Array, index: Uint32Array,
     if (comp.length < 40 && single && rim >= 0) {
       for (const v of comp) {
         info[v * 4] = rim;
-        seg[v * 2] = 255;
-        seg[v * 2 + 1] = 255;
+        seg[v * 4] = 255;
+        seg[v * 4 + 1] = 255;
       }
     }
   }

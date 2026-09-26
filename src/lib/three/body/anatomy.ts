@@ -138,7 +138,8 @@ export function sculptBody(frames: Frames): Sculpt {
   // lower, which gives a shorter, more athletic neck.
   const HS = 1.04;
   const HDY = -1.3;
-  const HL = (x: number, y: number, z: number): V3 => add(head.o, [x * HS, y * HS + HDY, z * HS]);
+  // Below the eyes the face is compressed slightly: a shorter mid-face and chin.
+  const HL = (x: number, y: number, z: number): V3 => add(head.o, [x * HS, (y < 0 ? y * 0.955 : y) * HS + HDY, z * HS]);
   const hf = F(hand);
   /** Hand-local point: palmar, along, radial. */
   const HP = (p: number, a: number, r: number): V3 => add(add(add(hf.o, scale(hf.x, p)), scale(hf.y, a)), scale(hf.z, -r));
@@ -401,9 +402,9 @@ export function sculptBody(frames: Frames): Sculpt {
     A.ellipsoid({ center: HL(10.25, -3.7, 0), axes: axes([1, -0.3, 0], Y), radii: [0.75, 0.66, 0.72] }, H({ k: 0.5 }));
     // Philtrum and mouth line.
     A.ellipsoid({ center: HL(9.55, -5.35, 0), axes: ID, radii: [0.22, 0.75, 0.32] }, H({ op: OP_SUB, k: 0.3 }));
-    A.ellipsoid({ center: HL(9.5, -6.55, 0), axes: ID, radii: [0.55, 0.1, 2.1] }, H({ op: OP_SUB, k: 0.28 }));
+    A.ellipsoid({ center: HL(9.55, -6.55, 0), axes: ID, radii: [0.4, 0.07, 2.0] }, H({ op: OP_SUB, k: 0.25 }));
     // Glabella.
-    A.ellipsoid({ center: HL(8.3, 1.9, 0), axes: ID, radii: [0.8, 0.9, 1.1] }, H({ k: 1.6 }));
+    A.ellipsoid({ center: HL(8.0, 1.9, 0), axes: ID, radii: [0.6, 0.7, 0.9] }, H({ k: 1.8 }));
   });
   // Eye: a shallow socket, the eyeball, upper and lower lids; brow ridge above.
   const eyeC = HL(7.75, -0.1, 3.15);
@@ -411,9 +412,9 @@ export function sculptBody(frames: Frames): Sculpt {
   A.ellipsoid({ center: eyeC, axes: ID, radii: [1.15, 1.15, 1.15] }, { layer: L_OVERLAY, k: 0.12, meta: { chainA: T, material: MAT_EYE } });
   A.spindle({ pts: curve(HL(8.3, 0.05, 1.95), HL(9.6, 0.95, 3.1), HL(7.95, 0.1, 4.4), 6), radius: belly(0.08, 0.24, 0.08, 0.45, 1.3), flat: 0.45, flatDir: [0.7, 1, 0] }, { layer: L_OVERLAY, k: 0.2, meta: { chainA: T } });
   A.spindle({ pts: curve(HL(8.3, -0.1, 1.95), HL(9.45, -1.75, 3.1), HL(7.95, 0.0, 4.4), 6), radius: belly(0.05, 0.14, 0.05, 0.5, 1.3), flat: 0.5, flatDir: [0.5, -1, 0] }, { layer: L_OVERLAY, k: 0.2, meta: { chainA: T } });
-  A.spindle({ pts: curve(HL(8.5, 1.95, 1.2), HL(8.8, 2.3, 3.0), HL(7.4, 1.6, 5.4), 5), radius: belly(0.32, 0.34, 0.2, 0.35, 1.4), flat: 0.3, flatDir: [0.6, 1, 0] }, base({ k: 2.2 }));
+  A.spindle({ pts: curve(HL(8.45, 2.25, 1.3), HL(8.7, 2.35, 3.0), HL(7.4, 1.75, 5.4), 5), radius: belly(0.26, 0.3, 0.18, 0.4, 1.4), flat: 0.3, flatDir: [0.6, 1, 0] }, base({ k: 2.2 }));
   // Cheekbone (zygoma) running back to the arch in front of the ear; soft cheek below it.
-  A.spindle({ pts: curve(HL(7.2, -2.0, 4.6), HL(5.4, -1.6, 6.5), HL(2.0, -1.2, 6.7), 5), radius: belly(0.35, 0.48, 0.3, 0.3, 1.3), flat: 0.6, flatDir: [0.2, 1, 0.2] }, base({ k: 2.4 }));
+  A.spindle({ pts: curve(HL(7.2, -2.0, 4.6), HL(5.4, -1.6, 6.5), HL(2.0, -1.2, 6.7), 5), radius: belly(0.25, 0.34, 0.22, 0.3, 1.3), flat: 0.6, flatDir: [0.2, 1, 0.2] }, base({ k: 3.0 }));
   // Buccal fill: keeps the side of the face full between cheekbone and jaw.
   A.ellipsoid({ center: HL(3.6, -4.6, 5.0), axes: axes([0.6, 0, 0.8], Y), radii: [0.9, 2.3, 2.4] }, base({ k: 3.6 }));
   A.ellipsoid({ center: HL(5.4, -3.6, 4.7), axes: axes([0.8, -0.2, 0.55], Y), radii: [2.4, 2.8, 1.1] }, base({ k: 3.2 }));
@@ -424,21 +425,22 @@ export function sculptBody(frames: Frames): Sculpt {
   A.ellipsoid({ center: HL(9.2, -3.95, 1.25), axes: axes([1, 0.1, 0.6], Y), radii: [0.6, 0.55, 0.42] }, base({ k: 0.5 }));
   A.ellipsoid({ center: HL(9.85, -4.45, 0.55), axes: axes([1, 0, 0.4], Y), radii: [0.38, 0.16, 0.24] }, base({ op: OP_SUB, k: 0.15 }));
   // Lips: a defined upper lip (cupid's bow) and a fuller lower lip.
-  A.spindle({ pts: curve(HL(9.72, -6.2, 0), HL(9.6, -6.15, 1.1), HL(8.9, -6.5, 2.05), 4), radius: belly(0.3, 0.32, 0.1, 0.3, 1.3), flat: 0.6, flatDir: [0.3, 1, 0] }, { layer: L_OVERLAY, k: 0.3, meta: { chainA: T, material: MAT_LIP } });
-  A.spindle({ pts: curve(HL(9.45, -6.95, 0), HL(9.35, -6.95, 1.0), HL(8.8, -6.65, 1.9), 4), radius: belly(0.38, 0.4, 0.1, 0.25, 1.3), flat: 0.6, flatDir: [-0.2, 1, 0] }, { layer: L_OVERLAY, k: 0.3, meta: { chainA: T, material: MAT_LIP } });
+  A.spindle({ pts: curve(HL(9.72, -6.2, 0), HL(9.6, -6.15, 1.1), HL(8.9, -6.5, 2.05), 4), radius: belly(0.25, 0.27, 0.1, 0.3, 1.3), flat: 0.6, flatDir: [0.3, 1, 0] }, { layer: L_OVERLAY, k: 0.3, meta: { chainA: T, material: MAT_LIP } });
+  A.spindle({ pts: curve(HL(9.45, -6.95, 0), HL(9.35, -6.95, 1.0), HL(8.8, -6.65, 1.9), 4), radius: belly(0.32, 0.34, 0.1, 0.25, 1.3), flat: 0.6, flatDir: [-0.2, 1, 0] }, { layer: L_OVERLAY, k: 0.3, meta: { chainA: T, material: MAT_LIP } });
   // Mentolabial sulcus.
   A.ellipsoid({ center: HL(9.0, -8.0, 0), axes: ID, radii: [0.35, 0.3, 1.6] }, base({ op: OP_SUB, k: 0.6 }));
-  // Ear: plate, rim, concha, lobe.
+  // Ear: a thin plate flaring back from the head, helix rim, antihelix, concha, tragus, lobe.
   {
-    const ex = axes([0.2, 0.2, 1], [-0.2, 1, 0]);
-    const c = HL(-1.2, -0.6, 7.0);
-    A.ellipsoid({ center: add(c, scale(ex[0], 0.55)), axes: ex, radii: [0.45, 2.9, 1.7] }, base({ k: 0.7 }));
-    A.spindle(
-      { pts: curve(add(c, add(scale(ex[0], 0.6), add(scale(ex[1], 2.0), scale(ex[2], 1.4)))), add(c, add(scale(ex[0], 0.7), add(scale(ex[1], 3.5), scale(ex[2], -0.8)))), add(c, add(scale(ex[0], 0.6), add(scale(ex[1], -1.5), scale(ex[2], -1.55)))), 5), radius: () => 0.4, flat: 0.7, flatDir: ex[0] },
-      { layer: L_OVERLAY, k: 0.3, meta: { chainA: T } },
-    );
-    A.ellipsoid({ center: add(c, add(scale(ex[0], 1.05), scale(ex[1], -0.35))), axes: ex, radii: [0.35, 0.95, 0.65] }, { layer: L_OVERLAY, op: OP_SUB, k: 0.3, meta: { chainA: T } });
-    A.ellipsoid({ center: add(c, add(scale(ex[0], 0.25), scale(ex[1], -2.7))), axes: ex, radii: [0.45, 0.85, 0.8] }, { layer: L_OVERLAY, k: 0.4, meta: { chainA: T } });
+    const ex = axes([0.38, 0.12, 1], [-0.25, 1, 0]); // out, up, back
+    const c = HL(-0.9, -1.0, 8.0);
+    const E = (u: number, v: number, w: number): V3 => add(c, add(scale(ex[1], u), add(scale(ex[2], v), scale(ex[0], w))));
+    const ov = (k: number, op?: number): PrimOpts => ({ layer: L_OVERLAY, k, op, meta: { chainA: T } });
+    A.ellipsoid({ center: E(0.2, 0.35, 0.35), axes: ex, radii: [0.32, 3.0, 1.85] }, base({ k: 0.7 }));
+    A.spindle({ pts: curve(E(1.9, -0.9, 0.55), E(3.9, 1.3, 0.75), E(-1.9, 1.75, 0.6), 6), radius: belly(0.22, 0.32, 0.26, 0.45, 1.3), flat: 0.55, flatDir: ex[0] }, ov(0.25));
+    A.spindle({ pts: curve(E(-1.1, 0.75, 0.6), E(1.2, 1.3, 0.8), E(1.9, 0.1, 0.6), 5), radius: belly(0.14, 0.2, 0.12, 0.5, 1.3), flat: 0.5, flatDir: ex[0] }, ov(0.2));
+    A.ellipsoid({ center: E(-0.2, 0.05, 0.95), axes: ex, radii: [0.42, 0.95, 0.7] }, ov(0.3, OP_SUB));
+    A.ellipsoid({ center: E(-0.5, -1.05, 0.55), axes: ex, radii: [0.3, 0.45, 0.28] }, ov(0.2));
+    A.ellipsoid({ center: E(-2.45, 0.35, 0.35), axes: ex, radii: [0.38, 0.8, 0.72] }, ov(0.35));
   }
 
   // ───────────────────────────── SHOULDER (deltoid heads) ─────────────────────────────
@@ -704,10 +706,13 @@ export function sculptBody(frames: Frames): Sculpt {
     // ears to a tapered nape (all smooth so the edge is a clean curve).
     const t = smooth01((lx + 1) / 8);
     const front = 7.0 + 0.9 * smooth01((lz - 2.5) / 3) - 1.4 * smooth01((lz - 5.2) / 2);
-    const side = 2.2 + 0.25 * lx;
+    const side = 2.7 + 0.25 * lx;
     const back = -6.5 + 0.3 * (lx + 9);
     const line = lx > -1 ? side + (front - side) * t : back + (side - back) * smooth01((lx + 9) / 8);
-    return (line - ly) * 0.4;
+    // Keep the crop off the ear (no ledge of hair over the helix).
+    const de = Math.hypot(lx + 0.9, (ly + 1.0) * 0.8);
+    const ear = lz > 5 ? (3.9 - de) * 0.5 : -9;
+    return Math.max((line - ly) * 0.4, ear);
   };
   sculpt.hairBox = { min: [head.o[0] - 14, head.o[1] - 10, -12], max: [head.o[0] + 12, head.o[1] + 14, 12] };
 

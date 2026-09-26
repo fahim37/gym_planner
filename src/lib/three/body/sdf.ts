@@ -219,9 +219,11 @@ export class Sculpt {
   /** Blend radius between the base and muscle layers. */
   muscleBlend = 1.1;
   /** Width (cm) of the carved groove between muscle groups. */
-  grooveWidth = 0.55;
+  grooveWidth = 0.75;
   /** Width (in thickness difference, cm) of the groove between bumps. */
-  bumpGrooveWidth = 0.5;
+  bumpGrooveWidth = 0.75;
+  /** Global groove depth scale: soft, premium muscle-to-muscle transitions. */
+  grooveScale = 0.6;
   /** Evaluation counters (profiling). */
   evals = 0;
   candidates = 0;
@@ -780,10 +782,15 @@ export class Sculpt {
         tb = bh * (p === 1 ? e : p === 2 ? e * e : Math.pow(e, p));
         // Ease the rim to zero slope so bump edges are C1: no creases that alias at mesh
         // resolution, and grooves between bumps get a wider, cleaner footprint.
-        if (qd > 0.62) {
-          const r = (1 - qd) / 0.38;
+        if (qd > 0.4) {
+          const r = (1 - qd) / 0.6;
           tb *= r * r * (3 - 2 * r);
         }
+        // Taper into the tendons at both ends of the strip: no flat, cut-off shelves.
+        const e0 = bs < 0.14 ? bs / 0.14 : 1;
+        const e1 = bs > 0.86 ? (1 - bs) / 0.14 : 1;
+        const et = Math.min(e0, e1);
+        if (et < 1) tb *= 0.25 + 0.75 * et * et * (3 - 2 * et);
       }
       if (out) {
         // Report the bump as its own candidate: distance to its own swelling.
@@ -834,7 +841,7 @@ export class Sculpt {
     d = baseD - T;
     if (g2 >= 0 && t2 > 0) {
       const w = (t1 - t2) / this.bumpGrooveWidth;
-      const depth = gr1 < gr2 ? gr1 : gr2;
+      const depth = (gr1 < gr2 ? gr1 : gr2) * this.grooveScale;
       d += depth * Math.exp(-w * w) * (t2 < 0.4 ? t2 / 0.4 : 1);
     }
     this.lastG1 = g1;
@@ -962,7 +969,8 @@ export class Sculpt {
       const draped = smin(body, fill, 2.2);
       const s = smax(draped - this.shortsThickness, this.shortsRegion(x, y, z), 0.5);
       if (s < result) {
-        result = s;
+        // Soft union: the hem and waistband roll into the skin instead of a stepped ledge.
+        result = smin(result, s, 0.25);
         surface = 2;
       }
     }
@@ -1007,7 +1015,7 @@ export class Sculpt {
     let body = smin(base, mus, this.muscleBlend);
     if (d2 < BIG && d1 < 2) {
       // Carve a groove along the seam between two muscle groups.
-      const depth = Math.min(groove1, groove2);
+      const depth = Math.min(groove1, groove2) * this.grooveScale;
       if (depth > 0) {
         const w = this.grooveWidth;
         const s = (d2 - d1) / w;

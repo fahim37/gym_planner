@@ -83,13 +83,14 @@ attribute vec4 aInfo;
 attribute vec4 aFibre;
 attribute vec4 aExtra;
 attribute vec2 aFibreUv;
-attribute vec2 aSeg;
+attribute vec4 aSeg;
 varying vec3 vHi;
 varying vec4 vMat;
 varying float vLip;
 varying vec4 vSurf;
 varying float vTone;
 varying float vHairD;
+varying float vShortD;
 varying vec2 vFibreUv;
 varying vec3 vFibreView;
 varying vec3 vEye;
@@ -113,6 +114,7 @@ varying float vLip;
 varying vec4 vSurf;
 varying float vTone;
 varying float vHairD;
+varying float vShortD;
 varying vec2 vFibreUv;
 varying vec3 vFibreView;
 varying vec3 vEye;
@@ -122,10 +124,11 @@ vec3 gHi;
 
 /** Material ids (see sdf.ts MAT_*): skin, shorts, hair, eye, nail, lip. */
 const MATERIAL_FN = /* glsl */ `
+float shortsAmt() { return 1.0 - smoothstep( 0.3, 0.55, vShortD ); }
 float hairAmt() { return 1.0 - smoothstep( 0.0, 0.26, vHairD ); }
 float matIs(float id) {
-  if (id < 0.5) return clamp(1.0 - vMat.x - vMat.z - vMat.w - vLip - hairAmt(), 0.0, 1.0);
-  if (id < 1.5) return vMat.x;
+  if (id < 0.5) return clamp(1.0 - shortsAmt() - vMat.z - vMat.w - vLip - hairAmt(), 0.0, 1.0);
+  if (id < 1.5) return shortsAmt();
   if (id < 2.5) return hairAmt();
   if (id < 3.5) return vMat.z;
   if (id < 4.5) return vMat.w;
@@ -172,6 +175,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 		vSurf = vec4( aInfo.z / 255.0, aInfo.w / 255.0, aExtra.x, aExtra.y );
 		vTone = aExtra.z;
 		vHairD = aExtra.w;
+		vShortD = aSeg.z / 255.0 * 6.0 - 3.0;
 		vEye = aFibre.xyz * 2.0;
 		vec3 fib = aFibre.xyz;
 		// Project the fibre pattern about the muscle's own centre: a short lever arm keeps the
@@ -206,7 +210,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 		float nail = matIs( 4.0 );
 		float lip = matIs( 5.0 );
 		vec3 base = uSkin;
-		base = mix( base, uSkin * vec3( 1.06, 1.04, 1.05 ) + 0.02, vSurf.y );
+		base = mix( base, uSkin * vec3( 1.04, 1.03, 1.03 ) + 0.01, vSurf.y * 0.35 );
 		base = mix( base, uSkin * vec3( 0.93, 0.86, 0.86 ), lip );
 		base = mix( base, uSkin * 1.12 + 0.04, nail + eye );
 		base = mix( base, uShorts, shorts );
@@ -228,18 +232,20 @@ export function createBodyMaterial(u: BodyUniforms) {
 		float muscle = skin + lip;
 		float hi = clamp( gHi.x + gHi.y, 0.0, 1.0 ) * ( muscle + shorts );
 		vec3 hiCol = ( uPrimary * gHi.x + uSecondary * gHi.y ) / max( gHi.x + gHi.y, 1e-3 );
+		// Rich highlight: deeper in the grooves and cavities, brighter on the crowns.
+		hiCol *= mix( 0.72, 1.06, smoothstep( 0.35, 0.95, vSurf.w ) );
 		base = mix( base, hiCol, hi );
 		base = mix( base, uHoverColor, gHi.z * ( muscle + shorts ) );
 		// Grooves between fibres read slightly darker.
 		float f = vSurf.x * uDetail * ( muscle + hair * 0.6 + shorts * 0.4 );
-		base *= mix( 1.0, 0.72 + 0.28 * gFibre.a, f );
+		base *= mix( 1.0, 0.92 + 0.16 * gFibre.a, f ); // mean ≈ 1: no tone jump where fibres end
 		diffuseColor.rgb = base;
 	}`,
       )
       .replace(
         "#include <roughnessmap_fragment>",
         `#include <roughnessmap_fragment>
-	roughnessFactor = 0.56 - 0.2 * vSurf.y;
+	roughnessFactor = 0.56 - 0.06 * vSurf.y;
 	roughnessFactor = mix( roughnessFactor, 0.9, matIs( 1.0 ) );
 	roughnessFactor = mix( roughnessFactor, 0.62, matIs( 2.0 ) );
 	roughnessFactor = mix( roughnessFactor, 0.12, matIs( 3.0 ) );
@@ -252,7 +258,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 		vec3 mapN = gFibre.xyz * 2.0 - 1.0;
 		float k = vSurf.x * uDetail * clamp( 1.0 - matIs( 3.0 ) - matIs( 4.0 ), 0.0, 1.0 );
 		k *= 1.0 - 0.45 * matIs( 1.0 );
-		mapN.xy *= k;
+		mapN.xy *= k * 0.45;
 		vec3 T = vFibreView - normal * dot( normal, vFibreView );
 		float tl = length( T );
 		if ( tl > 1e-4 ) {
@@ -298,7 +304,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 		float slope = fwidth( lv ) / max( length( fwidth( vViewPosition ) ) * 100.0, 1e-4 );
 		ink *= 1.0 - smoothstep( 2.5, 5.0, slope );
 		ink *= uLine * matIs( 0.0 );
-		outgoingLight = mix( outgoingLight, outgoingLight * 0.5, ink );
+		outgoingLight = mix( outgoingLight, outgoingLight * 0.68, ink * 0.85 );
 		// Soft contour at the silhouette.
 		float ndv = abs( dot( normal, normalize( vViewPosition ) ) );
 		outgoingLight *= mix( 0.72, 1.0, smoothstep( 0.04, 0.42, ndv ) );

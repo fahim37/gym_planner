@@ -151,7 +151,15 @@ export class Chains {
     }
     if (chain <= 2) {
       const side = chain - 1;
-      const a = this.armCoord(side, x, y, z);
+      let a = this.armCoord(side, x, y, z);
+      // In the bind pose the arm hangs beside the ribs: torso points below the armpit are
+      // "along" the arm axis too. Only points near the axis belong to the arm proper;
+      // farther ones (lats, serratus, the chest wall) stay on the clavicle/root, otherwise
+      // they fly off with the upper arm when it is raised (overhead press, pull-up).
+      if (a > 0) {
+        const inside = 1 - smooth(7.5, 11, this.armRadius(side, x, y, z, a));
+        a = a * inside - 2 * (1 - inside);
+      }
       const e = this.elbowA;
       const wr = this.wristA;
       const r1 = smooth(-5, 5, a);
