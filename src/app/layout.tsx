@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Ambient, ChromeOnly, GlassEffects, PageTransition, SiteHeader, TabBar } from "@/components/AppChrome";
+import Haptics from "@/components/Haptics";
 import Pwa from "@/components/Pwa";
 import { SITE } from "@/config/site";
 import "./globals.css";
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </main>
         <TabBar />
         <Pwa />
+        <Haptics />
       </body>
     </html>
   );

@@ -546,6 +546,7 @@ export default function WorkoutPlayer({ program, day }: { program: Program; day:
             <button
               type="button"
               onClick={completeSet}
+              data-haptic="success"
               className="glass-reactive mt-4 flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-amber-300 text-lg font-black text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_10px_28px_-10px_rgba(252,211,77,0.75)] transition-transform duration-300 ease-spring hover:bg-amber-200 active:scale-95"
             >
               {set === item.sets && !nextItem ? "Finish workout" : "Set done"}

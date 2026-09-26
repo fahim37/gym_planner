@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { ChevronRight } from "@/components/icons";
 import { NoteList, Steps } from "@/components/ui";
+import { haptic } from "@/lib/haptics";
 import { MUSCLES, type MuscleId } from "@/lib/muscles";
 
 type TabId = "how" | "tips" | "mistakes" | "muscles";
@@ -25,15 +26,24 @@ interface Props {
 }
 
 /**
- * Instructions for an exercise. Phones get sticky tabs (swipe the panel to move
- * between them); large screens show every section stacked.
+ * Instructions for an exercise. Phones get sticky tabs: swipe the panel sideways and
+ * it follows your finger (with the tab pill), then slides to the next tab with a
+ * haptic tick. Large screens show every section stacked.
  */
 export default function ExerciseDetails({ steps, tips, mistakes, breathing, primary, secondary }: Props) {
   const [tab, setTab] = useState<TabId>("how");
+  /** Which side the new panel slides in from (after a swipe or a tab tap). */
+  const [enter, setEnter] = useState<"left" | "right" | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
-  const swipe = useRef<{ x: number; y: number } | null>(null);
+  const panelsRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLSpanElement>(null);
+  const drag = useRef<{ id: number; x: number; y: number; t: number; dx: number; axis: "x" | "y" | null } | null>(null);
+  const index = TABS.findIndex((t) => t.id === tab);
 
   const select = (next: TabId) => {
+    const to = TABS.findIndex((t) => t.id === next);
+    if (to === index) return;
+    setEnter(to > index ? "right" : "left");
     setTab(next);
     // If the tabs are stuck under the top bar, bring the new panel's start into view.
     const anchor = anchorRef.current;
@@ -42,22 +52,68 @@ export default function ExerciseDetails({ steps, tips, mistakes, breathing, prim
     if (anchor.getBoundingClientRect().top < offset) anchor.scrollIntoView({ block: "start" });
   };
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (e.pointerType === "mouse") return;
-    swipe.current = { x: e.clientX, y: e.clientY };
-  };
-  const onPointerUp = (e: React.PointerEvent) => {
-    const start = swipe.current;
-    swipe.current = null;
-    if (!start) return;
-    const dx = e.clientX - start.x;
-    const dy = e.clientY - start.y;
-    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 2) return;
-    const i = TABS.findIndex((t) => t.id === tab) + (dx < 0 ? 1 : -1);
-    if (i >= 0 && i < TABS.length) select(TABS[i].id);
+  /**
+   * Moves the panel (and the tab pill) with the finger. `null` springs them back, or
+   * with `instant` drops the drag offset at once (the next panel then slides in itself).
+   */
+  const follow = (dx: number | null, instant = false) => {
+    const panels = panelsRef.current;
+    const pill = pillRef.current;
+    if (!panels || !pill) return;
+    if (dx === null) {
+      panels.style.transition = instant ? "none" : "";
+      pill.style.transition = "";
+      panels.style.transform = panels.style.opacity = "";
+      pill.style.transform = `translateX(${index * 100}%)`;
+      if (instant) requestAnimationFrame(() => (panels.style.transition = ""));
+      return;
+    }
+    const w = panels.offsetWidth || 1;
+    const atEdge = (dx > 0 && index === 0) || (dx < 0 && index === TABS.length - 1);
+    const x = atEdge ? dx * 0.25 : dx; // rubber band past the first/last tab
+    panels.style.transition = pill.style.transition = "none";
+    panels.style.transform = `translate3d(${x}px,0,0)`;
+    panels.style.opacity = String(1 - Math.min(0.35, Math.abs(x) / w));
+    const pos = Math.max(0, Math.min(TABS.length - 1, index - x / w));
+    pill.style.transform = `translateX(${pos * 100}%)`;
   };
 
-  const panel = (id: TabId) => `${tab === id ? "animate-fade block" : "hidden"} lg:block`;
+  const desktop = () => window.matchMedia("(min-width: 1024px)").matches;
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === "mouse" || desktop()) return;
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp, dx: 0, axis: null };
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (!d.axis) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      d.axis = Math.abs(dx) > Math.abs(dy) * 1.2 ? "x" : "y";
+    }
+    if (d.axis !== "x") return;
+    d.dx = dx;
+    follow(dx);
+  };
+  const onPointerEnd = (e: React.PointerEvent) => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || d.axis !== "x" || e.type === "pointercancel") return follow(null);
+    const w = panelsRef.current?.offsetWidth || 1;
+    const speed = Math.abs(d.dx) / Math.max(1, e.timeStamp - d.t); // px per ms
+    const next = index + (d.dx < 0 ? 1 : -1);
+    const go = (Math.abs(d.dx) > w * 0.22 || (speed > 0.45 && Math.abs(d.dx) > 30)) && next >= 0 && next < TABS.length;
+    follow(null, go);
+    if (go) {
+      haptic("select");
+      select(TABS[next].id);
+    }
+  };
+
+  const panel = (id: TabId) =>
+    `${tab === id ? `block ${enter === "right" ? "animate-enter-right" : enter === "left" ? "animate-enter-left" : "animate-fade"}` : "hidden"} lg:block lg:animate-none`;
 
   return (
     <div className="mt-6">
@@ -69,9 +125,10 @@ export default function ExerciseDetails({ steps, tips, mistakes, breathing, prim
       >
         <div className="glass pointer-events-auto relative grid grid-cols-4 rounded-full p-1">
           <span
+            ref={pillRef}
             aria-hidden
             className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/4)] rounded-full bg-amber-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_4px_14px_-4px_rgba(252,211,77,0.6)] transition-transform duration-500 ease-spring"
-            style={{ transform: `translateX(${TABS.findIndex((t) => t.id === tab) * 100}%)` }}
+            style={{ transform: `translateX(${index * 100}%)` }}
           />
           {TABS.map((t) => (
             <button
@@ -93,10 +150,12 @@ export default function ExerciseDetails({ steps, tips, mistakes, breathing, prim
       </div>
 
       <div
-        className="min-h-[40svh] touch-pan-y pt-5 lg:min-h-0 lg:space-y-8 lg:pt-0"
+        ref={panelsRef}
+        className="min-h-[40svh] touch-pan-y pt-5 transition-[transform,opacity] duration-300 ease-spring will-change-transform lg:min-h-0 lg:space-y-8 lg:pt-0"
         onPointerDown={onPointerDown}
-        onPointerUp={onPointerUp}
-        onPointerCancel={() => (swipe.current = null)}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerEnd}
+        onPointerCancel={onPointerEnd}
       >
         <section id="panel-how" role="tabpanel" aria-labelledby="tab-how" className={panel("how")}>
           <h2 className="section-label mb-4 hidden lg:block">How to do it</h2>
