@@ -31,13 +31,13 @@ function hand(p: Pose, grip: GripStyle | null = null) {
 
 describe("wrist flexion", () => {
   it("defaults to 0 and interpolates between keyframes", () => {
-    const tl = new Timeline(anim(pose({}, 0), pose({}, 60)));
+    const tl = new Timeline(anim(pose({}, 0), pose({}, 60)), { life: false });
     const w = (t: number) => (tl.sample(t).pose.arms[0] as { wrist?: number }).wrist;
     expect(w(0)).toBe(0);
     expect(w(0.5)).toBeCloseTo(30, 5);
     expect(w(1)).toBeCloseTo(60, 5);
     // Missing value normalises to 0 on both arms.
-    const tl2 = new Timeline(anim(pose(), pose({}, 40)));
+    const tl2 = new Timeline(anim(pose(), pose({}, 40)), { life: false });
     expect((tl2.sample(0).pose.arms[1] as { wrist?: number }).wrist).toBe(0);
   });
 
@@ -61,7 +61,7 @@ describe("wrist flexion", () => {
 
 describe("per-keyframe grip style", () => {
   it("turns the forearm smoothly between styles (Zottman curl)", () => {
-    const tl = new Timeline(anim(pose({ grip: "underhand" }), pose({ grip: "overhand" })));
+    const tl = new Timeline(anim(pose({ grip: "underhand" }), pose({ grip: "overhand" })), { life: false });
     const turn = (t: number) => tl.sample(t).pose.gripTurn!;
     expect(turn(0)).toEqual([GRIP_TURN.underhand, GRIP_TURN.underhand]);
     expect(turn(0.5)[0]).toBeCloseTo((GRIP_TURN.underhand + GRIP_TURN.overhand) / 2, 5);
@@ -72,7 +72,7 @@ describe("per-keyframe grip style", () => {
   });
 
   it("accepts a per-arm pair and reaches the skeleton", () => {
-    const sk = solvePose(new Timeline(anim(pose({ grip: ["underhand", "overhand"] }), pose({ grip: ["underhand", "overhand"] }))).sample(0).pose);
+    const sk = solvePose(new Timeline(anim(pose({ grip: ["underhand", "overhand"] }), pose({ grip: ["underhand", "overhand"] })), { life: false }).sample(0).pose);
     expect(sk.sides[0].gripTurn).toBe(GRIP_TURN.underhand);
     expect(sk.sides[1].gripTurn).toBe(GRIP_TURN.overhand);
     expect(solvePose(pose()).sides[0].gripTurn).toBeUndefined();

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Timeline } from "@/lib/anatomy/timeline";
 import type { Animation, Pose } from "@/lib/anatomy/types";
 import { EXERCISES } from "@/data/exercises";
+import { frameTimes } from "./support/anatomy";
 
 /** A pose whose hip x doubles as an easy-to-read "position" value. */
 const at = (x: number, extra: Partial<Pose> = {}): Pose => ({
@@ -242,7 +243,9 @@ describe("Timeline: alive motion (settle, breathing, sway, head follow-through)"
       let head = 0;
       let pelvis = 0;
       let ankle = 0;
-      for (let t = 0; t < live.duration; t += live.duration / 10) {
+      // At the moments each keyframe is reached (where the rep-to-rep tempo variation is zero).
+      const { starts } = frameTimes(e.animation);
+      for (const t of starts) {
         const a = solvePose(live.sample(t).pose);
         const b = solvePose(exact.sample(t).pose);
         head = Math.max(head, dist(a.head, b.head));

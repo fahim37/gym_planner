@@ -71,7 +71,8 @@ const easeRate = (k: number) => 30 * k * k * (1 - k) * (1 - k);
  *   settles back, so knees and hips give slightly as a rep lands;
  * - breathing: the chest rises and the shoulders lift a few millimetres;
  * - sway: tiny slow shifts of the trunk, as nobody holds perfectly still;
- * - follow-through: the head lags a fast torso movement and catches up.
+ * - follow-through: the head lags a fast torso movement and catches up;
+ * - tempo: no two reps are timed exactly alike.
  * Hands and feet keep their IK targets, so grips stay on the bar and feet stay planted.
  */
 const LIFE = {
@@ -88,6 +89,8 @@ const LIFE = {
   /** Head lag per degree/second of torso speed, and its limit (deg). */
   headLag: 0.05,
   headLagMax: 3,
+  /** Rep-to-rep tempo variation through the middle of a move (share of the move). */
+  tempo: 0.05,
 };
 
 export interface Sample {
@@ -187,7 +190,14 @@ export class Timeline {
     const frame = this.frames[i];
     const next = this.frames[(i + 1) % this.frames.length];
     const local = t - this.starts[i] - (frame.hold ?? 0);
-    const progress = local <= 0 ? 0 : Math.min(1, local / (frame.dur ?? DEFAULT_DUR));
+    let progress = local <= 0 ? 0 : Math.min(1, local / (frame.dur ?? DEFAULT_DUR));
+    if (this.life && frame.ease !== "linear") {
+      // No two reps quite alike: each move runs a touch early or late through its middle
+      // (same start and end, always moving forward).
+      const r = Math.sin((loops + 1) * 12.9898 + i * 78.233) * 43758.5453;
+      const jitter = 2 * (r - Math.floor(r)) - 1;
+      progress += LIFE.tempo * jitter * Math.sin(Math.PI * progress);
+    }
     const k = frame.ease === "linear" ? progress : ease(progress);
 
     let reps = loops * this.repsPerLoop;
