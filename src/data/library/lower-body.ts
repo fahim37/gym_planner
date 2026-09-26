@@ -17,6 +17,10 @@ const frontRackArms: [LimbSpec, LimbSpec] = [handLocal(16, 1, -9, [1, -0.3, 0.4]
 /** Goblet hold: hands cupping a vertical dumbbell under the chin, elbows down. */
 const gobletArms: LimbSpec = handLocal(13, 12, 7, [0.3, 1, 0.1]);
 
+
+/** Calf block under the balls of the feet (standing machine calf raise). */
+const CALF_STEP = { from: 168, to: 196, h: 8, top: 242 };
+
 export const LOWER_BODY_EXERCISES: Exercise[] = [
   // ───────────────────────────── SQUATS ─────────────────────────────
   {
@@ -1174,10 +1178,15 @@ export const LOWER_BODY_EXERCISES: Exercise[] = [
     breathing: "Exhale as you rise, inhale as you lower.",
     prescription: { sets: "4", reps: "12–15", rest: "60 s" },
     animation: {
-      props: [{ type: "barbell", at: "back" }],
+      // Smith bar on the shoulders; the balls of the feet on a calf block, heels free to drop.
+      props: [
+        { type: "extra", kind: "lower:smith", params: { x: 151 } },
+        { type: "box", from: CALF_STEP.from, to: CALF_STEP.to, top: CALF_STEP.top, width: 48 },
+      ],
       frames: repFrames(
-        { hip: [160, STAND_Y + 1], torso: 3, arms: [handLocal(-8, -2, 34, [-0.4, 1, 0.5])], legs: [foot(162, ANKLE_Y, 12, [1, 0, 0.12], -8)] },
-        { hip: [162, STAND_Y - 9], torso: 3, arms: [handLocal(-8, -2, 34, [-0.4, 1, 0.5])], legs: [foot(164, ANKLE_Y - 10, 12, [1, 0, 0.12], 52)] },
+        // Bottom: the balls of the feet on the block, heels dropped ~4 cm below it.
+        { hip: [160, STAND_Y + 8 - CALF_STEP.h], torso: 3, arms: [handLocal(-8, -2, 34, [-0.4, 1, 0.5])], legs: [foot(162, ANKLE_Y - CALF_STEP.h + 8, 12, [1, 0, 0.12], -14)] },
+        { hip: [162, STAND_Y - 7 - CALF_STEP.h], torso: 3, arms: [handLocal(-8, -2, 34, [-0.4, 1, 0.5])], legs: [foot(164, ANKLE_Y - 8 - CALF_STEP.h, 12, [1, 0, 0.12], 52)] },
         { go: 0.8, back: 1.2, hold: 0.6, cues: ["Rise onto your toes", "Lower into the stretch"] },
       ),
     },

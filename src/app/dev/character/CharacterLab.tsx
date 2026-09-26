@@ -45,7 +45,8 @@ export default function CharacterLab() {
         for (const m of ex.primary) h[m] = "primary";
       }
       s.rig.setHighlights(h);
-      const timeline = ex ? new Timeline(ex.animation) : null;
+      // `life=0` shows the exact authored motion (no settle, breathing or sway).
+      const timeline = ex ? new Timeline(ex.animation, { life: q.get("life") !== "0" }) : null;
       const frame = Number(q.get("frame") ?? 0);
       const poses = timeline ? Array.from({ length: timeline.length }, (_, i) => timeline.keyframe(i)) : [A_POSE];
       if (ex) {
