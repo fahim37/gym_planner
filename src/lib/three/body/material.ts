@@ -164,11 +164,13 @@ float gHair;
 float hairAmt() { return gHair; }
 // Hair coverage from the baked distance field, its edges broken into strands where they
 // resolve on screen: fine strands along the brows (sloping up and out), an irregular hairline.
-// Called once, outside any branch (it takes screen-space derivatives).
+// Called once, outside any branch (it takes screen-space derivatives first).
 float hairField() {
 	float a = 1.0 - smoothstep( 0.0, 0.26, vHairD );
 	float px = length( fwidth( vSkinP ) );
 	float res = 1.0 - smoothstep( 0.03, 0.09, px );
+	// Only hair near enough to resolve pays for the noise (no derivatives below this point).
+	if ( a <= 0.0 || res <= 0.0 ) return a;
 	float brow = uBrow.y * smoothstep( 0.4, 0.7, vBindN.x ) * ( 1.0 - smoothstep( uBrow.x + 3.2, uBrow.x + 4.0, vSkinP.y ) );
 	vec3 q = mix( vSkinP * 4.0, vec3( vSkinP.x * 2.0, ( vSkinP.y - 0.25 * abs( vSkinP.z ) ) * 11.0, abs( vSkinP.z ) * 1.5 ), brow );
 	float n = skinNoise( q ) - 0.5;
@@ -278,7 +280,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 		base = mix( base, vec3( 0.58, 0.53, 0.49 ), eye );
 		base = mix( base, uShorts, shorts );
 		// Hair: a little strand-scale variation so the crop doesn't read as a painted cap.
-		base = mix( base, uHair * ( 0.82 + 0.36 * skinNoise( vSkinP * vec3( 5.0, 9.0, 5.0 ) ) ), hair );
+		if ( hair > 0.0 ) base = mix( base, uHair * ( 0.82 + 0.36 * skinNoise( vSkinP * vec3( 5.0, 9.0, 5.0 ) ) ), hair );
 		// Iris and pupil from the eye-local position (exact under interpolation → always round).
 		{
 			float ir = length( vEye.yz );
