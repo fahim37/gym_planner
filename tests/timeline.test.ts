@@ -28,27 +28,30 @@ const ANIM: Animation = {
   ],
 };
 const LOOP = 4.75;
-const ease = (k: number) => 0.5 - Math.cos(Math.PI * k) / 2;
+/** Unit tests check exact interpolation, so the subtle "alive" motion is off. */
+const EXACT = { life: false };
+/** Minimum-jerk ease (the Timeline's smooth blend). */
+const ease = (k: number) => k * k * k * (10 - 15 * k + 6 * k * k);
 
 describe("Timeline: durations", () => {
   it("sums holds and move times", () => {
-    const tl = new Timeline(ANIM);
+    const tl = new Timeline(ANIM, EXACT);
     expect(tl.duration).toBeCloseTo(LOOP, 12);
     expect(tl.length).toBe(3);
   });
 
   it("uses a default move time for frames without `dur`", () => {
-    const tl = new Timeline({ frames: [{ pose: at(0) }, { pose: at(10), hold: 1 }] });
+    const tl = new Timeline({ frames: [{ pose: at(0) }, { pose: at(10), hold: 1 }] }, EXACT);
     expect(tl.duration).toBeGreaterThan(1);
     const defaultDur = (tl.duration - 1) / 2;
     expect(defaultDur).toBeGreaterThan(0.3);
     expect(defaultDur).toBeLessThan(3);
-    expect(new Timeline({ frames: [{ pose: at(0) }] }).duration).toBeCloseTo(defaultDur, 12);
+    expect(new Timeline({ frames: [{ pose: at(0) }] }, EXACT).duration).toBeCloseTo(defaultDur, 12);
   });
 });
 
 describe("Timeline: easing", () => {
-  const tl = new Timeline(ANIM);
+  const tl = new Timeline(ANIM, EXACT);
 
   it("hits every keyframe exactly at its start", () => {
     expect(x(tl, 0)).toBe(100);
@@ -63,7 +66,7 @@ describe("Timeline: easing", () => {
     expect(x(tl, LOOP - 1e-9)).toBeCloseTo(100, 6);
   });
 
-  it("is half-way at the middle of a move and follows the cosine ease", () => {
+  it("is half-way at the middle of a move and follows the minimum-jerk ease", () => {
     expect(x(tl, 0.5)).toBeCloseTo(150, 9);
     expect(x(tl, 0.25)).toBeCloseTo(100 + 100 * ease(0.25), 9);
     expect(x(tl, 1.5 + 1)).toBeCloseTo(250, 9);
@@ -104,7 +107,7 @@ describe("Timeline: easing", () => {
 });
 
 describe("Timeline: holds", () => {
-  const tl = new Timeline(ANIM);
+  const tl = new Timeline(ANIM, EXACT);
 
   it("stays on a keyframe for its hold, then starts moving", () => {
     for (const t of [1, 1.1, 1.25, 1.49]) expect(x(tl, t), `t=${t}`).toBe(200);
@@ -122,7 +125,7 @@ describe("Timeline: holds", () => {
 });
 
 describe("Timeline: looping", () => {
-  const tl = new Timeline(ANIM);
+  const tl = new Timeline(ANIM, EXACT);
 
   it("repeats the same poses every loop", () => {
     for (const t of [0, 0.3, 1.2, 2.2, 3.6, 4.5]) {
@@ -159,7 +162,7 @@ describe("Timeline: looping", () => {
 });
 
 describe("Timeline: rep counting", () => {
-  const tl = new Timeline(ANIM);
+  const tl = new Timeline(ANIM, EXACT);
 
   it("starts at zero", () => {
     expect(tl.sample(0).reps).toBe(0);
@@ -192,7 +195,7 @@ describe("Timeline: rep counting", () => {
   });
 
   it("counts one rep per loop when no frame is marked", () => {
-    const t = new Timeline({ frames: [{ pose: at(0), dur: 1 }, { pose: at(10), dur: 1 }] });
+    const t = new Timeline({ frames: [{ pose: at(0), dur: 1 }, { pose: at(10), dur: 1 }] }, EXACT);
     expect(t.sample(1.5).reps).toBe(0);
     expect(t.sample(2).reps).toBe(1);
     expect(t.sample(6.5).reps).toBe(3);
@@ -215,4 +218,44 @@ describe("Timeline: rep counting", () => {
       expect(t.sample(3 * t.duration + 1e-6).reps).toBe(3 * marked);
     },
   );
+});
+
+describe("Timeline: alive motion (settle, breathing, sway, head follow-through)", () => {
+  const dist = (a: number[], b: number[]) => Math.hypot(...a.map((x, i) => x - b[i]));
+  it("is subtle and continuous, and planted feet stay put", async () => {
+    const { solvePose } = await import("@/lib/anatomy/solver");
+    const problems: string[] = [];
+    for (const e of EXERCISES) {
+      const live = new Timeline(e.animation);
+      const exact = new Timeline(e.animation, EXACT);
+      // No pops: the extra motion changes little between 5 ms samples.
+      let prev = live.sample(0).pose;
+      let prevX = exact.sample(0).pose;
+      let jump = 0;
+      for (let t = 0.005; t < live.duration * 2; t += 0.005) {
+        const p = live.sample(t).pose;
+        const x = exact.sample(t).pose;
+        jump = Math.max(jump, Math.abs(p.torso - x.torso - (prev.torso - prevX.torso)), dist(p.hip, x.hip) - dist(prev.hip, prevX.hip));
+        [prev, prevX] = [p, x];
+      }
+      if (jump > 0.3) problems.push(`${e.slug}: alive offset jumps ${jump.toFixed(2)} in 5 ms`);
+      let head = 0;
+      let pelvis = 0;
+      let ankle = 0;
+      for (let t = 0; t < live.duration; t += live.duration / 10) {
+        const a = solvePose(live.sample(t).pose);
+        const b = solvePose(exact.sample(t).pose);
+        head = Math.max(head, dist(a.head, b.head));
+        pelvis = Math.max(pelvis, dist(a.pelvis, b.pelvis));
+        if ("ik" in e.animation.frames[0].pose.legs[0]) ankle = Math.max(ankle, dist(a.sides[0].ankle, b.sides[0].ankle));
+      }
+      if (head > 4 || pelvis > 2 || ankle > 1) problems.push(`${e.slug}: head ${head.toFixed(1)}, pelvis ${pelvis.toFixed(1)}, ankle ${ankle.toFixed(1)} cm`);
+    }
+    expect(problems).toEqual([]);
+  }, 30000);
+
+  it("can be turned off", () => {
+    expect(new Timeline(ANIM, EXACT).sample(0.3).pose.twist).toBe(0);
+    expect(new Timeline(ANIM).sample(0.3).pose.twist).not.toBe(0);
+  });
 });

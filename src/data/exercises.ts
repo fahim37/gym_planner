@@ -661,7 +661,7 @@ const FOUNDATION_EXERCISES: Exercise[] = [
         const legs: [LimbSpec] = [planted(162, 12)];
         const rack = standing({ arms: [{ ik: { x: 172, y: 99, z: 26 }, pole: [0.8, 1, 0.3] }], legs });
         // The bar travels just in front of the face while the head moves back out of its way.
-        const pass = standing({ head: -12, arms: [{ ik: { x: 179, y: 67, z: 26 }, pole: [0.5, 0.6, 0.6] }], legs });
+        const pass = standing({ head: -12, arms: [{ ik: { x: 181, y: 67, z: 26 }, pole: [0.5, 0.6, 0.6] }], legs });
         const lockout = standing({ arms: [{ ik: { x: 162, y: 39, z: 27 }, pole: [0.3, 0.3, 1] }], legs });
         const frames: Keyframe[] = [
           { pose: rack, dur: 0.45, hold: 0.15, cue: "Press straight up", rep: true },

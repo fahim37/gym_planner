@@ -53,7 +53,9 @@ export default function CharacterLab() {
         s.scene.add(props.group);
       }
       s.fit(poses, props ?? undefined);
-      let pose = timeline ? timeline.keyframe(frame) : A_POSE;
+      // `t=<seconds>` shows the live animation (with its settle, breathing and sway) at that moment.
+      const at = q.get("t");
+      let pose = timeline ? (at !== null ? timeline.sample(Number(at)).pose : timeline.keyframe(frame)) : A_POSE;
       // Dev overrides: wrist flexion (deg) on both arms, per-keyframe grip style.
       const wq = q.get("wrist");
       const gq = q.get("grip") as Pose["grip"] | null;

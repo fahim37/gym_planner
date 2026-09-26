@@ -865,7 +865,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
           hip: [161, 150],
           torso: 0,
           head: -12,
-          arms: [{ ik: { x: 179, y: 67, z: 26 }, pole: [0.5, 0.6, 0.6] }],
+          arms: [{ ik: { x: 181, y: 67, z: 26 }, pole: [0.5, 0.6, 0.6] }],
           legs: [{ ik: { x: 163, y: 239, z: 12 }, pole: [1, 0, 0.1], foot: 32 }],
         };
         const lockout = standing({ arms: [{ ik: { x: 162, y: 39, z: 27 }, pole: [0.3, 0.3, 1] }], legs: [feet] });
@@ -874,7 +874,7 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
           { pose: dip, dur: 0.3, cue: "Drive and press" },
           { pose: drive, dur: 0.45 },
           { pose: lockout, dur: 0.6, hold: 0.4, cue: "Lower to your shoulders" },
-          { pose: standing({ head: -12, arms: [{ ik: { x: 179, y: 67, z: 26 }, pole: [0.5, 0.6, 0.6] }], legs: [feet] }), dur: 0.6 },
+          { pose: standing({ head: -12, arms: [{ ik: { x: 181, y: 67, z: 26 }, pole: [0.5, 0.6, 0.6] }], legs: [feet] }), dur: 0.6 },
         ];
         return frames;
       })(),
@@ -1119,8 +1119,8 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
       frames: (() => {
         const legs: LimbSpec = { ik: { x: 208, y: 245, z: 27 }, pole: [0.5, -1, 0.5] };
         const freeArm: LimbSpec = { ik: { x: 195, y: 199, z: 27 }, pole: [-0.2, 0.3, 1] };
-        const seat = (arm: LimbSpec): Pose => ({ hip: [154, 195], torso: 58, head: 14, arms: [arm, freeArm], legs: [legs] });
-        return repFrames(seat({ angles: [-18, -2], spread: [0, -2] }), seat({ angles: [-18, 150], spread: [0, -20] }), {
+        const seat = (arm: LimbSpec): Pose => ({ hip: [154, 195], torso: 58, head: 6, arms: [arm, freeArm], legs: [legs] });
+        return repFrames(seat({ angles: [-18, -2], spread: [0, -2] }), seat({ angles: [-18, 136], spread: [0, -20] }), {
           go: 1,
           back: 1.5,
           hold: 0.3,

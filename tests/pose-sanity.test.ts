@@ -220,7 +220,8 @@ describe.each(EXERCISES.map((e) => [e.slug, e] as const))("%s", (slug, e) => {
   });
 
   it("does not snap where one keyframe hands over to the next", () => {
-    const tl = new Timeline(e.animation);
+    // Authored keyframes only: the live settle/breathing/sway is continuous in time anyway.
+    const tl = new Timeline(e.animation, { life: false });
     const { starts, holds, durs } = frameTimes(e.animation);
     const problems: string[] = [];
     frames.forEach((f, i) => {
