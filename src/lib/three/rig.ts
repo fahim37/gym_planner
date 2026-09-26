@@ -33,7 +33,7 @@ export interface Palette {
 
 export function createPalette(): Palette {
   return {
-    skin: new THREE.MeshStandardMaterial({ color: 0xd0ccc8 }),
+    skin: new THREE.MeshStandardMaterial({ color: 0xdcc3ae }),
     shorts: new THREE.MeshStandardMaterial({ color: 0x141417 }),
     hair: new THREE.MeshStandardMaterial({ color: 0x3b3531 }),
     primary: new THREE.MeshStandardMaterial({ color: 0xd8211a, emissive: 0x8a0f05, emissiveIntensity: 0.35 }),

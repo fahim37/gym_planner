@@ -91,6 +91,7 @@ varying vec4 vMat;
 varying float vLip;
 varying vec4 vSurf;
 varying float vTone;
+varying float vFlush;
 varying float vHairD;
 varying float vShortD;
 varying vec2 vFibreUv;
@@ -120,6 +121,7 @@ varying vec4 vMat;
 varying float vLip;
 varying vec4 vSurf;
 varying float vTone;
+varying float vFlush;
 varying float vHairD;
 varying float vShortD;
 varying vec2 vFibreUv;
@@ -181,6 +183,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 		vLip = aInfo.y == 5.0 ? 1.0 : 0.0;
 		vSurf = vec4( aInfo.z / 255.0, aInfo.w / 255.0, aExtra.x, aExtra.y );
 		vTone = aExtra.z;
+		vFlush = aSeg.w / 127.5 - 1.0;
 		vHairD = aExtra.w;
 		vShortD = aSeg.z / 255.0 * 6.0 - 3.0;
 		vMargin = aSeg.y / 255.0;
@@ -221,7 +224,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 		float lip = matIs( 5.0 );
 		vec3 base = uSkin;
 		base = mix( base, uSkin * vec3( 1.04, 1.03, 1.03 ) + 0.01, vSurf.y * 0.35 );
-		base = mix( base, uSkin * vec3( 0.93, 0.86, 0.86 ), lip );
+		base = mix( base, uSkin * vec3( 0.86, 0.62, 0.59 ), lip );
 		base = mix( base, uSkin * 1.12 + 0.04, nail + eye );
 		base = mix( base, uShorts, shorts );
 		base = mix( base, uHair, hair );
@@ -230,15 +233,22 @@ export function createBodyMaterial(u: BodyUniforms) {
 			float ir = length( vEye.yz );
 			float aa = max( fwidth( ir ), 0.01 );
 			float front = smoothstep( 0.2, 0.5, vEye.x );
-			float iris = step( 0.999, eye ) * front * ( 1.0 - smoothstep( 0.55 - aa, 0.55 + aa, ir ) );
-			float pupil = 1.0 - smoothstep( 0.21 - aa, 0.21 + aa, ir );
+			float iris = step( 0.999, eye ) * front * ( 1.0 - smoothstep( 0.63 - aa, 0.63 + aa, ir ) );
+			float pupil = 1.0 - smoothstep( 0.23 - aa, 0.23 + aa, ir );
 			float fleck = texture2D( uFibreMap, vec2( atan( vEye.z, vEye.y ) * 1.3, ir * 3.0 ) ).a;
-			vec3 irisCol = mix( vec3( 0.25, 0.18, 0.13 ), vec3( 0.08, 0.06, 0.05 ), smoothstep( 0.3, 0.55, ir ) ) * ( 0.8 + 0.4 * fleck );
+			vec3 irisCol = mix( vec3( 0.25, 0.18, 0.13 ), vec3( 0.08, 0.06, 0.05 ), smoothstep( 0.3, 0.63, ir ) ) * ( 0.8 + 0.4 * fleck );
 			base = mix( base, mix( irisCol, vec3( 0.012 ), pupil ), iris );
 			// Sclera: slightly warm, darker towards the corners.
-			base = mix( base, base * mix( 0.8, 1.0, front ), eye );
+			base = mix( base, base * vec3( 0.86, 0.84, 0.82 ) * mix( 0.62, 0.95, front ), eye );
 		}
 		base *= 1.0 + vTone * 0.06;
+		// Living skin: warmer cheeks, nose, ears and lips; soft shade under the eyes and stubble.
+		{
+			float fl = vFlush * skin;
+			base = mix( base, base * vec3( 1.04, 0.8, 0.76 ), clamp( fl, 0.0, 0.6 ) * 0.6 );
+			base = mix( base, base * vec3( 0.8, 0.76, 0.79 ), max( -fl, 0.0 ) * 0.6 );
+			base = mix( base, uSkin * vec3( 0.84, 0.6, 0.58 ), smoothstep( 0.62, 0.92, fl ) * 0.72 );
+		}
 		// Cavity of the carved muscle borders.
 		base *= 1.0 - uDefine * 0.14 * ( 1.0 - smoothstep( 0.0, 0.45, vMargin ) ) * vDefineW * skin;
 		float muscle = skin + lip;
@@ -262,6 +272,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 	roughnessFactor = mix( roughnessFactor, 0.62, matIs( 2.0 ) );
 	roughnessFactor = mix( roughnessFactor, 0.12, matIs( 3.0 ) );
 	roughnessFactor = mix( roughnessFactor, 0.3, matIs( 4.0 ) );
+	roughnessFactor = mix( roughnessFactor, 0.42, max( vLip, smoothstep( 0.62, 0.92, vFlush ) * matIs( 0.0 ) ) );
 	roughnessFactor = mix( roughnessFactor, 0.42, clamp( gHi.x + gHi.y, 0.0, 1.0 ) * ( 1.0 - matIs( 1.0 ) ) );`,
       )
       .replace(

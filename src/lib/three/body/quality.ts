@@ -33,7 +33,9 @@ export class QualityController {
 
   constructor(deviceDpr: number, private readonly onChange: (dpr: number) => void) {
     this.maxDpr = Math.min(Math.max(1, deviceDpr), 3);
-    this.minDpr = Math.min(1, this.maxDpr);
+    // Never drop below a crisp 1.5× on high-density phones: a sharp figure at a slightly lower
+    // frame rate looks far better than a blurry one at 120 fps.
+    this.minDpr = Math.min(1.5, this.maxDpr);
     this.dpr = Math.min(this.maxDpr, 2);
     this.ceiling = this.maxDpr;
   }

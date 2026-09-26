@@ -67,6 +67,23 @@ const TARGETS: [string, number][] = [
   ["torso/torso-muscle-dorsi-incr", 0.5],
   ["torso/torso-muscle-pectoral-incr", 0.65],
   ["stomach/stomach-tone-incr", 1],
+  // Face: a stronger jaw and cheekbones, a lower brow ridge and a calmer (less wide-open) eye.
+  ["head/head-square", 0.35],
+  ["chin/chin-prominent-incr", 0.3],
+  ["chin/chin-width-incr", 0.4],
+  ["eyebrows/eyebrows-trans-down", 0.15],
+  ["neck/neck-scale-horiz-incr", 0.3],
+  ...["r", "l"].flatMap((s): [string, number][] => [
+    [`cheek/${s}-cheek-bones-incr`, 0.3],
+  ]),
+  // Mouth ~0.6 cm lower and a slightly shorter chin: a natural upper-lip length (MOUTH_DROP).
+  ["mouth/mouth-trans-down", 0.6],
+  ["chin/chin-height-decr", 0.4],
+  ["mouth/mouth-angles-up", 0.35],
+  ["mouth/mouth-lowerlip-height-incr", 0.4],
+  ["mouth/mouth-lowerlip-volume-incr", 0.25],
+  ["eyes/r-eye-scale-incr", 0.2],
+  ["eyes/l-eye-scale-incr", 0.2],
   ...["r", "l"].flatMap((s): [string, number][] => [
     [`armslegs/${s}-upperarm-muscle-incr`, 1],
     [`armslegs/${s}-upperarm-shoulder-muscle-incr`, 1],
@@ -75,6 +92,9 @@ const TARGETS: [string, number][] = [
     [`armslegs/${s}-lowerleg-muscle-incr`, 0.8],
   ]),
 ];
+
+/** How far mouth-trans-down moves the lips (cm, after the head's 1.1 scale). */
+const MOUTH_DROP = 0.6 * 0.91 * 1.1;
 
 function fetchText(path: string): string {
   const file = join(CACHE, path.replace(/\//g, "__"));
@@ -221,7 +241,15 @@ const SIZE = 1.1;
 // The MakeHuman neck base sits a few cm above our rig's neck joint, so the shoulders
 // land close to the rig's shoulder joints without being pulled up (no shrug).
 const NECK_LIFT = 7;
-const TORSO = segmentMap(mhHipC, mhNeck, ourHipC, add(ourNeck, [0, NECK_LIFT, 0]), 0.96, [1, 0, 0], [1, 0, 0]);
+/**
+ * The rig's hips sit low for its height (long torso, short legs). The sculpt's pelvis is
+ * mapped HIP_LIFT cm above the rig's hip centre, which shortens the belly and lengthens the
+ * legs; the joints themselves (and so every animation) are unchanged.
+ */
+const HIP_LIFT = 6;
+const TORSO = segmentMap(mhHipC, mhNeck, add(ourHipC, [0, HIP_LIFT, 0]), add(ourNeck, [0, NECK_LIFT, 0]), 0.97, [1, 0, 0], [1, 0, 0]);
+/** The fit without the lift: where the procedural anatomy (muscle map, shorts) lines up. */
+const TORSO0 = segmentMap(mhHipC, mhNeck, ourHipC, add(ourNeck, [0, NECK_LIFT, 0]), 0.96, [1, 0, 0], [1, 0, 0]);
 const maps = new Map<string, Affine>();
 for (const b of Object.keys(skel.bones)) maps.set(b, TORSO);
 // Head: scaled about the eyes and moved so the eyes sit where the rig's head expects them.
@@ -314,20 +342,25 @@ const vw: [string, number][][] = Array.from({ length: mhV.length }, () => []);
 for (const [bone, list] of Object.entries(mhw.weights)) for (const [vi, w] of list) if (vi < mhV.length) vw[vi].push([bone, w]);
 
 // Fitted positions (body vertices + helper eyes).
-const fitted: V3[] = P0.map((p, v) => {
-  const ws = vw[v];
-  if (!ws.length) return apply(TORSO, p);
-  let tw = 0;
-  const out: V3 = [0, 0, 0];
-  for (const [b, w] of ws) {
-    const q = apply(maps.get(b) ?? TORSO, p);
-    out[0] += q[0] * w;
-    out[1] += q[1] * w;
-    out[2] += q[2] * w;
-    tw += w;
-  }
-  return mul(out, 1 / tw);
-});
+const fitWith = (torso: Affine) =>
+  P0.map((p, v): V3 => {
+    const ws = vw[v];
+    if (!ws.length) return apply(torso, p);
+    let tw = 0;
+    const out: V3 = [0, 0, 0];
+    for (const [b, w] of ws) {
+      const m = maps.get(b) ?? TORSO;
+      const q = apply(m === TORSO ? torso : m, p);
+      out[0] += q[0] * w;
+      out[1] += q[1] * w;
+      out[2] += q[2] * w;
+      tw += w;
+    }
+    return mul(out, 1 / tw);
+  });
+const fitted: V3[] = fitWith(TORSO);
+/** Anatomy lookup positions (see TORSO0). */
+const anat: V3[] = fitWith(TORSO0);
 
 // ---------------------------------------------------------------------------
 // 4. Weights onto our bones.
@@ -445,30 +478,57 @@ const eyeCentre = (g: string): { c: V3; r: number } => {
   return { c, r };
 };
 const eyes = [eyeCentre("helper-r-eye"), eyeCentre("helper-l-eye")];
-const sdfEyeMid = mid(sculpt.eyes[0] as V3, sculpt.eyes[1] as V3);
-const eyeShift = sub(sdfEyeMid, mid(eyes[0].c, eyes[1].c));
+const fittedEyeMid = mid(eyes[0].c, eyes[1].c);
+/**
+ * Hairline of a short men's cut, measured on this head (cm above eye level by azimuth
+ * around the skull: 0° = forward, 90° = the side, 180° = the back). It rounds over the
+ * forehead with a slight temple recession, drops into sideburns in front of the ear,
+ * arches over the ear and runs down to the nape.
+ */
+const HAIRLINE: [number, number][] = [
+  [0, 7.0], [16, 7.1], [30, 7.5], [42, 6.0], [52, 3.6], [60, 2.4], [68, 0.8], [75, -1.6],
+  [85, -1.8], [89, 0.9], [100, 1.1], [113, 0.8], [121, -2.4], [133, -6.4], [150, -7.5], [180, -7.8],
+];
+const hairlineAt = (deg: number) => {
+  const d = Math.min(180, Math.max(0, deg));
+  let k = 1;
+  while (k < HAIRLINE.length - 1 && HAIRLINE[k][0] < d) k++;
+  const [d0, h0] = HAIRLINE[k - 1];
+  const [d1, h1] = HAIRLINE[k];
+  const t = (d - d0) / (d1 - d0);
+  // A little irregularity so it reads as hair, not a stencil.
+  return h0 + (h1 - h0) * t + 0.16 * Math.sin(d * 0.3);
+};
+const SKULL_X = fittedEyeMid[0] - 7.4;
+/** Signed distance (cm, scaled down for a soft 7 mm hairline; < 0 = hair) to the scalp hair. */
 const hairAt = (p: V3) => {
-  const q = add(p, eyeShift);
-  const hb = sculpt.hairBox!;
-  if (q[0] < hb.min[0] || q[0] > hb.max[0] || q[1] < hb.min[1] || q[1] > hb.max[1] || q[2] < hb.min[2] || q[2] > hb.max[2]) return 3;
-  return Math.max(-3, Math.min(3, sculpt.hairRegion!(q[0], q[1], q[2])));
+  const r = sub(p, fittedEyeMid);
+  if (r[1] < -12 || r[0] < -22 || r[0] > 8 || Math.abs(r[2]) > 13) return 3;
+  const cx = p[0] - SKULL_X;
+  const deg = (Math.atan2(Math.abs(r[2]), cx) * 180) / Math.PI;
+  const rho = Math.max(4, Math.hypot(cx, r[2]));
+  const slope = (hairlineAt(deg + 1) - hairlineAt(deg - 1)) / ((2 * rho * Math.PI) / 180);
+  const d = (hairlineAt(deg) - r[1]) / Math.sqrt(1 + slope * slope);
+  return Math.max(-3, Math.min(3, d * 0.2));
 };
 /**
- * Eyebrows: a signed distance (cm, < 0 inside) to an arched band above each eye,
- * measured in the eye's frame (u outward from the eye centre, height above it).
+ * Eyebrows: a signed distance (< 0 inside) to a natural male brow above each eye, in the
+ * eye's frame (u outward from the eye centre, cm): a full, slightly lower head over the
+ * inner corner, a gentle arch above the outer iris and a tapered tail. Scaled for a soft,
+ * feathered edge and floored so skin shows through a little, like real brow hair.
  */
 const browAt = (p: V3, n: V3) => {
-  if (n[0] < 0.25) return 3;
+  if (n[0] < 0.2) return 3;
   let d = 3;
   for (const e of eyes) {
-    if (p[0] < e.c[0] - 2.5) continue;
+    if (p[0] < e.c[0] - 3) continue;
     const u = (p[2] - e.c[2]) * Math.sign(e.c[2]);
     const dy = p[1] - e.c[1];
-    const yc = 1.95 + 0.45 * Math.exp(-(((u - 0.8) / 1.5) ** 2)) - 0.45 * smooth(1.8, 3.4, u);
-    const th = 0.45 - 0.22 * smooth(-1.6, 3.2, u);
-    d = Math.min(d, Math.max(Math.abs(dy - yc) - th, -1.9 - u, u - 3.3));
+    const yc = 1.6 + 0.6 * smooth(-2, 1.1, u) - 0.5 * smooth(1.2, 3.2, u);
+    const th = 0.4 - 0.29 * smooth(-1.7, 3.2, u);
+    d = Math.min(d, Math.max(Math.abs(dy - yc) - th, -1.85 - u, u - 3.2));
   }
-  return Math.max(-3, Math.min(3, d));
+  return d > 2.5 ? 3 : Math.max(0.035, 0.035 + d * 0.5);
 };
 const shortsAt = (p: V3) => {
   const sb = sculpt.shortsBox!;
@@ -494,7 +554,7 @@ const soft: Soft[] = (() => {
   const member: Map<number, number>[] = [];
   const extras: { fs: number; td: number; w: number; dir: V3; uvs: [number, number, number, number][] }[] = [];
   for (let v = 0; v < NV; v++) {
-    const p = body[v];
+    const p = anat[v];
     const n = normals[v];
     const mm = new Map<number, number>();
     const ex = { fs: 0, td: 0, w: 0, dir: [0, 0, 0] as V3, uvs: [] as [number, number, number, number][] };
@@ -587,6 +647,40 @@ const soft: Soft[] = (() => {
   });
 })();
 
+/**
+ * Face colouring (-1…1, stored in seg.w): > 0 warms/reddens the skin (cheeks, nose, ears),
+ * ≥ 0.6 turns into lip colour, < 0 shades it (under the eyes, a light stubble shadow).
+ * The lips follow this head's measured profile (plus MOUTH_DROP): a cupid's-bow upper lip
+ * from 6.2 cm below the eyes, the mouth line at 7.85, a curved lower lip, corners 2.35 cm out.
+ */
+function faceTone(v: number, p: V3, n: V3): number {
+  const r = sub(p, fittedEyeMid);
+  if (r[1] < -14 || r[1] > 12 || r[0] < -22) return 0;
+  const u = Math.abs(r[2]);
+  const g = (dx: number, dy: number, sx: number, sy: number) => Math.exp(-0.5 * ((dx / sx) ** 2 + (dy / sy) ** 2));
+  const front = smooth(-0.1, 0.5, n[0]);
+  let perioral = 0;
+  for (const [b, w] of vw[v]) if (b === "jaw" || b.startsWith("oris") || b.startsWith("risorius") || b.startsWith("levator")) perioral += w;
+  // Lips.
+  const k = Math.min(1, u / 2.35);
+  const y = r[1] + MOUTH_DROP;
+  const top = -6.2 + 0.14 * Math.exp(-(((u - 0.55) / 0.3) ** 2)) - 0.5 * k * k;
+  // Upper lip down to the mouth line (the fold 7.85 cm below the eyes), then the lower lip,
+  // narrower, down to 9.15 cm.
+  const bottom = -9.15 + 1.25 * k * k;
+  const inside = Math.min(y - bottom, top - y, 2.35 - u);
+  const lip = r[0] > 1.2 ? smooth(-0.06, 0.12, inside) : 0;
+  let t = 0;
+  t += 0.5 * g(u - 3.6, r[1] + 3.1, 1.7, 1.4) * front; // cheeks
+  t += 0.35 * g(u, r[1] + 4.3, 1.0, 1.0) * smooth(1.5, 3, r[0]); // nose tip
+  t += 0.45 * smooth(6.4, 7.6, u) * smooth(-6, -4.5, r[1]) * (1 - smooth(1.5, 3, r[1])) * smooth(-11, -8, r[0]) * (1 - smooth(-4, -2, r[0])); // ears
+  t += 0.12 * g(u, r[1] + 10.3, 2, 1.2) * front; // chin
+  t -= 0.6 * g(u - 3.1, r[1] + 1.35, 1.2, 0.45) * smooth(-2, 0, r[0]); // under the eyes
+  t -= 0.22 * Math.min(1, perioral) * smooth(-3.5, -5, r[1]); // stubble shadow
+  t = t * (1 - lip) + (0.62 + 0.38 * lip) * lip;
+  return Math.max(-1, Math.min(1, t));
+}
+
 const info = new Uint8Array(NV * 4);
 const fibre = new Int8Array(NV * 4);
 const extra = new Float32Array(NV * 4);
@@ -598,7 +692,8 @@ const smooth = (a: number, b: number, x: number) => {
 };
 for (let v = 0; v < NV; v++) {
   const p = body[v];
-  const i = nearest(p, normals[v]);
+  const a = anat[v];
+  const i = nearest(a, normals[v]);
   for (let k = 0; k < 4; k++) {
     info[v * 4 + k] = sdf.info[i * 4 + k];
     seg[v * 4 + k] = sdf.seg[i * 4 + k];
@@ -619,13 +714,14 @@ for (let v = 0; v < NV; v++) {
   fuv[v * 2 + 1] = st.uv ? st.uv[1] : 0;
   const browD = browAt(p, normals[v]);
   const hairD = Math.min(hairAt(p), browD);
-  const shortD = shortsAt(p);
+  seg[v * 4 + 3] = Math.round((faceTone(v, p, normals[v]) + 1) * 127.5);
+  const shortD = shortsAt(a);
   let material = MAT_SKIN;
   if (hairD < 0.1) material = MAT_HAIR;
   else if (shortD < 0.4) {
     material = MAT_SHORTS;
     // Only the seat of the shorts shows a muscle (the glutes); elsewhere the fabric stays black.
-    if (!(p[0] < -2.5 && p[1] > 79 && info[v * 4] === MUSCLE_INDEX_GLUTES)) {
+    if (!(a[0] < -2.5 && a[1] > 79 && info[v * 4] === MUSCLE_INDEX_GLUTES)) {
       info[v * 4] = 255;
       seg[v * 4] = 255;
       seg[v * 4 + 1] = 255;
@@ -640,6 +736,8 @@ for (let v = 0; v < NV; v++) {
     }
     if (p[1] > fo(B_HEAD)[1] - 9 + HEAD_RAISE) extra[v * 4] = 99;
   }
+  // Face and scalp skin: smooth, no muscle-fibre relief.
+  if (material === MAT_SKIN && p[1] - fittedEyeMid[1] > -12 && p[0] - fittedEyeMid[0] > -22) info[v * 4 + 2] = 0;
   info[v * 4 + 1] = material;
   if (material !== MAT_SKIN) {
     fibre[v * 4 + 3] = material;
@@ -649,7 +747,7 @@ for (let v = 0; v < NV; v++) {
   extra[v * 4 + 3] = hairD;
   seg[v * 4 + 2] = Math.round(((shortD + 3) / 6) * 255);
   // A little volume: the crop on the scalp, the fabric of the shorts.
-  const lift = (browD < hairAt(p) ? 0.12 : 0.45) * (1 - smooth(-0.4, 0.3, hairD)) + 0.22 * (1 - smooth(-1.2, 1.2, shortD));
+  const lift = (browD < hairAt(p) ? 0 : 0.3) * (1 - smooth(-1.2, 0.1, hairD)) + 0.22 * (1 - smooth(-1.2, 1.2, shortD));
   if (lift > 0) body[v] = add(p, mul(normals[v], lift));
 }
 
@@ -741,7 +839,7 @@ console.log("eyes", eyes.map((e) => e.c.map((x) => x.toFixed(1)).join(",") + " r
 const lashQuads: number[] = [];
 const lashPos: V3[] = [];
 for (const side of ["r", "l"])
-  for (const row of [1, 2]) {
+  for (const row of [1]) {
     const g = `helper-${side}-eyelashes-${row}`;
     const faces: number[][] = [];
     {
@@ -755,7 +853,7 @@ for (const side of ["r", "l"])
     const eye = eyes[side === "r" ? 0 : 1];
     const dist = new Map(vs.map((i) => [i, len(sub(fitted[i], eye.c))]));
     const r0 = Math.min(...dist.values());
-    const keep = row === 1 ? 0.55 : 0.35;
+    const keep = 0.5;
     const local = new Map<number, number>();
     for (const i of vs) {
       const d = dist.get(i)!;
@@ -787,7 +885,7 @@ const asset: AssetData = {
   fibre: grow(fibre, 4, (o, i) => o.set([0, 127, 0, MAT_HAIR], i * 4)),
   extra: grow(extra, 4, (o, i) => o.set([99, 1, 0, -3], i * 4)),
   fuv: grow(fuv, 2, (o, i) => o.set([1e6, 0], i * 2)),
-  seg: grow(seg, 4, (o, i) => o.set([255, 255, 255, 0], i * 4)),
+  seg: grow(seg, 4, (o, i) => o.set([255, 255, 255, 128], i * 4)),
   eyes: eyes.map((e) => ({ c: e.c, r: e.r })),
 };
 const bin = encodeAsset(asset);

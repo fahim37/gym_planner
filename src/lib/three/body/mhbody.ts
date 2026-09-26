@@ -130,6 +130,7 @@ function blend(s: Mesh, m: Mesh, d: number, ids: number[], ws: number[]) {
   let fs = 0;
   let td = 0;
   let sh = 0;
+  let tone = 0;
   const fib = [0, 0, 0];
   const ex = [0, 0, 0, 0];
   let lineW = 0;
@@ -142,6 +143,7 @@ function blend(s: Mesh, m: Mesh, d: number, ids: number[], ws: number[]) {
     fs += s.info[v * 4 + 2] * w;
     td += s.info[v * 4 + 3] * w;
     sh += s.seg[v * 4 + 2] * w;
+    tone += s.seg[v * 4 + 3] * w;
     const sg = s.fibre[v * 4] * s.fibre[heavy * 4] + s.fibre[v * 4 + 1] * s.fibre[heavy * 4 + 1] + s.fibre[v * 4 + 2] * s.fibre[heavy * 4 + 2] < 0 ? -1 : 1;
     for (let c = 0; c < 3; c++) fib[c] += s.fibre[v * 4 + c] * w * sg;
     const line = s.extra[v * 4];
@@ -157,7 +159,7 @@ function blend(s: Mesh, m: Mesh, d: number, ids: number[], ws: number[]) {
   m.info[d * 4 + 2] = Math.round(fs);
   m.info[d * 4 + 3] = Math.round(td);
   m.seg[d * 4 + 2] = Math.round(sh);
-  m.seg[d * 4 + 3] = 0;
+  m.seg[d * 4 + 3] = Math.round(tone);
   const fl = Math.hypot(fib[0], fib[1], fib[2]) || 1;
   for (let c = 0; c < 3; c++) m.fibre[d * 4 + c] = Math.round((fib[c] / fl) * 127);
   m.fibre[d * 4 + 3] = s.fibre[heavy * 4 + 3];
@@ -328,6 +330,7 @@ function addEyes(parts: Mesh[], eyes: AssetData["eyes"]) {
         m.seg[v * 4] = 255;
         m.seg[v * 4 + 1] = 255;
         m.seg[v * 4 + 2] = 255;
+        m.seg[v * 4 + 3] = 128;
       }
     }
     let q = 0;

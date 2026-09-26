@@ -511,7 +511,7 @@ class Baker {
       let sd = 3;
       if (S.shortsRegion && sb && x > sb.min[0] && y > sb.min[1] && z > sb.min[2] && x < sb.max[0] && y < sb.max[1] && z < sb.max[2]) sd = Math.max(-3, Math.min(3, S.shortsRegion(x, y, z)));
       seg[v * 4 + 2] = Math.round(((sd + 3) / 6) * 255);
-      seg[v * 4 + 3] = 0;
+      seg[v * 4 + 3] = 128; // face colouring: neutral
       info[v * 4 + 1] = material;
       info[v * 4 + 2] = Math.round(Math.min(1, Math.max(0, fibreStrength)) * 255);
       info[v * 4 + 3] = Math.round(Math.min(1, Math.max(0, tendon)) * 255);
