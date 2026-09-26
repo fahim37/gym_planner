@@ -26,6 +26,8 @@ export interface BodyUniforms {
   uHair: { value: THREE.Color };
   uLine: { value: number };
   uFade: { value: number };
+  /** Muscle-border definition carved in the shader (sculpted body). */
+  uDefine: { value: number };
   /** Per (muscle, side) centre in bind space (cm): the local origin of the fibre projection. */
   uAnchor: { value: THREE.Vector3[] };
 }
@@ -94,6 +96,8 @@ varying float vShortD;
 varying vec2 vFibreUv;
 varying vec3 vFibreView;
 varying vec3 vEye;
+varying float vMargin;
+varying float vDefineW;
 `;
 
 const BODY_FRAG_PARS = /* glsl */ `
@@ -108,6 +112,9 @@ uniform vec3 uShorts;
 uniform vec3 uHair;
 uniform float uLine;
 uniform float uFade;
+uniform float uDefine;
+varying float vMargin;
+varying float vDefineW;
 varying vec3 vHi;
 varying vec4 vMat;
 varying float vLip;
@@ -176,6 +183,9 @@ export function createBodyMaterial(u: BodyUniforms) {
 		vTone = aExtra.z;
 		vHairD = aExtra.w;
 		vShortD = aSeg.z / 255.0 * 6.0 - 3.0;
+		vMargin = aSeg.y / 255.0;
+		// Full grooves between two muscles, faint ones where a muscle meets bare skin.
+		vDefineW = 1.0;
 		vEye = aFibre.xyz * 2.0;
 		vec3 fib = aFibre.xyz;
 		// Project the fibre pattern about the muscle's own centre: a short lever arm keeps the
@@ -229,6 +239,8 @@ export function createBodyMaterial(u: BodyUniforms) {
 			base = mix( base, base * mix( 0.8, 1.0, front ), eye );
 		}
 		base *= 1.0 + vTone * 0.06;
+		// Cavity of the carved muscle borders.
+		base *= 1.0 - uDefine * 0.14 * ( 1.0 - smoothstep( 0.0, 0.45, vMargin ) ) * vDefineW * skin;
 		float muscle = skin + lip;
 		float hi = clamp( gHi.x + gHi.y, 0.0, 1.0 ) * ( muscle + shorts );
 		vec3 hiCol = ( uPrimary * gHi.x + uSecondary * gHi.y ) / max( gHi.x + gHi.y, 1e-3 );
@@ -266,6 +278,20 @@ export function createBodyMaterial(u: BodyUniforms) {
 			vec3 Bt = cross( normal, T );
 			normal = normalize( T * mapN.x + Bt * mapN.y + normal * mapN.z );
 		}
+
+	// Muscle borders on the sculpted body: a groove carved from the smooth border margin
+	// (bump mapping from screen-space derivatives of the interpolated field).
+	if ( uDefine > 0.0 ) {
+		float gm = matIs( 0.0 ) * vDefineW;
+		float h = smoothstep( 0.0, 0.8, vMargin ) * 0.0022 * uDefine * gm;
+		vec3 sx = dFdx( -vViewPosition );
+		vec3 sy = dFdy( -vViewPosition );
+		vec3 r1 = cross( sy, normal );
+		vec3 r2 = cross( normal, sx );
+		float det = dot( sx, r1 );
+		vec3 grad = sign( det ) * ( dFdx( h ) * r1 + dFdy( h ) * r2 );
+		normal = normalize( abs( det ) * normal - grad );
+	}
 	}`,
       )
       .replace(

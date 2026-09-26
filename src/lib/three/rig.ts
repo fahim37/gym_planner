@@ -102,6 +102,7 @@ export class BodyRig {
       uHair: { value: new THREE.Color() },
       uLine: { value: 1 },
       uFade: { value: 1 },
+      uDefine: { value: 0 },
       uAnchor: { value: Array.from({ length: (MUSCLE_COUNT + 1) * 2 }, () => new THREE.Vector3()) },
     };
     this.syncPalette();
@@ -121,6 +122,10 @@ export class BodyRig {
 
   private attach(data: BodyData) {
     computeAnchors(data, this.uniforms.uAnchor.value);
+    // The sculpted body is smooth: carve muscle borders in the shader and soften the fibres.
+    const sculpted = !!data.stats.regions.sculpted;
+    this.uniforms.uDefine.value = sculpted ? 1 : 0;
+    this.uniforms.uDetail.value = sculpted ? 0.55 : 1;
     const geometry = sharedGeometry(data);
     const body = new THREE.Mesh(geometry, createBodyMaterial(this.uniforms));
     body.customDepthMaterial = createBodyDepthMaterial(this.uniforms);

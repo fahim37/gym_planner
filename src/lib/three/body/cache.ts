@@ -1,9 +1,11 @@
 import { buildBodyData, type BodyData, type BuildOptions } from "./build";
+import { buildSculptedBody } from "./mhbody";
+import type { WorkerRequest } from "./worker";
 
 export type { BodyData };
 
 /** Bump when the sculpt or baked attributes change, to invalidate cached meshes. */
-const VERSION = "body-v53";
+const VERSION = "body-v57";
 const DB = "ironform-body";
 const KEYS = ["position", "normal", "bones", "weights", "info", "fibre", "extra", "index", "bind"] as const;
 
@@ -51,9 +53,11 @@ export function peekBodyData(): BodyData | null {
 export function loadBodyData(): Promise<BodyData> {
   pending ??= (async () => {
     const tier = meshTier();
-    const key = `${VERSION}-${tier}`;
+    const source = bodySource();
+    const key = `${VERSION}-${source}-${tier}`;
     const cached = await readCache(key);
-    const d = cached ?? (await generate(MESH_TIERS[tier]));
+    const req: WorkerRequest = source === "sculpted" ? { kind: "sculpted", levels: SUBDIVISION[tier] } : { kind: "procedural", opts: MESH_TIERS[tier] };
+    const d = cached ?? (await generate(req));
     if (!cached) void writeCache(key, d);
     data = d;
     if (process.env.NODE_ENV !== "production") console.info("[body]", cached ? "cached" : "generated", d.stats);
@@ -62,7 +66,19 @@ export function loadBodyData(): Promise<BodyData> {
   return pending;
 }
 
-async function generate(opts: BuildOptions): Promise<BodyData> {
+/** Catmull-Clark levels of the sculpted body per tier (≈ 27k · 4^level triangles). */
+export const SUBDIVISION: Record<MeshTier, number> = { high: 2, medium: 1, low: 1 };
+
+/**
+ * Which body to build: the sculpted (MakeHuman-derived) mesh by default;
+ * `?body=procedural` selects the distance-field sculpt.
+ */
+export function bodySource(): "sculpted" | "procedural" {
+  if (typeof window === "undefined") return "sculpted";
+  return new URLSearchParams(window.location.search).get("body") === "procedural" ? "procedural" : "sculpted";
+}
+
+async function generate(req: WorkerRequest): Promise<BodyData> {
   try {
     const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
     return await new Promise<BodyData>((resolve, reject) => {
@@ -74,12 +90,12 @@ async function generate(opts: BuildOptions): Promise<BodyData> {
         worker.terminate();
         reject(e);
       };
-      worker.postMessage(opts);
+      worker.postMessage(req);
     });
   } catch {
     // No module workers (e.g. single-file builds): yield a frame, then build here.
     await new Promise((r) => setTimeout(r, 16));
-    return buildBodyData(opts);
+    return req.kind === "sculpted" ? buildSculptedBody(req.levels) : buildBodyData(req.opts);
   }
 }
 
