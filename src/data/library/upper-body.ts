@@ -1706,4 +1706,124 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
       })(),
     },
   },
+  {
+    slug: "zottman-curl",
+    name: "Zottman Curl",
+    region: "Arms",
+    primary: ["biceps", "forearms"],
+    secondary: [],
+    equipment: ["Dumbbell"],
+    gear: ["dumbbells"],
+    level: "Intermediate",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "Curl up palms-up, lower palms-down: biceps on the way up, forearms on the way down.",
+    steps: [
+      "Stand tall with a dumbbell in each hand, palms facing forward and elbows at your sides.",
+      "Curl the dumbbells up to your shoulders.",
+      "At the top, turn your wrists so your palms face down.",
+      "Lower the dumbbells slowly with your palms down.",
+      "At the bottom, turn your palms forward again and repeat.",
+    ],
+    tips: ["Take three seconds on the way down — the overhand lowering is the point of the exercise.", "Keep your elbows pinned to your sides while you turn your hands."],
+    mistakes: ["Rushing the lowering phase", "Swinging the weights up", "Turning the hands halfway down instead of at the top"],
+    breathing: "Exhale as you curl, inhale as you lower.",
+    prescription: { sets: "3", reps: "8–12", rest: "60 s" },
+    animation: {
+      props: [{ type: "extra", kind: "upper:dumbbells", params: { style: "underhand" } }],
+      frames: (() => {
+        const down: LimbSpec = { angles: [2, 4], spread: [9, 5] };
+        const up: LimbSpec = { angles: [-6, 146], spread: [9, 4] };
+        const frames: Keyframe[] = [
+          { pose: standing({ arms: [down], grip: "underhand" }), dur: 1, cue: "Curl up, palms up", rep: true },
+          { pose: standing({ arms: [up], grip: "underhand" }), dur: 0.5, hold: 0.15, cue: "Turn your palms down" },
+          { pose: standing({ arms: [up], grip: "overhand" }), dur: 2, cue: "Lower slowly, palms down" },
+          { pose: standing({ arms: [down], grip: "overhand" }), dur: 0.5, cue: "Turn your palms up" },
+        ];
+        return frames;
+      })(),
+    },
+  },
+  {
+    slug: "dumbbell-wrist-curl",
+    name: "Dumbbell Wrist Curl",
+    region: "Arms",
+    primary: ["forearms"],
+    secondary: [],
+    equipment: ["Dumbbell", "Bench"],
+    gear: ["dumbbells", "flat-bench"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "Strengthens the wrist flexors on the palm side of the forearm for a stronger grip.",
+    steps: [
+      "Kneel beside a flat bench and rest your forearms on it, palms up, with your wrists just past the edge.",
+      "Hold a dumbbell in each hand and let your wrists bend back so the dumbbells lower toward the floor.",
+      "Curl your wrists up as far as you can, keeping your forearms flat on the pad.",
+      "Squeeze, then lower slowly back to the stretch.",
+    ],
+    tips: ["Let the dumbbell roll down to your fingertips at the bottom for extra range.", "Use a light weight and high reps."],
+    mistakes: ["Lifting the forearms off the bench", "Bouncing at the bottom", "Using the elbows to heave the weight"],
+    breathing: "Exhale as you curl up, inhale as you lower.",
+    prescription: { sets: "3", reps: "15–20", rest: "45 s" },
+    animation: {
+      camera: "side",
+      props: [
+        { type: "extra", kind: "upper:bench-across", params: { x: 200, top: 200 } },
+        { type: "extra", kind: "upper:dumbbells", params: { style: "underhand" } },
+      ],
+      frames: (() => {
+        const kneel = (wrist: number): Pose => ({
+          hip: [120, 197],
+          torso: 62,
+          head: 10,
+          grip: "underhand",
+          arms: [{ ik: { x: 215, y: 196, z: 15 }, pole: [0, 1, 0.1], wrist }],
+          legs: [{ angles: [5, -90], foot: 170 }],
+        });
+        return repFrames(kneel(-50), kneel(55), { go: 0.8, back: 1.3, hold: 0.3, cues: ["Curl your wrists up", "Lower slowly"] });
+      })(),
+    },
+  },
+  {
+    slug: "dumbbell-reverse-wrist-curl",
+    name: "Dumbbell Reverse Wrist Curl",
+    region: "Arms",
+    primary: ["forearms"],
+    secondary: [],
+    equipment: ["Dumbbell", "Bench"],
+    gear: ["dumbbells", "flat-bench"],
+    level: "Beginner",
+    mechanics: "Isolation",
+    category: "Strength",
+    summary: "Works the wrist extensors on the back of the forearm to balance out all your gripping and curling.",
+    steps: [
+      "Kneel beside a flat bench and rest your forearms on it, palms down, with your wrists just past the edge.",
+      "Hold a light dumbbell in each hand and let your wrists bend down.",
+      "Lift the backs of your hands up as high as you can, keeping your forearms on the pad.",
+      "Pause, then lower slowly.",
+    ],
+    tips: ["Go much lighter than for wrist curls — the extensors are weaker.", "Keep your fingers wrapped firmly around the handle."],
+    mistakes: ["Lifting the forearms off the bench", "Going too heavy and jerking the weight", "Short range of motion"],
+    breathing: "Exhale as you lift, inhale as you lower.",
+    prescription: { sets: "3", reps: "15–20", rest: "45 s" },
+    animation: {
+      camera: "side",
+      props: [
+        { type: "extra", kind: "upper:bench-across", params: { x: 200, top: 200 } },
+        { type: "extra", kind: "upper:dumbbells", params: { style: "overhand" } },
+      ],
+      frames: (() => {
+        const kneel = (wrist: number): Pose => ({
+          hip: [120, 197],
+          torso: 62,
+          head: 10,
+          grip: "overhand",
+          arms: [{ ik: { x: 215, y: 196, z: 15 }, pole: [0, 1, 0.1], wrist }],
+          legs: [{ angles: [5, -90], foot: 170 }],
+        });
+        return repFrames(kneel(50), kneel(-45), { go: 0.8, back: 1.3, hold: 0.3, cues: ["Lift the backs of your hands", "Lower slowly"] });
+      })(),
+    },
+  },
 ];

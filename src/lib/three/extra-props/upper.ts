@@ -400,7 +400,8 @@ const benchAcross: ExtraPropBuilder = (p) => {
     g.add(block(W(x, 248, z), [depth / 100 + 0.06, 0.03, 0.06], frame));
   }
   g.add(block(W(x, 243), [0.05, 0.05, (length - 20) / 100], frame));
-  return owned(g);
+  // Free hands on the pad lie flat on it (bench dips, wrist curls).
+  return { ...owned(g), supports: [{ from: x - depth / 2, to: x + depth / 2, top, z: 0, width: length }] };
 };
 
 /**
