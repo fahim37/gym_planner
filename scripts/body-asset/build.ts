@@ -47,6 +47,7 @@ import {
 } from "../../src/lib/three/body/skeleton";
 import { FINGERS } from "../../src/lib/three/body/hand";
 import { MAT_HAIR, MAT_SHORTS, MAT_SKIN } from "../../src/lib/three/body/sdf";
+import { MUSCLE_INDEX_GLUTES } from "../../src/lib/three/body/muscle-index";
 import { encodeAsset, type AssetData } from "../../src/lib/three/body/asset/format";
 
 type V3 = [number, number, number];
@@ -379,7 +380,7 @@ function vertexNormals(pos: V3[]): V3[] {
   }
   return n.map(norm);
 }
-let body: V3[] = fitted.slice(0, NV);
+const body: V3[] = fitted.slice(0, NV);
 const normals = vertexNormals(body);
 
 // ---------------------------------------------------------------------------
@@ -593,7 +594,15 @@ for (let v = 0; v < NV; v++) {
   const shortD = shortsAt(p);
   let material = MAT_SKIN;
   if (hairD < 0.1) material = MAT_HAIR;
-  else if (shortD < 0.4) material = MAT_SHORTS;
+  else if (shortD < 0.4) {
+    material = MAT_SHORTS;
+    // Only the seat of the shorts shows a muscle (the glutes); elsewhere the fabric stays black.
+    if (!(p[0] < -2.5 && p[1] > 79 && info[v * 4] === MUSCLE_INDEX_GLUTES)) {
+      info[v * 4] = 255;
+      seg[v * 4] = 255;
+      seg[v * 4 + 1] = 255;
+    }
+  }
   // The face and scalp carry no muscle map or ink.
   if (p[1] > fo(B_NECK)[1] + 6 && p[0] > fo(B_HEAD)[0] - 12) {
     if (info[v * 4] !== 255 && p[1] > fo(B_HEAD)[1] - 8) {
