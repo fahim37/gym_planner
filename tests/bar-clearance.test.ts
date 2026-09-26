@@ -45,3 +45,34 @@ it("keeps every barbell clear of the head and face", () => {
   }
   expect(problems).toEqual([]);
 });
+
+/** Hands holding a dumbbell or kettlebell: the weight stays this far (cm) from the skull and face surfaces. */
+const WEIGHT_CLEARANCE = 3;
+const holdsWeight = (e: (typeof EXERCISES)[number]) =>
+  e.animation.props?.some((p) => p.type === "dumbbell" || p.type === "kettlebell" || (p.type === "extra" && /dumbbell/.test(p.kind)));
+
+it("keeps dumbbells and kettlebells out of the face", () => {
+  const problems: string[] = [];
+  for (const e of EXERCISES) {
+    if (!holdsWeight(e)) continue;
+    const tl = new Timeline(e.animation);
+    let worst = Infinity;
+    let at = 0;
+    for (let j = 0; j < SAMPLES; j++) {
+      const t = (tl.duration * j) / SAMPLES;
+      const s = solvePose(tl.sample(t).pose);
+      const f = s.headForward;
+      const face: Vec3 = [s.head[0] + f[0] * 6, s.head[1] + f[1] * 6 + 3, s.head[2] + f[2] * 6];
+      for (const side of s.sides) {
+        // The dumbbell runs across the palm (about along the chest's side axis), ±12 cm.
+        for (let k = -12; k <= 12; k += 4) {
+          const p: Vec3 = [side.hand[0] + s.chestSide[0] * k, side.hand[1] + s.chestSide[1] * k, side.hand[2] + s.chestSide[2] * k];
+          const gap = Math.min(len(sub(p, s.head)) - BODY.headRadius, len(sub(p, face)) - 7);
+          if (gap < worst) [worst, at] = [gap, t];
+        }
+      }
+    }
+    if (worst < WEIGHT_CLEARANCE) problems.push(`${e.slug}: weight ${worst.toFixed(1)} cm from the head at t=${at.toFixed(2)}s`);
+  }
+  expect(problems).toEqual([]);
+});
