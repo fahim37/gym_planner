@@ -70,8 +70,12 @@ const TARGETS: [string, number, "up"?][] = [
   ["torso/torso-muscle-dorsi-incr", 0.5],
   ["torso/torso-muscle-pectoral-incr", 0.65],
   ["stomach/stomach-tone-incr", 1],
-  // Face: a stronger jaw and cheekbones.
+  // Face: lean (athlete-low face fat, no double chin), a defined jaw and cheekbones.
   ["head/head-square", 0.35],
+  ["head/head-fat-decr", 0.6],
+  ["neck/neck-double-decr", 0.5],
+  ["chin/chin-bones-incr", 0.25],
+  ...["r", "l"].flatMap((s): [string, number][] => [[`cheek/${s}-cheek-volume-decr`, 0.12]]),
   ["chin/chin-prominent-incr", 0.3],
   ["chin/chin-width-incr", 0.4],
   ["neck/neck-scale-horiz-incr", 0.3],
@@ -81,9 +85,10 @@ const TARGETS: [string, number, "up"?][] = [
   // Mouth ~0.6 cm lower and a slightly shorter chin: a natural upper-lip length.
   ["mouth/mouth-trans-down", 0.6],
   ["chin/chin-height-decr", 0.4],
-  ["mouth/mouth-angles-up", 0.35],
+  ["mouth/mouth-angles-up", 0.5],
   ["mouth/mouth-lowerlip-height-incr", 0.4],
-  ["mouth/mouth-lowerlip-volume-incr", 0.25],
+  ["mouth/mouth-lowerlip-volume-incr", 0.1],
+  ["mouth/mouth-upperlip-volume-incr", 0.2],
   ["eyes/r-eye-scale-incr", 0.2],
   ["eyes/l-eye-scale-incr", 0.2],
   // A relaxed, open gaze: the base upper lid covers ~40% of the iris (a squint). Lift it so it
@@ -732,6 +737,8 @@ function faceTone(v: number, p: V3, n: V3): number {
   t -= 0.3 * g(u - 2.9, r[1] + 1.45, 1.1, 0.4) * smooth(-2, 0, r[0]); // under the eyes
   t -= 0.14 * Math.min(1, perioral) * smooth(-3.5, -5, r[1]); // stubble shadow
   t = t * (1 - lip) + (0.62 + 0.38 * lip) * lip;
+  // The corners of the mouth sit in a little shadow.
+  if (r[0] > 1.2) t -= 0.3 * g(u - 2.4, dm, 0.4, 0.3);
   // Lash lines: the upper one ≤ -0.62 darkens towards the lash colour (see the material).
   if (Math.abs(r[1]) < 2.5 && u > 0.8 && u < 6) {
     const lash = lashAt(p);

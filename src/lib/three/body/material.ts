@@ -273,7 +273,8 @@ export function createBodyMaterial(u: BodyUniforms) {
 		// Sclera: a soft, slightly warm off-white (never skin-coloured).
 		base = mix( base, vec3( 0.58, 0.53, 0.49 ), eye );
 		base = mix( base, uShorts, shorts );
-		base = mix( base, uHair, hair );
+		// Hair: a little strand-scale variation so the crop doesn't read as a painted cap.
+		base = mix( base, uHair * ( 0.82 + 0.36 * skinNoise( vSkinP * vec3( 5.0, 9.0, 5.0 ) ) ), hair );
 		// Iris and pupil from the eye-local position (exact under interpolation → always round).
 		{
 			float ir = length( vEye.yz );
@@ -300,7 +301,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 			base = mix( base, base * vec3( 1.04, 0.8, 0.76 ), clamp( fl, 0.0, 0.6 ) * 0.6 );
 			base = mix( base, base * vec3( 0.8, 0.76, 0.79 ), max( -fl, 0.0 ) * 0.6 );
 			// Lips: a muted rose, ramping in over the whole lip range (no hard mask edge).
-			base = mix( base, uSkin * vec3( 0.82, 0.58, 0.6 ), clamp( ( fl - 0.62 ) / 0.3, 0.0, 1.0 ) * 0.62 );
+			base = mix( base, uSkin * vec3( 0.82, 0.58, 0.6 ), clamp( ( fl - 0.62 ) / 0.3, 0.0, 1.0 ) * 0.72 );
 			// Lash line along the upper lid.
 			base = mix( base, uHair * 0.55, smoothstep( 0.62, 0.95, -fl ) * 0.75 );
 			// Subtle mottling so the skin isn't a flat colour.
