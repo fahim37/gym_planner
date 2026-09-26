@@ -453,6 +453,23 @@ const hairAt = (p: V3) => {
   if (q[0] < hb.min[0] || q[0] > hb.max[0] || q[1] < hb.min[1] || q[1] > hb.max[1] || q[2] < hb.min[2] || q[2] > hb.max[2]) return 3;
   return Math.max(-3, Math.min(3, sculpt.hairRegion!(q[0], q[1], q[2])));
 };
+/**
+ * Eyebrows: a signed distance (cm, < 0 inside) to an arched band above each eye,
+ * measured in the eye's frame (u outward from the eye centre, height above it).
+ */
+const browAt = (p: V3, n: V3) => {
+  if (n[0] < 0.25) return 3;
+  let d = 3;
+  for (const e of eyes) {
+    if (p[0] < e.c[0] - 2.5) continue;
+    const u = (p[2] - e.c[2]) * Math.sign(e.c[2]);
+    const dy = p[1] - e.c[1];
+    const yc = 1.95 + 0.45 * Math.exp(-(((u - 0.8) / 1.5) ** 2)) - 0.45 * smooth(1.8, 3.4, u);
+    const th = 0.45 - 0.22 * smooth(-1.6, 3.2, u);
+    d = Math.min(d, Math.max(Math.abs(dy - yc) - th, -1.9 - u, u - 3.3));
+  }
+  return Math.max(-3, Math.min(3, d));
+};
 const shortsAt = (p: V3) => {
   const sb = sculpt.shortsBox!;
   if (p[0] < sb.min[0] || p[0] > sb.max[0] || p[1] < sb.min[1] || p[1] > sb.max[1] || p[2] < sb.min[2] || p[2] > sb.max[2]) return 3;
@@ -600,7 +617,8 @@ for (let v = 0; v < NV; v++) {
   extra[v * 4 + 2] = sdf.extra[i * 4 + 2];
   fuv[v * 2] = st.uv ? st.uv[0] : 1e6;
   fuv[v * 2 + 1] = st.uv ? st.uv[1] : 0;
-  const hairD = hairAt(p);
+  const browD = browAt(p, normals[v]);
+  const hairD = Math.min(hairAt(p), browD);
   const shortD = shortsAt(p);
   let material = MAT_SKIN;
   if (hairD < 0.1) material = MAT_HAIR;
@@ -631,7 +649,7 @@ for (let v = 0; v < NV; v++) {
   extra[v * 4 + 3] = hairD;
   seg[v * 4 + 2] = Math.round(((shortD + 3) / 6) * 255);
   // A little volume: the crop on the scalp, the fabric of the shorts.
-  const lift = 0.45 * (1 - smooth(-0.4, 0.3, hairD)) + 0.22 * (1 - smooth(-1.2, 1.2, shortD));
+  const lift = (browD < hairAt(p) ? 0.12 : 0.45) * (1 - smooth(-0.4, 0.3, hairD)) + 0.22 * (1 - smooth(-1.2, 1.2, shortD));
   if (lift > 0) body[v] = add(p, mul(normals[v], lift));
 }
 
@@ -718,16 +736,58 @@ let minY = Infinity;
 for (const p of body) minY = Math.min(minY, p[1]);
 console.log("vertices", NV, "quads", bodyQuads.length / 4, "min y", minY.toFixed(2), "torso scale", torsoScale.toFixed(3));
 console.log("eyes", eyes.map((e) => e.c.map((x) => x.toFixed(1)).join(",") + " r" + e.r.toFixed(2)).join(" | "), "head joint", fo(B_HEAD).map((x) => x.toFixed(1)).join(","));
+// Eyelashes: MakeHuman's lash helper strips, shortened towards the lid and made
+// two-sided (a back copy with reversed winding), in the hair material.
+const lashQuads: number[] = [];
+const lashPos: V3[] = [];
+for (const side of ["r", "l"])
+  for (const row of [1, 2]) {
+    const g = `helper-${side}-eyelashes-${row}`;
+    const faces: number[][] = [];
+    {
+      let cur = "";
+      for (const line of obj.split("\n")) {
+        if (line.startsWith("g ")) cur = line.slice(2).trim();
+        else if (cur === g && line.startsWith("f ")) faces.push(line.trim().split(/\s+/).slice(1).map((t) => parseInt(t, 10) - 1));
+      }
+    }
+    const vs = [...new Set(faces.flat())];
+    const eye = eyes[side === "r" ? 0 : 1];
+    const dist = new Map(vs.map((i) => [i, len(sub(fitted[i], eye.c))]));
+    const r0 = Math.min(...dist.values());
+    const keep = row === 1 ? 0.55 : 0.35;
+    const local = new Map<number, number>();
+    for (const i of vs) {
+      const d = dist.get(i)!;
+      const dir = mul(sub(fitted[i], eye.c), 1 / d);
+      local.set(i, lashPos.length);
+      lashPos.push(add(eye.c, mul(dir, r0 + (d - r0) * keep)));
+    }
+    const base = lashPos.length;
+    for (const i of vs) lashPos.push(lashPos[local.get(i)!]);
+    for (const f of faces) {
+      lashQuads.push(...f.map((i) => NV + local.get(i)!));
+      lashQuads.push(...[...f].reverse().map((i) => NV + base + (local.get(i)! - (base - vs.length))));
+    }
+  }
+const LN = lashPos.length;
+const grow = <T extends Uint8Array | Int8Array | Float32Array>(a: T, per: number, fill: (o: T, i: number) => void): T => {
+  const o = new (a.constructor as new (n: number) => T)(a.length + LN * per);
+  o.set(a);
+  for (let i = NV; i < NV + LN; i++) fill(o, i);
+  return o;
+};
+console.log("eyelash vertices", LN, "quads", lashQuads.length / 4);
 const asset: AssetData = {
-  position: Float32Array.from(body.flat()),
-  quads: Uint32Array.from(bodyQuads),
-  bones,
-  weights,
-  info,
-  fibre,
-  extra,
-  fuv,
-  seg,
+  position: Float32Array.from([...body, ...lashPos].flat()),
+  quads: Uint32Array.from([...bodyQuads, ...lashQuads]),
+  bones: grow(bones, 4, (o, i) => (o[i * 4] = B_HEAD)),
+  weights: grow(weights, 4, (o, i) => (o[i * 4] = 255)),
+  info: grow(info, 4, (o, i) => o.set([255, MAT_HAIR, 255, 0], i * 4)),
+  fibre: grow(fibre, 4, (o, i) => o.set([0, 127, 0, MAT_HAIR], i * 4)),
+  extra: grow(extra, 4, (o, i) => o.set([99, 1, 0, -3], i * 4)),
+  fuv: grow(fuv, 2, (o, i) => o.set([1e6, 0], i * 2)),
+  seg: grow(seg, 4, (o, i) => o.set([255, 255, 255, 0], i * 4)),
   eyes: eyes.map((e) => ({ c: e.c, r: e.r })),
 };
 const bin = encodeAsset(asset);
