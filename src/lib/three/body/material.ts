@@ -26,7 +26,7 @@ export interface BodyUniforms {
   uHair: { value: THREE.Color };
   uLine: { value: number };
   uFade: { value: number };
-  /** Muscle-border definition carved in the shader (sculpted body). */
+  /** Sculpted body: strength of the soft cavity tint along muscle borders (the forms themselves are in the mesh). */
   uDefine: { value: number };
   /** Six-pack relief (sculpted body): abs bottom and top height in bind space (cm), strength. */
   uAbs: { value: THREE.Vector3 };
@@ -138,6 +138,7 @@ varying vec3 vEye;
 varying vec3 vSkinP;
 varying vec3 vBindN;
 vec4 gFibre;
+float gFibreK;
 vec3 gHi;
 // Value noise in bind space (cm) for the skin's micro-detail.
 float skinHash( vec3 p ) {
@@ -251,6 +252,9 @@ export function createBodyMaterial(u: BodyUniforms) {
         "#include <color_fragment>",
         `#include <color_fragment>
 	gFibre = texture2D( uFibreMap, vFibreUv );
+	// Fibre relief fades out where the fibre coordinates jump across a triangle (the seam
+	// between two muscles or fibre strips), which would smear the texture into facets.
+	gFibreK = 1.0 - smoothstep( 0.2, 0.45, length( fwidth( vFibreUv ) ) );
 	gHair = hairField();
 	// Highlight membership is per vertex; resolve it at its interpolated 0.5 isoline with a
 	// pixel-wide antialiased edge, so region borders run through edge midpoints instead of
@@ -310,7 +314,7 @@ export function createBodyMaterial(u: BodyUniforms) {
 			base = mix( base, base * vec3( 1.02, 0.95, 0.94 ), max( skinNoise( vSkinP * 0.35 + 5.0 ) - 0.35, 0.0 ) * 0.5 * skin );
 		}
 		// Cavity of the carved muscle borders.
-		base *= 1.0 - uDefine * 0.14 * ( 1.0 - smoothstep( 0.0, 0.45, vMargin ) ) * vDefineW * skin;
+		base *= 1.0 - uDefine * 0.1 * ( 1.0 - smoothstep( 0.0, 0.45, vMargin ) ) * vDefineW * skin;
 		float muscle = skin + lip;
 		float hi = clamp( gHi.x + gHi.y, 0.0, 1.0 ) * ( muscle + shorts );
 		vec3 hiCol = ( uPrimary * gHi.x + uSecondary * gHi.y ) / max( gHi.x + gHi.y, 1e-3 );
@@ -319,7 +323,10 @@ export function createBodyMaterial(u: BodyUniforms) {
 		base = mix( base, hiCol, hi );
 		base = mix( base, uHoverColor, gHi.z * ( muscle + shorts ) );
 		// Grooves between fibres read slightly darker.
-		float f = vSurf.x * uDetail * ( muscle + hair * 0.6 + shorts * 0.4 );
+		// On the sculpted body, bare skin keeps only a trace of the fibres (skin, not an
+		// anatomy plate); highlighted muscles show them fully.
+		float skinFibre = mix( uDefine > 0.0 ? 0.25 : 1.0, 1.0, hi );
+		float f = vSurf.x * uDetail * gFibreK * ( muscle * skinFibre + hair * 0.6 + shorts * 0.4 );
 		base *= mix( 1.0, 0.92 + 0.16 * gFibre.a, f ); // mean ≈ 1: no tone jump where fibres end
 		diffuseColor.rgb = base;
 	}`,
@@ -340,7 +347,8 @@ export function createBodyMaterial(u: BodyUniforms) {
         `{
 		vec3 mapN = gFibre.xyz * 2.0 - 1.0;
 		float k = vSurf.x * uDetail * clamp( 1.0 - matIs( 3.0 ) - matIs( 4.0 ), 0.0, 1.0 );
-		k *= 1.0 - 0.45 * matIs( 1.0 );
+		k *= ( 1.0 - 0.45 * matIs( 1.0 ) ) * gFibreK;
+		k *= mix( 1.0, mix( uDefine > 0.0 ? 0.25 : 1.0, 1.0, clamp( gHi.x + gHi.y, 0.0, 1.0 ) ), matIs( 0.0 ) );
 		mapN.xy *= k * 0.45;
 		vec3 T = vFibreView - normal * dot( normal, vFibreView );
 		float tl = length( T );
@@ -349,20 +357,6 @@ export function createBodyMaterial(u: BodyUniforms) {
 			vec3 Bt = cross( normal, T );
 			normal = normalize( T * mapN.x + Bt * mapN.y + normal * mapN.z );
 		}
-
-	// Muscle borders on the sculpted body: a groove carved from the smooth border margin
-	// (bump mapping from screen-space derivatives of the interpolated field).
-	if ( uDefine > 0.0 ) {
-		float gm = matIs( 0.0 ) * vDefineW;
-		float h = smoothstep( 0.0, 0.8, vMargin ) * 0.0022 * uDefine * gm;
-		vec3 sx = dFdx( -vViewPosition );
-		vec3 sy = dFdy( -vViewPosition );
-		vec3 r1 = cross( sy, normal );
-		vec3 r2 = cross( normal, sx );
-		float det = dot( sx, r1 );
-		vec3 grad = sign( det ) * ( dFdx( h ) * r1 + dFdy( h ) * r2 );
-		normal = normalize( abs( det ) * normal - grad );
-	}
 
 	// Skin micro-detail (pores, fine creases) and the six-pack relief: one height field,
 	// bump-mapped once. The height is gathered in branches (for cost) but differentiated
