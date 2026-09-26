@@ -274,6 +274,7 @@ export class BoneSolver {
   private y = vec();
   private z = vec();
   private o = vec();
+  private clavUp = vec();
   private tmp = vec();
   private radial = vec();
   private curlScratch = [0, 0, 0];
@@ -333,7 +334,11 @@ export class BoneSolver {
 
     // Clavicle: rides with the chest (sternoclavicular joint in front of the spine).
     o.copy(j.chest).addScaledVector(j.chestSide, sign * 0.02).addScaledVector(j.chestForward, 0.04);
-    frame(at(A_CLAVICLE), o, perp(j.chestForward, j.up, x), j.up);
+    // Shrugs: the collarbone tilts up (about the forward axis) with the shoulder's elevation.
+    const lift = this.clavUp.subVectors(s.shoulder, j.chest).dot(j.up);
+    const ang = Math.atan2(lift, 0.19);
+    this.clavUp.copy(j.up).multiplyScalar(Math.cos(ang)).addScaledVector(j.chestSide, -sign * Math.sin(ang));
+    frame(at(A_CLAVICLE), o, perp(j.chestForward, this.clavUp, x), this.clavUp);
 
     d1.subVectors(s.elbow, s.shoulder).normalize();
     d2.subVectors(s.wrist, s.elbow).normalize();

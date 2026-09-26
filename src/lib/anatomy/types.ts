@@ -71,6 +71,8 @@ export interface Pose {
   head?: number;
   /** Rotation of the shoulders around the spine, degrees (single-arm moves). */
   twist?: number;
+  /** Shoulder elevation in cm along the spine (shrugs); the collarbones tilt with it. */
+  shrug?: number;
   /**
    * Whole-body orientation in degrees, applied after solving as a rigid
    * rotation of every joint and frame vector about the pelvis centre: first

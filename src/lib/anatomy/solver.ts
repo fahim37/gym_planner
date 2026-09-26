@@ -147,7 +147,7 @@ export function solvePose(pose: Pose): Skeleton {
 
   const sides = [0, 1].map((i): SideJoints => {
     const sign = i === 0 ? 1 : -1;
-    const shoulder = add(chest, scale(chestSide, sign * BODY.shoulderHalfWidth));
+    const shoulder = add(add(chest, scale(chestSide, sign * BODY.shoulderHalfWidth)), scale(up, pose.shrug ?? 0));
     const hip = add(add(pelvis, scale(side, sign * BODY.hipHalfWidth)), scale(up, -BODY.hipDrop));
 
     const arm = solveLimb(armSpecs[i], shoulder, BODY.upperArm, BODY.forearm, sign, frame, chestForward, false);

@@ -2,6 +2,7 @@ import type { LimbSpec, Pose } from "@/lib/anatomy/types";
 import type { Exercise } from "@/lib/exercise-types";
 import { CORE_CARDIO_EXERCISES } from "./library/core-cardio";
 import { LOWER_BODY_EXERCISES } from "./library/lower-body";
+import { STRENGTH_MACHINE_EXERCISES } from "./library/strength-machines";
 import { UPPER_BODY_EXERCISES } from "./library/upper-body";
 import {
   armsDown,
@@ -951,6 +952,7 @@ export const EXERCISES: Exercise[] = [
   ...LOWER_BODY_EXERCISES,
   ...UPPER_BODY_EXERCISES,
   ...CORE_CARDIO_EXERCISES,
+  ...STRENGTH_MACHINE_EXERCISES,
 ];
 
 export function getExercise(slug: string) {

@@ -180,12 +180,13 @@ describe("extra props", () => {
       (e.animation.props ?? []).flatMap((p) => (p.type === "extra" ? [{ slug: e.slug, kind: p.kind }] : [])),
     );
     if (used.length === 0) return;
-    const [{ LOWER_PROPS }, { UPPER_PROPS }, { CORE_PROPS }] = await Promise.all([
+    const [{ LOWER_PROPS }, { UPPER_PROPS }, { CORE_PROPS }, { MACHINE_PROPS }] = await Promise.all([
       import("@/lib/three/extra-props/lower"),
       import("@/lib/three/extra-props/upper"),
       import("@/lib/three/extra-props/core"),
+      import("@/lib/three/extra-props/machines"),
     ]);
-    const registry = { ...LOWER_PROPS, ...UPPER_PROPS, ...CORE_PROPS };
+    const registry = { ...LOWER_PROPS, ...UPPER_PROPS, ...CORE_PROPS, ...MACHINE_PROPS };
     const missing = used.filter((u) => !(u.kind in registry)).map((u) => `${u.slug}: extra prop kind "${u.kind}" is not registered`);
     expectNoProblems(missing, "extra props");
   });

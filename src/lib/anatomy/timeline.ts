@@ -28,6 +28,7 @@ function normalize(pose: Pose): Pose {
     ...(turn ? { gripTurn: turn } : {}),
     head: pose.head ?? 0,
     twist: pose.twist ?? 0,
+    shrug: pose.shrug ?? 0,
     orient: { roll: pose.orient?.roll ?? 0, yaw: pose.orient?.yaw ?? 0 },
     arms: [arm0, pose.arms[1] ? arm(pose.arms[1]) : arm0],
     legs: [leg, pose.legs[1] ? limb(pose.legs[1]) : leg],
