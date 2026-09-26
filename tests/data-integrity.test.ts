@@ -63,6 +63,13 @@ describe("exercise library", () => {
     expect(EXERCISES.length).toBeGreaterThan(0);
   });
 
+  it("variations link to other existing exercises", () => {
+    const bad = EXERCISES.flatMap((e) =>
+      (e.variations ?? []).filter((v) => v.slug === e.slug || !getExercise(v.slug)).map((v) => `${e.slug} → ${v.slug}`),
+    );
+    expect(bad).toEqual([]);
+  });
+
   it("slugs are unique", () => {
     expect(dupes(EXERCISES.map((e) => e.slug)), "duplicate exercise slugs").toEqual([]);
   });

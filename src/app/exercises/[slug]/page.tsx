@@ -76,6 +76,26 @@ export default async function ExercisePage({ params }: PageProps<"/exercises/[sl
           <h1 className="display mt-3 text-[2.5rem] sm:text-5xl">{e.name}</h1>
           <p className="mt-3 text-[1.0625rem] leading-relaxed text-zinc-300">{e.summary}</p>
 
+          {e.variations?.map((v) => {
+            const o = getExercise(v.slug);
+            return (
+              o && (
+                <Link
+                  key={v.slug}
+                  href={`/exercises/${o.slug}`}
+                  className="surface mt-4 flex items-center gap-3 rounded-[1.25rem] px-4 py-3 transition-transform duration-300 ease-spring hover:bg-white/[0.07] active:scale-[0.98]"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-2xs font-bold uppercase tracking-widest text-amber-300">Variation</span>
+                    <span className="mt-0.5 block text-base font-bold">{o.name}</span>
+                    <span className="mt-0.5 block text-meta text-zinc-400">{v.note}</span>
+                  </span>
+                  <ChevronRight size={18} className="shrink-0 text-zinc-500" />
+                </Link>
+              )
+            );
+          })}
+
           <div className="mt-6 grid grid-cols-3 gap-2 text-center">
             {[
               { label: "Sets", value: e.prescription.sets },

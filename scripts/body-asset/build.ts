@@ -527,6 +527,28 @@ const hairlineAt = (deg: number) => {
   // A little irregularity so it reads as hair, not a stencil.
   return h0 + (h1 - h0) * t + 0.16 * Math.sin(d * 0.3);
 };
+/**
+ * The MakeHuman skull runs long behind the ears for this face (head length ≈ 0.95 × head
+ * height; real adult men are ≈ 0.85), which read as a stretched-back head in profile. The
+ * back of the skull is eased forward (smoothly from the ear line, fading out down the nape).
+ */
+const SKULL_PIVOT = -8;
+const SKULL_EASE = 0.25;
+const headStats = () => {
+  const hs = fitted.map((p) => sub(p, fittedEyeMid)).filter((r) => r[1] > -16 && r[0] > -30 && Math.abs(r[2]) < 14);
+  const back = Math.min(...hs.filter((r) => r[1] > -2).map((r) => r[0]));
+  const height = Math.max(...hs.map((r) => r[1])) - Math.min(...hs.filter((r) => r[0] > 2).map((r) => r[1]));
+  return `length ${(4.8 - back).toFixed(1)} cm, height ${height.toFixed(1)} cm`;
+};
+console.log("head before:", headStats());
+for (let v = 0; v < fitted.length; v++) {
+  const r = sub(fitted[v], fittedEyeMid);
+  const d = SKULL_PIVOT - r[0];
+  if (d <= 0 || r[1] < -14 || r[0] < -30 || Math.abs(r[2]) > 14) continue;
+  const w = smooth(-12, -3, r[1]);
+  fitted[v][0] += SKULL_EASE * w * ((d * d) / (d + 4));
+}
+console.log("head after: ", headStats());
 const SKULL_X = fittedEyeMid[0] - 7.4;
 /** Signed distance (cm, scaled down for a soft 7 mm hairline; < 0 = hair) to the scalp hair. */
 const hairAt = (p: V3) => {

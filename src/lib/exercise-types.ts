@@ -56,6 +56,8 @@ export interface Exercise {
   prescription: Prescription;
   /** Timed hold instead of reps (e.g. "30–60 s"). */
   hold?: boolean;
+  /** Other ways to do the same move (e.g. a bench-supported, one-arm version), shown as links. */
+  variations?: { slug: string; note: string }[];
   /** Gym equipment (catalogue slugs) this exercise uses, shown as "You'll need" links. */
   gear?: EquipmentSlug[];
   animation: Animation;

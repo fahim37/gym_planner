@@ -1,4 +1,4 @@
-import type { LimbSpec, Pose } from "@/lib/anatomy/types";
+import type { Keyframe, LimbSpec, Pose } from "@/lib/anatomy/types";
 import type { Exercise } from "@/lib/exercise-types";
 import { CORE_CARDIO_EXERCISES } from "./library/core-cardio";
 import { LOWER_BODY_EXERCISES } from "./library/lower-body";
@@ -275,6 +275,12 @@ const FOUNDATION_EXERCISES: Exercise[] = [
     level: "Beginner",
     mechanics: "Compound",
     summary: "Row with a neutral grip for a longer range of motion and a big lat squeeze.",
+    variations: [
+      {
+        slug: "single-arm-dumbbell-row",
+        note: "One arm at a time, with a knee and hand on a bench: stricter, heavier and easier on the lower back.",
+      },
+    ],
     steps: [
       "Hold a dumbbell in each hand, palms facing each other.",
       "Hinge forward to about 45°, knees soft, back flat.",
@@ -305,6 +311,7 @@ const FOUNDATION_EXERCISES: Exercise[] = [
     level: "Beginner",
     mechanics: "Compound",
     summary: "Supported one-arm row — heavy, strict and easy on the lower back.",
+    variations: [{ slug: "bent-over-dumbbell-row", note: "No bench? Row both dumbbells at once in a hip hinge." }],
     steps: [
       "Put one knee and the same-side hand on a flat bench.",
       "Plant your other foot on the floor and hold a dumbbell with a straight arm.",
@@ -650,11 +657,20 @@ const FOUNDATION_EXERCISES: Exercise[] = [
     prescription: { sets: "3–5", reps: "5–10", rest: "2 min" },
     animation: {
       props: [{ type: "barbell", plate: "large" }],
-      frames: repFrames(
-        standing({ arms: [{ ik: { x: 172, y: 99, z: 26 }, pole: [0.8, 1, 0.3] }], legs: [planted(162, 12)] }),
-        standing({ arms: [{ ik: { x: 162, y: 39, z: 27 }, pole: [0.3, 0.3, 1] }], legs: [planted(162, 12)] }),
-        { go: 1, back: 1.3, hold: 0.25, cues: ["Press straight up", "Lower to your shoulders"] },
-      ),
+      frames: (() => {
+        const legs: [LimbSpec] = [planted(162, 12)];
+        const rack = standing({ arms: [{ ik: { x: 172, y: 99, z: 26 }, pole: [0.8, 1, 0.3] }], legs });
+        // The bar travels just in front of the face while the head moves back out of its way.
+        const pass = standing({ head: -12, arms: [{ ik: { x: 179, y: 67, z: 26 }, pole: [0.5, 0.6, 0.6] }], legs });
+        const lockout = standing({ arms: [{ ik: { x: 162, y: 39, z: 27 }, pole: [0.3, 0.3, 1] }], legs });
+        const frames: Keyframe[] = [
+          { pose: rack, dur: 0.45, hold: 0.15, cue: "Press straight up", rep: true },
+          { pose: pass, dur: 0.55 },
+          { pose: lockout, dur: 0.65, hold: 0.25, cue: "Lower to your shoulders" },
+          { pose: pass, dur: 0.65 },
+        ];
+        return frames;
+      })(),
     },
   },
   {

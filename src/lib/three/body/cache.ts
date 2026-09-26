@@ -5,7 +5,7 @@ import type { WorkerRequest } from "./worker";
 export type { BodyData };
 
 /** Bump when the sculpt or baked attributes change, to invalidate cached meshes. */
-const VERSION = "body-v70";
+const VERSION = "body-v71";
 const DB = "ironform-body";
 const KEYS = ["position", "normal", "bones", "weights", "info", "fibre", "extra", "index", "bind"] as const;
 

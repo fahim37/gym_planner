@@ -860,10 +860,12 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
         const feet: LimbSpec = { ...planted(162, 12), foot: 0 };
         const rack = standing({ arms: [rackArms], legs: [feet] });
         const dip: Pose = { hip: [157, 168], torso: 3, arms: [{ ik: { x: 171, y: 111, z: 26 }, pole: [0.8, 1, 0.3] }], legs: [feet] };
+        // Knees snap straight as the bar passes just in front of the face (head back out of its way).
         const drive: Pose = {
           hip: [161, 150],
           torso: 0,
-          arms: [{ ik: { x: 168, y: 74, z: 26 }, pole: [0.5, 0.6, 0.6] }],
+          head: -12,
+          arms: [{ ik: { x: 179, y: 67, z: 26 }, pole: [0.5, 0.6, 0.6] }],
           legs: [{ ik: { x: 163, y: 239, z: 12 }, pole: [1, 0, 0.1], foot: 32 }],
         };
         const lockout = standing({ arms: [{ ik: { x: 162, y: 39, z: 27 }, pole: [0.3, 0.3, 1] }], legs: [feet] });
@@ -871,7 +873,8 @@ export const UPPER_BODY_EXERCISES: Exercise[] = [
           { pose: rack, dur: 0.35, hold: 0.3, cue: "Dip", rep: true },
           { pose: dip, dur: 0.3, cue: "Drive and press" },
           { pose: drive, dur: 0.45 },
-          { pose: lockout, dur: 1.2, hold: 0.4, cue: "Lower to your shoulders" },
+          { pose: lockout, dur: 0.6, hold: 0.4, cue: "Lower to your shoulders" },
+          { pose: standing({ head: -12, arms: [{ ik: { x: 179, y: 67, z: 26 }, pole: [0.5, 0.6, 0.6] }], legs: [feet] }), dur: 0.6 },
         ];
         return frames;
       })(),

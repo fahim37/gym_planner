@@ -264,8 +264,8 @@ const BARBELL: Exercise[] = [
           arms: [{ ik: { x: 166, y: 138, z: 24 }, pole: [-1, -0.2, 0.3] }],
           legs: [foot(160, 236, 13, [1, 0, 0.3], 38)],
         };
-        const catchPose: Pose = { hip: [150, 176], torso: 10, head: -4, arms: [rack(173, 112)], legs };
-        const stand: Pose = { hip: [160, STAND_Y], torso: 0, arms: [rack(172, 91)], legs };
+        const catchPose: Pose = { hip: [150, 176], torso: 10, head: -6, arms: [rack(175, 118)], legs };
+        const stand: Pose = { hip: [160, STAND_Y], torso: 0, arms: [rack(173, 97)], legs };
         return [
           { pose: floor, dur: 0.7, hold: 0.4, cue: "Push the floor away", rep: true },
           { pose: knee, dur: 0.3 },
