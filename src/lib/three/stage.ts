@@ -6,7 +6,7 @@ import { QualityController } from "./body/quality";
 import { solvePose } from "@/lib/anatomy/solver";
 import type { CameraPreset, Pose } from "@/lib/anatomy/types";
 import type { MuscleId } from "@/lib/muscles";
-import { BodyRig, createPalette, worldJoints, type Palette } from "./rig";
+import { BodyRig, createPalette, FIGURE_STYLE, worldJoints, type Palette } from "./rig";
 
 const PRESETS: Record<CameraPreset, THREE.Vector3> = {
   front: new THREE.Vector3(0.95, 0.32, 0.85),
@@ -88,7 +88,7 @@ export class Stage {
     this.renderer.shadowMap.autoUpdate = false;
     // Neutral tone mapping keeps the target-muscle red saturated (ACES shifts it orange).
     this.renderer.toneMapping = THREE.NeutralToneMapping;
-    this.renderer.toneMappingExposure = 0.92;
+    this.renderer.toneMappingExposure = FIGURE_STYLE === "illustration" ? 0.8 : 0.92;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     // Studio image-based lighting plus a key light for shape and shadow, and a cool rim.
@@ -96,10 +96,12 @@ export class Stage {
     const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     pmrem.dispose();
     this.scene.environment = env;
-    this.scene.environmentIntensity = 0.5;
+    // The anatomy-illustration figure wants more modelling: less flat fill, a stronger key.
+    const drawn = FIGURE_STYLE === "illustration";
+    this.scene.environmentIntensity = drawn ? 0.32 : 0.5;
     this.cleanup.push(() => env.dispose());
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xb8bcc6, 0.35));
-    const key = (this.key = new THREE.DirectionalLight(0xfffaf3, 2.3));
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xb8bcc6, drawn ? 0.25 : 0.35));
+    const key = (this.key = new THREE.DirectionalLight(drawn ? 0xffffff : 0xfffaf3, drawn ? 2.9 : 2.3));
     key.position.set(2.2, 4.2, 3.2);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
@@ -111,10 +113,10 @@ export class Stage {
     key.shadow.bias = -0.0004;
     key.shadow.normalBias = 0.012;
     this.scene.add(key);
-    const rim = new THREE.DirectionalLight(0xdfe8ff, 1.5);
+    const rim = new THREE.DirectionalLight(0xdfe8ff, drawn ? 0.9 : 1.5);
     rim.position.set(-3, 2.8, -2.4);
     this.scene.add(rim);
-    const fill = new THREE.DirectionalLight(0xffffff, 0.35);
+    const fill = new THREE.DirectionalLight(0xffffff, drawn ? 0.2 : 0.35);
     fill.position.set(-1.5, 1, 4);
     this.scene.add(fill);
 

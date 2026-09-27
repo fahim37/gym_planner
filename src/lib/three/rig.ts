@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { MuscleId } from "@/lib/muscles";
 import type { Skeleton, Vec3 } from "@/lib/anatomy/types";
 import { loadBodyData, meshTier, peekBodyData, type BodyData } from "./body/cache";
-import { createBodyDepthMaterial, createBodyMaterial, createPickMaterial, MUSCLE_COUNT, type BodyUniforms } from "./body/material";
+import { createBodyDepthMaterial, createBodyMaterial, createOutlineMaterial, createPickMaterial, MUSCLE_COUNT, type BodyUniforms } from "./body/material";
 import { MUSCLE_INDEX, muscleAt } from "./body/muscle-index";
 import { MAT_EYE } from "./body/sdf";
 import { BONE_COUNT, BoneSolver, emptyJoints, fillJoints, type GripSpec, type Support, type WorldJoints } from "./body/skeleton";
@@ -32,13 +32,22 @@ export interface Palette {
   hover: THREE.MeshStandardMaterial;
 }
 
-export function createPalette(): Palette {
+/**
+ * How the figure is drawn: "illustration" is the anatomy-chart look of fitness apps (grey
+ * figure, every muscle's fibres drawn, inked borders and outline, red target muscles);
+ * "lifelike" is natural skin.
+ */
+export type FigureStyle = "illustration" | "lifelike";
+export const FIGURE_STYLE: FigureStyle = "illustration";
+
+export function createPalette(style: FigureStyle = FIGURE_STYLE): Palette {
+  const drawn = style === "illustration";
   return {
-    skin: new THREE.MeshStandardMaterial({ color: 0xdcc3ae }),
-    shorts: new THREE.MeshStandardMaterial({ color: 0x141417 }),
-    hair: new THREE.MeshStandardMaterial({ color: 0x3b3531 }),
-    primary: new THREE.MeshStandardMaterial({ color: 0xd8211a, emissive: 0x8a0f05, emissiveIntensity: 0.35 }),
-    secondary: new THREE.MeshStandardMaterial({ color: 0xf29a74 }),
+    skin: new THREE.MeshStandardMaterial({ color: drawn ? 0xc4c4c4 : 0xdcc3ae }),
+    shorts: new THREE.MeshStandardMaterial({ color: drawn ? 0x1c1c1f : 0x141417 }),
+    hair: new THREE.MeshStandardMaterial({ color: drawn ? 0x2c2c2e : 0x3b3531 }),
+    primary: new THREE.MeshStandardMaterial({ color: drawn ? 0xc9241a : 0xd8211a, emissive: 0x8a0f05, emissiveIntensity: 0.35 }),
+    secondary: new THREE.MeshStandardMaterial({ color: drawn ? 0xe07a68 : 0xf29a74 }),
     hover: new THREE.MeshStandardMaterial({ color: 0xfacc15 }),
   };
 }
@@ -107,6 +116,7 @@ export class BodyRig {
       uAbs: { value: new THREE.Vector3() },
       uBrow: { value: new THREE.Vector2() },
       uAnchor: { value: Array.from({ length: (MUSCLE_COUNT + 1) * 2 }, () => new THREE.Vector3()) },
+      uStyle: { value: FIGURE_STYLE === "illustration" ? 1 : 0 },
     };
     this.syncPalette();
     // The solver starts in the bind pose: its matrices are the bind matrices.
@@ -161,6 +171,13 @@ export class BodyRig {
     body.raycast = () => {};
     this.body = body;
     this.group.add(body);
+    if (this.uniforms.uStyle.value > 0.5) {
+      // Ink outline around the figure (drawn behind it, never casts shadows).
+      const outline = new THREE.Mesh(geometry, createOutlineMaterial(this.uniforms));
+      outline.frustumCulled = false;
+      outline.raycast = () => {};
+      this.group.add(outline);
+    }
     this.pickMesh = new THREE.Mesh(geometry, createPickMaterial(this.uniforms));
     this.pickMesh.frustumCulled = false;
     this.pickMesh.matrixAutoUpdate = false;

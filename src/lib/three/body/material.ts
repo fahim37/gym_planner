@@ -34,6 +34,11 @@ export interface BodyUniforms {
   uBrow: { value: THREE.Vector2 };
   /** Per (muscle, side) centre in bind space (cm): the local origin of the fibre projection. */
   uAnchor: { value: THREE.Vector3[] };
+  /**
+   * Rendering style: 0 = lifelike skin, 1 = anatomy illustration (neutral grey skin with every
+   * muscle's fibres drawn, inked muscle borders and contour — like a fitness-app anatomy chart).
+   */
+  uStyle: { value: number };
 }
 
 const DQ_PARS = /* glsl */ `
@@ -122,6 +127,7 @@ uniform float uFade;
 uniform float uDefine;
 uniform vec3 uAbs;
 uniform vec2 uBrow;
+uniform float uStyle;
 varying float vMargin;
 varying float vDefineW;
 varying vec3 vHi;
@@ -191,7 +197,7 @@ function patchLights(chunk: string) {
   // Wrapped, slightly red-shifted diffuse: light bleeds past the terminator like skin.
   return chunk.replace(
     "reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseContribution ) * ( 1.0 - F );",
-    `vec3 wrapW = vec3( 0.36, 0.22, 0.17 );
+    `vec3 wrapW = mix( vec3( 0.36, 0.22, 0.17 ), vec3( 0.2 ), uStyle );
 	vec3 wrapped = clamp( ( vec3( dot( geometryNormal, directLight.direction ) ) + wrapW ) / ( 1.0 + wrapW ), 0.0, 1.0 );
 	reflectedLight.directDiffuse += wrapped * directLight.color * BRDF_Lambert( material.diffuseContribution ) * ( 1.0 - F );`,
   );
@@ -315,21 +321,26 @@ export function createBodyMaterial(u: BodyUniforms) {
 			base *= 1.0 + mot * 0.08 * skin;
 			base = mix( base, base * vec3( 1.02, 0.95, 0.94 ), max( skinNoise( vSkinP * 0.35 + 5.0 ) - 0.35, 0.0 ) * 0.5 * skin );
 		}
-		// Cavity of the carved muscle borders.
-		base *= 1.0 - uDefine * 0.1 * ( 1.0 - smoothstep( 0.0, 0.45, vMargin ) ) * vDefineW * skin;
+		// Illustration: a neutral grey figure (the anatomy-chart look); only the target muscles carry colour.
+		base = mix( base, vec3( dot( base, vec3( 0.299, 0.587, 0.114 ) ) ), uStyle * ( 1.0 - shorts ) );
+		// Cavity of the carved muscle borders (drawn deeper in the illustration style).
+		base *= 1.0 - uDefine * mix( 0.1, 0.55, uStyle ) * ( 1.0 - smoothstep( 0.0, mix( 0.45, 0.6, uStyle ), vMargin ) ) * vDefineW * skin;
 		float muscle = skin + lip;
 		float hi = clamp( gHi.x + gHi.y, 0.0, 1.0 ) * ( muscle + shorts );
 		vec3 hiCol = ( uPrimary * gHi.x + uSecondary * gHi.y ) / max( gHi.x + gHi.y, 1e-3 );
 		// Rich highlight: deeper in the grooves and cavities, brighter on the crowns.
-		hiCol *= mix( 0.72, 1.06, smoothstep( 0.35, 0.95, vSurf.w ) );
+		hiCol *= mix( mix( 0.72, 0.55, uStyle ), 1.06, smoothstep( 0.35, 0.95, vSurf.w ) );
 		base = mix( base, hiCol, hi );
 		base = mix( base, uHoverColor, gHi.z * ( muscle + shorts ) );
 		// Grooves between fibres read slightly darker.
 		// On the sculpted body, bare skin keeps only a trace of the fibres (skin, not an
 		// anatomy plate); highlighted muscles show them fully.
-		float skinFibre = mix( uDefine > 0.0 ? 0.25 : 1.0, 1.0, hi );
-		float f = vSurf.x * uDetail * gFibreK * ( muscle * skinFibre + hair * 0.6 + shorts * 0.4 );
-		base *= mix( 1.0, 0.92 + 0.16 * gFibre.a, f ); // mean ≈ 1: no tone jump where fibres end
+		// Illustration: smooth grey skin, fully drawn fibres on the target muscles.
+		float skinFibre = mix( uDefine > 0.0 ? mix( 0.25, 0.15, uStyle ) : 1.0, 1.0, hi );
+		float f = vSurf.x * mix( uDetail, 1.0, uStyle * hi ) * gFibreK * ( muscle * skinFibre + hair * 0.6 + shorts * 0.4 );
+		// Illustration: the fibres are drawn, not just a texture (mean ≈ 1: no tone jump where fibres end).
+		float fd = mix( 0.08, 0.3, uStyle * hi );
+		base *= mix( 1.0, 1.0 - fd + 2.0 * fd * gFibre.a, f );
 		diffuseColor.rgb = base;
 	}`,
       )
@@ -350,8 +361,8 @@ export function createBodyMaterial(u: BodyUniforms) {
 		vec3 mapN = gFibre.xyz * 2.0 - 1.0;
 		float k = vSurf.x * uDetail * clamp( 1.0 - matIs( 3.0 ) - matIs( 4.0 ), 0.0, 1.0 );
 		k *= ( 1.0 - 0.45 * matIs( 1.0 ) ) * gFibreK;
-		k *= mix( 1.0, mix( uDefine > 0.0 ? 0.25 : 1.0, 1.0, clamp( gHi.x + gHi.y, 0.0, 1.0 ) ), matIs( 0.0 ) );
-		mapN.xy *= k * 0.45;
+		k *= mix( 1.0, mix( uDefine > 0.0 ? mix( 0.25, 0.12, uStyle ) : 1.0, 1.0, clamp( gHi.x + gHi.y, 0.0, 1.0 ) ), matIs( 0.0 ) );
+		mapN.xy *= k * mix( 0.45, 0.7, uStyle );
 		vec3 T = vFibreView - normal * dot( normal, vFibreView );
 		float tl = length( T );
 		if ( tl > 1e-4 ) {
@@ -404,7 +415,7 @@ export function createBodyMaterial(u: BodyUniforms) {
       .replace(
         "#include <emissivemap_fragment>",
         `#include <emissivemap_fragment>
-	totalEmissiveRadiance += uPrimary * gHi.x * ( 0.05 + 0.09 * uPulse ) * ( 1.0 - matIs( 1.0 ) * 0.5 );
+	totalEmissiveRadiance += uPrimary * gHi.x * ( mix( 0.05, 0.02, uStyle ) + 0.09 * uPulse ) * ( 1.0 - matIs( 1.0 ) * 0.5 );
 	totalEmissiveRadiance += uHoverColor * gHi.z * 0.12;
 	// Catchlight: a small soft highlight on the cornea, up and to the side.
 	{
@@ -417,9 +428,11 @@ export function createBodyMaterial(u: BodyUniforms) {
         "#include <aomap_fragment>",
         `{
 		float ao = vSurf.w;
+		// Illustration: deeper shading in the hollows between muscles.
+		ao = mix( ao, ao * ao, uStyle );
 		reflectedLight.indirectDiffuse *= ao;
 		reflectedLight.indirectSpecular *= ao * ao;
-		reflectedLight.directDiffuse *= mix( 1.0, ao, 0.5 );
+		reflectedLight.directDiffuse *= mix( 1.0, ao, mix( 0.5, 0.75, uStyle ) );
 		reflectedLight.directSpecular *= mix( 1.0, ao, 0.7 );
 	}`,
       )
@@ -437,16 +450,16 @@ export function createBodyMaterial(u: BodyUniforms) {
 		float slope = fwidth( lv ) / max( length( fwidth( vViewPosition ) ) * 100.0, 1e-4 );
 		ink *= 1.0 - smoothstep( 2.5, 5.0, slope );
 		ink *= uLine * matIs( 0.0 );
-		outgoingLight = mix( outgoingLight, outgoingLight * 0.68, ink * 0.85 );
-		// Soft contour at the silhouette.
+		outgoingLight = mix( outgoingLight, outgoingLight * mix( 0.68, 0.38, uStyle ), ink * 0.85 );
+		// Soft contour at the silhouette (a drawn edge in the illustration style).
 		float ndv = abs( dot( normal, normalize( vViewPosition ) ) );
-		outgoingLight *= mix( 0.72, 1.0, smoothstep( 0.04, 0.42, ndv ) );
+		outgoingLight *= mix( mix( 0.72, 0.4, uStyle ), 1.0, smoothstep( 0.04, mix( 0.42, 0.5, uStyle ), ndv ) );
 	}
 	#include <opaque_fragment>
 	gl_FragColor.a *= uFade;`,
       );
   };
-  mat.customProgramCacheKey = () => "ironform-body-v1";
+  mat.customProgramCacheKey = () => "ironform-body-v2";
   return mat;
 }
 
@@ -462,6 +475,33 @@ export function createBodyDepthMaterial(u: BodyUniforms) {
   };
   mat.customProgramCacheKey = () => "ironform-body-depth-v1";
   return mat;
+}
+
+/**
+ * Ink outline for the illustration style: the back faces of the skinned body pushed out
+ * along their normals, drawn in a dark ink colour behind the body (inverted hull).
+ */
+export function createOutlineMaterial(u: BodyUniforms, width = 0.0032, color = 0x1d1d1f) {
+  return new THREE.ShaderMaterial({
+    uniforms: { uBoneDQ: u.uBoneDQ, uWidth: { value: width }, uColor: { value: new THREE.Color(color) }, uFade: u.uFade },
+    side: THREE.BackSide,
+    vertexShader: /* glsl */ `
+${DQ_PARS}
+uniform float uWidth;
+void main() {
+  dqBlend();
+  vec3 n = normalize( dqRot( normal ) );
+  gl_Position = projectionMatrix * modelViewMatrix * vec4( dqPos( position ) + n * uWidth, 1.0 );
+}`,
+    fragmentShader: /* glsl */ `
+uniform vec3 uColor;
+uniform float uFade;
+void main() {
+  gl_FragColor = vec4( uColor, uFade );
+  #include <colorspace_fragment>
+}`,
+    transparent: false,
+  });
 }
 
 /** Writes the muscle index (+1, 0 = none) of each fragment, for GPU picking. */
