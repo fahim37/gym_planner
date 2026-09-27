@@ -206,7 +206,7 @@ function Slide({ item, live, onPrev, onNext }: { item?: ProgramExercise; live: b
           <ChevronLeft size={22} />
         </button>
         <Link href={`/exercises/${exercise.slug}`} className="min-w-0 flex-1 text-center">
-          <Title className="truncate text-xl font-bold sm:text-2xl">{exercise.name}</Title>
+          <Title className="truncate font-condensed text-[1.6rem] font-extrabold uppercase leading-tight tracking-tight sm:text-3xl">{exercise.name}</Title>
           <p className="truncate text-meta text-zinc-400">
             {exercise.primary.map((m) => MUSCLES[m].name).join(" · ")} · <span className="font-semibold text-amber-300">How to ›</span>
           </p>
@@ -523,8 +523,13 @@ export default function WorkoutPlayer({ program, day }: { program: Program; day:
           <div key={`${index}-${set}`} className="animate-rise">
             <div className="flex items-end justify-between gap-3">
               <div className="min-w-0">
-                <p className="eyebrow text-zinc-300">
-                  Set {set} of {item.sets}
+                <p className="flex items-center gap-2">
+                  <span className="rounded-full bg-white px-2.5 py-0.5 font-condensed text-sm font-extrabold uppercase tracking-wide text-zinc-900">
+                    Day {day}
+                  </span>
+                  <span className="eyebrow text-zinc-300">
+                    Set {set} of {item.sets}
+                  </span>
                 </p>
                 <p
                   className={`display mt-1 truncate not-italic text-amber-300 ${

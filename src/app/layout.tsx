@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Barlow_Condensed, Geist, Geist_Mono } from "next/font/google";
 import { Ambient, ChromeOnly, GlassEffects, PageTransition, SiteHeader, TabBar } from "@/components/AppChrome";
 import Haptics from "@/components/Haptics";
 import Pwa from "@/components/Pwa";
@@ -8,6 +8,13 @@ import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+/** Condensed, heavy type for exercise names on cards (the fitness-chart look). */
+const condensed = Barlow_Condensed({
+  variable: "--font-barlow-condensed",
+  weight: ["700", "800"],
   subsets: ["latin"],
 });
 
@@ -34,7 +41,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${condensed.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <Ambient />
         <GlassEffects />

@@ -38,7 +38,7 @@ export default function ExerciseThumb({ slug, className, eager }: { slug: string
   }, [slug, eager]);
 
   return (
-    <div ref={ref} className={`relative overflow-hidden bg-gradient-to-b from-white to-zinc-200 ${className ?? ""}`}>
+    <div ref={ref} className={`relative overflow-hidden bg-white ${className ?? ""}`}>
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element -- generated data URL
         <img src={src} alt="" draggable={false} className="animate-fade h-full w-full select-none object-contain" />

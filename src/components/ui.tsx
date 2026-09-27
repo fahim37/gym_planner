@@ -24,40 +24,50 @@ export function shortReps(reps: string) {
   return reps.replace(/\s*(each|per)\s+(leg|side|arm)/i, "/side").replace(/\s*hold$/i, "");
 }
 
-/** Card in the style of a workout poster: 3D still, bold name, reps and sets. Fits two across on a phone. */
-export function ExerciseCard({ exercise, sets, reps }: { exercise: Exercise; sets?: string; reps?: string }) {
-  const r = reps ?? exercise.prescription.reps;
+/** "3 SETS" / "10–12 REPS" (or "30–60 S" for holds), for the card footer. */
+function setsReps(exercise: Exercise, sets?: string, reps?: string): [string, string] {
+  const r = shortReps(reps ?? exercise.prescription.reps);
+  // "10–12/side" and timed holds read fine without the word "reps".
+  const bare = exercise.hold || /s\b|min|max|sec|\//i.test(r);
+  return [`${sets ?? exercise.prescription.sets} sets`, bare ? r : `${r} reps`];
+}
+
+/**
+ * Exercise tile in the fitness-chart style: the name in heavy condensed capitals, the
+ * figure large on white, and "3 SETS | 10–12 REPS" underneath. `index` adds the numbered
+ * corner badge used in workout lists.
+ */
+export function ExerciseCard({ exercise, sets, reps, index }: { exercise: Exercise; sets?: string; reps?: string; index?: number }) {
+  const [s, r] = setsReps(exercise, sets, reps);
   return (
     <Link
       href={`/exercises/${exercise.slug}`}
-      className="@container group flex h-full flex-col overflow-hidden rounded-[1.4rem] bg-white text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_18px_40px_-18px_rgba(0,0,0,0.8)] transition-transform duration-300 ease-spring hover:-translate-y-1 active:scale-[0.96] sm:rounded-[1.75rem]"
+      className="@container group relative flex h-full flex-col overflow-hidden rounded-[1.25rem] bg-white text-zinc-900 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.8)] ring-1 ring-black/5 transition-transform duration-300 ease-spring hover:-translate-y-1 active:scale-[0.96] sm:rounded-[1.5rem]"
     >
-      <div className="relative">
-        <ExerciseThumb slug={exercise.slug} className="aspect-[4/3]" />
-        <span className="glass-hud absolute left-2 top-2 rounded-full px-2 py-0.5 text-2xs font-bold uppercase tracking-wider sm:left-3 sm:top-3 sm:px-2.5 sm:py-1">
-          {exercise.region}
+      {index !== undefined && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-0 z-10 h-12 w-12 bg-amber-300 [clip-path:polygon(0_0,100%_0,0_100%)] sm:h-14 sm:w-14"
+        >
+          <span className="absolute left-2 top-1.5 font-condensed text-base font-extrabold tabular-nums leading-none sm:text-lg">
+            {String(index).padStart(2, "0")}
+          </span>
         </span>
-      </div>
-      <div className="flex flex-1 flex-col gap-1.5 p-3 sm:gap-2 sm:p-4">
-        {/* Sized to the card, so long names stay whole in narrow grid and carousel cards. */}
-        <h3 className="display text-balance text-[clamp(0.9375rem,9.6cqi,1.125rem)] leading-[1.05] text-zinc-900 [text-shadow:0_1px_0_#fde68a]">
-          {exercise.name}
-        </h3>
-        <p className="line-clamp-2 text-xs font-extrabold uppercase leading-snug tabular-nums text-zinc-700 sm:text-meta">
-          {sets ?? exercise.prescription.sets} × {shortReps(r)}
-          {exercise.hold || /s\b|min|max|sec/i.test(r) ? "" : " reps"}
-        </p>
-        <div className="mt-auto flex flex-wrap gap-1 pt-1">
-          {exercise.primary.map((m, i) => (
-            <span
-              key={m}
-              className={`rounded-full bg-red-600/10 px-2 py-0.5 text-xs font-semibold text-red-700 ${i > 1 ? "hidden sm:inline" : ""}`}
-            >
-              {MUSCLES[m].name}
-            </span>
-          ))}
-        </div>
-      </div>
+      )}
+      {/* Sized to the card, so long names stay whole in narrow grid and carousel cards. */}
+      <h3
+        className={`relative z-10 min-h-[2.1em] text-balance px-3 pt-3 font-condensed text-[clamp(1rem,11cqi,1.3rem)] font-extrabold uppercase leading-[1.02] tracking-tight sm:px-4 sm:pt-4 ${
+          index !== undefined ? "pl-11 sm:pl-14" : ""
+        }`}
+      >
+        {exercise.name}
+      </h3>
+      <ExerciseThumb slug={exercise.slug} className="aspect-[4/3] bg-white" />
+      <p className="mx-3 mb-3 mt-auto flex items-center justify-center gap-2 border-t border-zinc-100 pt-2.5 font-condensed text-[clamp(0.75rem,7.4cqi,1rem)] font-extrabold uppercase tabular-nums tracking-wide sm:mx-4 sm:mb-4">
+        <span className="shrink-0 whitespace-nowrap">{s}</span>
+        <span aria-hidden className="h-3.5 w-0.5 shrink-0 rounded-full bg-amber-400" />
+        <span className="min-w-0 truncate">{r}</span>
+      </p>
     </Link>
   );
 }
