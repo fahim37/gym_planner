@@ -12,8 +12,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { EXERCISES } from "@/data/exercises";
 import { EQUIPMENT_TYPES, LEVELS } from "@/lib/exercise-types";
 import { MUSCLES, REGIONS } from "@/lib/muscles";
@@ -23,7 +22,8 @@ import { normalize, stem, tokenize } from "@/lib/search/text";
 
 const KEY = process.env.GEMINI_API_KEY;
 if (!KEY) throw new Error("Set GEMINI_API_KEY");
-const OUT = join(resolve(dirname(fileURLToPath(import.meta.url)), "..", ".."), "src", "lib", "search");
+/** Output folder (run from the repository root, as the wrapper script does). */
+const OUT = join(process.cwd(), "src", "lib", "search");
 /** Closest exercises kept per vocabulary phrase. */
 const TOP_K = 24;
 
