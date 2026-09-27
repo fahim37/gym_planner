@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  basePath: "/ironform",
   // The service worker must never be served stale from the HTTP cache, or app updates stall.
   async headers() {
     return [
