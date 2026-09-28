@@ -233,7 +233,7 @@ export function sculptBody(frames: Frames): Sculpt {
     [135.6, 128.6, 3.4, 1.35],
     [127.6, 120.8, 3.5, 1.45],
     [119.8, 113.0, 3.45, 1.4],
-    [111.9, 90.5, 3.1, 1.25],
+    [111.9, 103.5, 3.1, 1.25],
   ];
   absRows.forEach(([y0, y1, w, th], i) => {
     const narrow = i === 3 ? 0.65 : 1;

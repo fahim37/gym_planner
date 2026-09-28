@@ -274,7 +274,7 @@ const NECK_LIFT = 7;
  * mapped HIP_LIFT cm above the rig's hip centre, which shortens the belly and lengthens the
  * legs; the joints themselves (and so every animation) are unchanged.
  */
-const HIP_LIFT = 6;
+const HIP_LIFT = 10;
 const TORSO = segmentMap(mhHipC, mhNeck, add(ourHipC, [0, HIP_LIFT, 0]), add(ourNeck, [0, NECK_LIFT, 0]), 0.97, [1, 0, 0], [1, 0, 0]);
 /** The fit without the lift: where the procedural anatomy (muscle map, shorts) lines up. */
 const TORSO0 = segmentMap(mhHipC, mhNeck, ourHipC, add(ourNeck, [0, NECK_LIFT, 0]), 0.96, [1, 0, 0], [1, 0, 0]);
