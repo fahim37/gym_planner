@@ -1013,6 +1013,7 @@ export const LOWER_BODY_EXERCISES: Exercise[] = [
     level: "Beginner",
     mechanics: "Isolation",
     hold: true,
+    variations: [{ slug: "partial-bodyweight-squat", note: "Prefer moving reps? Try a comfortable partial squat instead of this hold." }],
     summary: "A static squat against a wall that builds quad endurance with zero equipment.",
     steps: [
       "Stand with your back against a wall and walk your feet about two feet out in front of you.",

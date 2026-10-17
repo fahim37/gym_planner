@@ -4,6 +4,7 @@ import { CORE_CARDIO_EXERCISES } from "./library/core-cardio";
 import { LOWER_BODY_EXERCISES } from "./library/lower-body";
 import { STRENGTH_MACHINE_EXERCISES } from "./library/strength-machines";
 import { UPPER_BODY_EXERCISES } from "./library/upper-body";
+import { createHomeBrickExercises } from "./library/home-brick";
 import {
   armsDown,
   hand,
@@ -963,13 +964,15 @@ const FOUNDATION_EXERCISES: Exercise[] = [
   },
 ];
 
-export const EXERCISES: Exercise[] = [
+const BASE_EXERCISES: Exercise[] = [
   ...FOUNDATION_EXERCISES,
   ...LOWER_BODY_EXERCISES,
   ...UPPER_BODY_EXERCISES,
   ...CORE_CARDIO_EXERCISES,
   ...STRENGTH_MACHINE_EXERCISES,
 ];
+
+export const EXERCISES: Exercise[] = [...BASE_EXERCISES, ...createHomeBrickExercises(BASE_EXERCISES)];
 
 export function getExercise(slug: string) {
   return EXERCISES.find((e) => e.slug === slug);

@@ -77,13 +77,19 @@ export default function ProgramDays({ program }: { program: Program }) {
                   <PlayIcon size={16} /> {complete ? "Do again" : "Start workout"}
                 </Link>
               </div>
-              <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+              {day.instructions && (
+                <div className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm leading-relaxed text-zinc-700">
+                  <h3 className="font-bold text-zinc-900">Workout order</h3>
+                  <p className="mt-1">{day.instructions}</p>
+                </div>
+              )}
+              <ol aria-label="Exercises in workout order" className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
                 {day.exercises.map((x, k) => (
                   <li key={x.slug} className="[&>a]:shadow-none [&>a]:ring-zinc-200">
                     <ExerciseCard exercise={getExercise(x.slug)!} index={k + 1} sets={String(x.sets)} reps={x.reps} />
                   </li>
                 ))}
-              </ul>
+              </ol>
             </section>
           );
         })}

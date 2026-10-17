@@ -10,6 +10,7 @@ export interface ProgramExercise {
 export interface ProgramDay {
   title: string;
   focus: string;
+  instructions?: string;
   exercises: ProgramExercise[];
 }
 
@@ -43,6 +44,41 @@ const coreChallenge: ProgramDay[] = Array.from({ length: 7 }, (_, i) => {
 });
 
 export const PROGRAMS: Program[] = [
+  {
+    slug: "home-brick-workout",
+    name: "Home Brick Workout",
+    tagline: "Full body, arms and core with simple home equipment.",
+    description:
+      "Fourteen moves in one full-body session using light bricks, a wall and a sturdy seat or fixed counter. Repeat on 2–3 non-consecutive days each week. Warm up with 5 minutes of easy walking. Start with 1 set per exercise if needed, then work toward the 2 sets listed. Use clean, intact bricks with a secure grip. Replace wall sits with 2 sets of 8–12 comfortable partial squats if preferred. Stop any movement that causes pain.",
+    level: "Beginner",
+    equipment: "Bricks, wall, sturdy support",
+    daysPerWeek: 3,
+    accent: "from-amber-500 to-orange-400",
+    days: [
+      {
+        title: "Full Body + Arms + Core",
+        focus: "Legs, back, chest, arms and core",
+        instructions:
+          "Follow steps 01–14 in order. Complete both sets of each exercise, resting for the time shown, before moving to the next step. For each-arm or each-leg moves, work both sides before finishing the set. Start with the standing lifts, finish the standing accessories, then move to the seat and floor. Core comes last. Finish with a few minutes of easy walking.",
+        exercises: [
+          ex("brick-romanian-deadlift", 2, "10–12", 60),
+          ex("incline-push-up", 2, "8–12", 60),
+          ex("brick-bent-over-row", 2, "10–12", 60),
+          ex("wall-sit", 2, "20–30 s", 60),
+          ex("bodyweight-calf-raise", 2, "12–15", 45),
+          ex("brick-biceps-curl", 2, "10–12 each arm", 60),
+          ex("overhead-brick-triceps-extension", 2, "10–12", 60),
+          ex("seated-knee-extension", 2, "10–12 each leg", 45),
+          ex("glute-bridge", 2, "12–15", 45),
+          ex("straight-leg-raise", 2, "10 each leg", 45),
+          ex("plank-shoulder-tap", 2, "12–20 total taps", 45),
+          ex("bent-knee-leg-raise", 2, "8–12", 45),
+          ex("bicycle-crunch", 2, "16–20 total", 45),
+          ex("brick-russian-twist", 2, "16–20 total", 45),
+        ],
+      },
+    ],
+  },
   {
     slug: "my-gym-plan-v2",
     name: "My Gym Plan — v2",

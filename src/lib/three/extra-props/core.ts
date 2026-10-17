@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { buildEquipmentModel, type EquipmentModel } from "../equipment";
 import { toWorld, type BodyRig } from "../rig";
 import type { ExtraPropBuilder, ExtraPropParams } from "./types";
+import { bricks } from "./bricks";
 
 /*
  * Props for the core, cardio and mobility library. Builders return an object
@@ -605,6 +606,7 @@ const doorway: ExtraPropBuilder = (params) => {
 
 /** Props for the core & cardio exercise library, keyed by `kind` (use a "core:" prefix). */
 export const CORE_PROPS: Record<string, ExtraPropBuilder> = {
+  "core:bricks": bricks,
   "core:medicine-ball": medicineBall,
   "core:ab-wheel": abWheel,
   "core:hyper-bench": hyperBench,

@@ -93,8 +93,9 @@ const TARGETS: [string, number, "up"?][] = [
   // Mouth ~0.6 cm lower and a slightly shorter chin: a natural upper-lip length.
   ["mouth/mouth-trans-down", 0.6],
   ["chin/chin-height-decr", 0.4],
-  ["mouth/mouth-angles-up", 0.5],
-  ["mouth/mouth-lowerlip-height-incr", 0.4],
+  // Slightly lifted mouth corners and relaxed lips give a friendly resting expression.
+  ["mouth/mouth-angles-up", 1],
+  ["mouth/mouth-lowerlip-height-incr", 0.2],
   ["mouth/mouth-lowerlip-volume-incr", 0.1],
   ["mouth/mouth-upperlip-volume-incr", 0.2],
   ["eyes/r-eye-scale-incr", 0.2],
@@ -274,7 +275,7 @@ const NECK_LIFT = 7;
  * mapped HIP_LIFT cm above the rig's hip centre, which shortens the belly and lengthens the
  * legs; the joints themselves (and so every animation) are unchanged.
  */
-const HIP_LIFT = 10;
+const HIP_LIFT = 13;
 const TORSO = segmentMap(mhHipC, mhNeck, add(ourHipC, [0, HIP_LIFT, 0]), add(ourNeck, [0, NECK_LIFT, 0]), 0.97, [1, 0, 0], [1, 0, 0]);
 /** The fit without the lift: where the procedural anatomy (muscle map, shorts) lines up. */
 const TORSO0 = segmentMap(mhHipC, mhNeck, ourHipC, add(ourNeck, [0, NECK_LIFT, 0]), 0.96, [1, 0, 0], [1, 0, 0]);
@@ -576,15 +577,16 @@ const browAt = (p: V3, n: V3) => {
     if (p[0] < e.c[0] - 3) continue;
     const u = (p[2] - e.c[2]) * Math.sign(e.c[2]);
     const dy = p[1] - e.c[1];
-    const yc = 1.95 + 0.22 * smooth(-1.6, 1.0, u) - 0.14 * smooth(1.4, 2.9, u);
-    const th = 0.27 - 0.05 * smooth(-1.5, 0.3, u) - 0.17 * smooth(0.9, 2.8, u);
+    // A higher inner brow and gentler arch avoid a furrowed, stern expression.
+    const yc = 2.15 + 0.08 * smooth(-1.6, 1.0, u) - 0.1 * smooth(1.4, 2.9, u);
+    const th = 0.23 - 0.04 * smooth(-1.5, 0.3, u) - 0.14 * smooth(0.9, 2.8, u);
     // Real brows fade out upwards and have a firmer lower edge.
     const across = dy > yc ? (dy - yc - th) * 0.6 : (yc - dy - th) * 0.85;
     const along = Math.max((-1.65 - u) * 0.6, u - 2.8);
     const d = across > 0 && along > 0 ? Math.hypot(across, along) : Math.max(across, along);
     if (d > 2.5) continue;
     // Density: a sparse head, a full body, a lighter tail.
-    const dens = 0.5 + 0.35 * smooth(-1.6, -0.4, u) - 0.25 * smooth(1.6, 2.8, u);
+    const dens = 0.45 + 0.3 * smooth(-1.6, -0.4, u) - 0.2 * smooth(1.6, 2.8, u);
     best = Math.min(best, Math.max(0.035 + (1 - dens) * 0.13, 0.035 + d * 0.5));
   }
   return best;

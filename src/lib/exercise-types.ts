@@ -21,6 +21,7 @@ export const EQUIPMENT_TYPES = [
   "Battle ropes",
   "Landmine",
   "Jump rope",
+  "Brick",
 ] as const;
 
 export type Equipment = (typeof EQUIPMENT_TYPES)[number];
