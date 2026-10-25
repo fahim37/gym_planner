@@ -13,7 +13,8 @@
  *   5. transfer the muscle map, fibres, ink field, AO and seams from the
  *      procedural anatomy (nearest point in the bind pose), bake the hair and
  *      shorts fields, give the scalp and shorts a little volume;
- *   6. write a quantised, gzipped, base64 module: src/lib/three/body/asset/mh-body.ts
+ *   6. replace the head with the stylised sculpt (head.ts), lift the crotch (LEG_LIFT);
+ *   7. write a quantised, gzipped, base64 module: src/lib/three/body/asset/mh-body.ts
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -49,6 +50,7 @@ import { FINGERS } from "../../src/lib/three/body/hand";
 import { MAT_HAIR, MAT_SHORTS, MAT_SKIN } from "../../src/lib/three/body/sdf";
 import { MUSCLE_INDEX, MUSCLE_INDEX_GLUTES } from "../../src/lib/three/body/muscle-index";
 import { encodeAsset, type AssetData } from "../../src/lib/three/body/asset/format";
+import { graftHead } from "./head";
 
 type V3 = [number, number, number];
 
@@ -134,7 +136,7 @@ function fetchText(path: string): string {
 const obj = fetchText("3dobjs/base.obj");
 const mhV: V3[] = [];
 const groups = new Map<string, Set<number>>();
-const bodyQuads: number[] = [];
+let bodyQuads: number[] = [];
 {
   let g = "";
   for (const line of obj.split("\n")) {
@@ -167,7 +169,7 @@ for (const [t, w, only] of TARGETS) {
   }
 }
 const bodyVerts = [...groups.get("body")!].sort((a, b) => a - b);
-const NV = bodyVerts.length;
+let NV = bodyVerts.length;
 if (bodyVerts[NV - 1] !== NV - 1) throw new Error("body vertices are not a prefix of the vertex list");
 
 // 2. Bind-space conversion: dm → cm; our x = MH z (forward), y = MH y, z = −MH x (the figure's right).
@@ -418,8 +420,8 @@ function ourBone(mh: string): number {
   return B_HEAD; // head, jaw, eyes and every facial bone
 }
 
-const bones = new Uint8Array(NV * 4);
-const weights = new Uint8Array(NV * 4);
+let bones: Uint8Array = new Uint8Array(NV * 4);
+let weights: Uint8Array = new Uint8Array(NV * 4);
 {
   const acc = new Float64Array(BONE_COUNT);
   for (let v = 0; v < NV; v++) {
@@ -441,6 +443,49 @@ const weights = new Uint8Array(NV * 4);
   }
 }
 
+/**
+ * Leg length: even with HIP_LIFT the crotch came out ~13 cm below the rig's hip joints (41% of
+ * the height, ~35 cm below the navel; ~45–47% and ~27 cm are typical), which made the belly and
+ * shorts read long and the thighs short. The hips and legs are remapped vertically — the crotch
+ * raised LEG_LIFT cm, the lower belly and hips compressed, the knees and everything from the
+ * navel up kept — so the thighs take back the length. The arms (by their skin weights) and the
+ * joints are unchanged.
+ */
+const LEG_LIFT = 9;
+{
+  // Height (cm, as fitted) → lift: monotone cubic through the control points (crotch 80.6).
+  const pts: [number, number][] = [
+    [52, 0],
+    [80.6, LEG_LIFT],
+    [96, LEG_LIFT - 2.5],
+    [108, 3],
+    [120, 0],
+  ];
+  const slopes = pts.map((_, i) => {
+    if (i === 0 || i === pts.length - 1) return 0;
+    const d0 = (pts[i][1] - pts[i - 1][1]) / (pts[i][0] - pts[i - 1][0]);
+    const d1 = (pts[i + 1][1] - pts[i][1]) / (pts[i + 1][0] - pts[i][0]);
+    return d0 * d1 <= 0 ? 0 : (2 * d0 * d1) / (d0 + d1);
+  });
+  const lift = (y: number) => {
+    if (y <= pts[0][0] || y >= pts[pts.length - 1][0]) return 0;
+    let k = 1;
+    while (pts[k][0] < y) k++;
+    const [x0, y0] = pts[k - 1];
+    const [x1, y1] = pts[k];
+    const h = x1 - x0;
+    const t = (y - x0) / h;
+    return (2 * t ** 3 - 3 * t ** 2 + 1) * y0 + (t ** 3 - 2 * t ** 2 + t) * h * slopes[k - 1] + (-2 * t ** 3 + 3 * t ** 2) * y1 + (t ** 3 - t ** 2) * h * slopes[k];
+  };
+  const armLo = armBone(0, 0);
+  const armHi = legBone(0, 0);
+  for (let v = 0; v < NV; v++) {
+    let arm = 0;
+    for (let k = 0; k < 4; k++) if (bones[v * 4 + k] >= armLo && bones[v * 4 + k] < armHi) arm += weights[v * 4 + k] / 255;
+    fitted[v][1] += lift(fitted[v][1]) * (1 - arm);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Normals of the fitted body (for the volume offsets).
 function vertexNormals(pos: V3[]): V3[] {
@@ -452,8 +497,8 @@ function vertexNormals(pos: V3[]): V3[] {
   }
   return n.map(norm);
 }
-const body: V3[] = fitted.slice(0, NV);
-const normals = vertexNormals(body);
+let body: V3[] = fitted.slice(0, NV);
+let normals = vertexNormals(body);
 
 // ---------------------------------------------------------------------------
 // 5. Transfer from the procedural anatomy (bind pose, same space).
@@ -814,11 +859,11 @@ const nippleTone = (p: V3) => {
   return t;
 };
 
-const info = new Uint8Array(NV * 4);
-const fibre = new Int8Array(NV * 4);
-const extra = new Float32Array(NV * 4);
-const fuv = new Float32Array(NV * 2);
-const seg = new Uint8Array(NV * 4);
+let info: Uint8Array = new Uint8Array(NV * 4);
+let fibre: Int8Array = new Int8Array(NV * 4);
+let extra: Float32Array = new Float32Array(NV * 4);
+let fuv: Float32Array = new Float32Array(NV * 2);
+let seg: Uint8Array = new Uint8Array(NV * 4);
 for (let v = 0; v < NV; v++) {
   const p = body[v];
   const a = anat[v];
@@ -951,6 +996,14 @@ for (let v = 0; v < NV; v++) {
   console.log("pec sculpt", pecN, "vertices");
 }
 
+// Head: the stylised sculpt replaces the MakeHuman head (see head.ts).
+{
+  const g = graftHead({ pos: body, quads: bodyQuads, bones, weights, info, fibre, extra, fuv, seg }, fittedEyeMid);
+  ({ pos: body, quads: bodyQuads, bones, weights, info, fibre, extra, fuv, seg } = g.body);
+  NV = body.length;
+  normals = vertexNormals(body);
+}
+
 // Ambient occlusion of the fitted mesh: surface points above each vertex's tangent
 // plane within a few centimetres occlude it (cheap, smooth cavity term).
 {
@@ -1058,7 +1111,8 @@ const asset: AssetData = {
   extra,
   fuv,
   seg,
-  eyes: eyes.map((e) => ({ c: e.c, r: e.r })),
+  // The stylised head's eyeballs are part of its surface: no separate eye spheres.
+  eyes: eyes.map((e) => ({ c: e.c, r: 0 })),
 };
 const bin = encodeAsset(asset);
 const gz = gzipSync(bin, { level: 9 });
@@ -1067,7 +1121,7 @@ const outDir = join(ROOT, "src", "lib", "three", "body", "asset");
 mkdirSync(outDir, { recursive: true });
 writeFileSync(
   join(outDir, "mh-body.ts"),
-  `// Generated by scripts/build-body-asset.mjs from the CC0 MakeHuman assets (see ./ASSETS.md). Do not edit.\n` +
+  `// Generated by scripts/build-body-asset.mjs from the CC0 MakeHuman assets and the stylised head (see ./ASSETS.md). Do not edit.\n` +
     `// ${NV} vertices, ${bodyQuads.length / 4} quads; ${bin.length} bytes raw, ${gz.length} gzipped.\n` +
     `export const MH_BODY = "${b64}";\n`,
 );

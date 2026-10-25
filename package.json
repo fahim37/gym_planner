@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "node init && next dev",
+    "build": "node init && next build",
+    "start": "node init && next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build:artifact": "node scripts/build-artifact.mjs"
+    "build:artifact": "node init && node scripts/build-artifact.mjs"
   },
   "dependencies": {
     "next": "16.3.6",

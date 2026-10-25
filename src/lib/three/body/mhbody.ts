@@ -302,6 +302,8 @@ function addEyes(parts: Mesh[], eyes: AssetData["eyes"]) {
   const ct = Math.cos(tilt);
   const st = Math.sin(tilt);
   for (const e of eyes) {
+    // r = 0: the head's own surface carries the eyes.
+    if (e.r <= 0) continue;
     const r = e.r * 0.9;
     const n = (RING + 1) * (SEG + 1);
     const m: Mesh = {

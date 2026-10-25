@@ -14,3 +14,12 @@ The builder applies athletic-male morph targets, fits the mesh to our rig's bind
 skeleton, maps the weights to our bones and transfers the muscle map from the
 procedural anatomy (src/lib/three/body/anatomy.ts). Re-run it after changing the
 skeleton or the anatomy: `node scripts/build-body-asset.mjs`.
+
+## Head
+
+The head (face, hair, ears and upper neck) comes from the "Male Anatomy Stylized" sculpt
+(a GLB). `node scripts/build-head-source.mjs "<path to Male Anatomy Stylized.glb>"` crops,
+decimates and relaxes it into `scripts/body-asset/stylized-head.bin`; the body builder then
+grafts it onto the MakeHuman neck (`scripts/body-asset/head.ts`), replacing the MakeHuman
+head, and paints its hair, brows, lips and eyes. The GLB itself is not in the repository.
+Check the sculpt's licence and credit its author as it requires before publishing.
