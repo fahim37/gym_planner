@@ -5,6 +5,9 @@ export interface ProgramExercise {
   reps: string;
   /** Rest between sets in seconds. */
   rest: number;
+  note?: string;
+  /** Adjacent exercises with the same ID alternate sets. */
+  superset?: string;
 }
 
 export interface ProgramDay {
@@ -24,7 +27,13 @@ export interface Program {
   daysPerWeek: number;
   accent: string;
   days: ProgramDay[];
+  restDays?: { title: string; activity: string }[];
+  /** A new revision keeps old, reordered workouts from appearing complete. */
+  progressVersion?: number;
 }
+
+export const programProgressKey = (program: Program) =>
+  program.progressVersion ? `${program.slug}:v${program.progressVersion}` : program.slug;
 
 const ex = (slug: string, sets: number, reps: string, rest = 90): ProgramExercise => ({ slug, sets, reps, rest });
 
@@ -82,58 +91,72 @@ export const PROGRAMS: Program[] = [
   {
     slug: "my-gym-plan-v2",
     name: "My Gym Plan — v2",
-    tagline: "One full leg day, two upper days. Same lifts, heavier over time.",
+    tagline: "Three upper days and one leg day, with walking on Monday and Tuesday.",
     description:
-      "Saturday legs, Sunday Upper A (heavy / horizontal), Thursday Upper B (incline / vertical), with a 6-minute forearm block after both upper days. Rest 2 min on squat and RDL, 90 s on big lifts, 60 s on small ones. Never cut exercise #1 or #2. Progress rule: finish every set at the top of the rep range, then add a rep or 2.5 kg. Weeks 1–3 on legs: 2 sets and goblet squats in week 1, 3 light sets in week 2.",
+      "Saturday: Upper A — heavy chest and back. Sunday: Upper B — shoulders and arms. Monday and Tuesday: rest with a walk. Wednesday: Upper C — chest and back with an incline / vertical focus. Thursday: legs. Follow the sets and reps below, including Saturday’s arm superset and Wednesday’s carries and dead hangs.",
     level: "Intermediate",
     equipment: "Full gym",
-    daysPerWeek: 3,
+    daysPerWeek: 4,
     accent: "from-rose-500 to-orange-300",
+    progressVersion: 2,
+    restDays: [
+      { title: "Monday", activity: "Rest — walk" },
+      { title: "Tuesday", activity: "Rest — walk" },
+    ],
     days: [
       {
-        title: "Saturday — Legs",
-        focus: "Quads, hamstrings, glutes, calves, core",
+        title: "Saturday — Upper A",
+        focus: "Chest & Back (heavy)",
+        instructions:
+          "Use a heavy dumbbell for the row and complete both arms each set. Use a wide grip for lat pulldowns. Choose a cable or machine chest fly. Superset barbell curls with triceps pushdowns: 10 curls, then 12 pushdowns, for 3 rounds. Finish with 3 farmer’s carries of 30–40 seconds.",
         exercises: [
-          ex("barbell-back-squat", 4, "6–8", 120),
-          ex("barbell-romanian-deadlift", 3, "8", 120),
-          ex("leg-press", 3, "10–12", 90),
-          ex("lying-leg-curl", 3, "10–12", 60),
-          ex("standing-machine-calf-raise", 4, "12–15", 60),
-          ex("hanging-knee-raise", 3, "12", 60),
-        ],
-      },
-      {
-        title: "Sunday — Upper A",
-        focus: "Heavy / horizontal + forearms",
-        exercises: [
-          ex("barbell-bench-press", 4, "6–8", 90),
-          ex("bent-over-barbell-row", 4, "8–10", 90),
-          ex("seated-dumbbell-shoulder-press", 3, "8–10", 90),
-          ex("lat-pulldown", 3, "10–12", 90),
-          ex("dumbbell-lateral-raise", 3, "12–15", 60),
-          ex("barbell-curl", 3, "10", 15),
-          ex("cable-triceps-pushdown", 3, "12", 60),
+          ex("barbell-bench-press", 4, "6–8", 120),
+          { ...ex("single-arm-dumbbell-row", 4, "8–10 each arm", 90), note: "Heavy dumbbell row. Complete both arms each set." },
+          { ...ex("lat-pulldown", 3, "10–12", 90), note: "Use a wide grip." },
+          { ...ex("pec-deck-fly", 3, "12–15", 60), note: "Chest fly: cable or machine." },
+          { ...ex("barbell-curl", 3, "10", 60), superset: "arms", note: "Superset: follow each set immediately with 12 triceps pushdowns." },
+          { ...ex("cable-triceps-pushdown", 3, "12", 60), superset: "arms", note: "Superset: alternate with 10 barbell curls for 3 rounds." },
           ex("farmers-walk", 3, "30–40 s", 60),
-          ex("reverse-barbell-curl", 3, "12", 60),
-          ex("dumbbell-wrist-curl", 3, "15", 45),
-          ex("dead-hang", 2, "max", 60),
         ],
       },
       {
-        title: "Thursday — Upper B",
-        focus: "Incline / vertical + forearms",
+        title: "Sunday — Upper B",
+        focus: "Shoulders & Arms",
+        exercises: [
+          ex("machine-shoulder-press", 4, "8–10", 90),
+          ex("dumbbell-lateral-raise", 4, "12–15", 60),
+          ex("cable-face-pull", 3, "15", 60),
+          ex("ez-bar-preacher-curl", 3, "10–12", 60),
+          ex("dumbbell-hammer-curl", 3, "12", 60),
+          ex("overhead-cable-triceps-extension", 3, "12", 60),
+        ],
+      },
+      {
+        title: "Wednesday — Upper C",
+        focus: "Chest & Back (incline / vertical)",
+        instructions:
+          "Pull-ups may be replaced with close-grip lat pulldowns for the same 4 sets of 8–10 reps. Finish with 3 farmer’s carries of 30–40 seconds, then 2 dead hangs for your maximum hold time.",
         exercises: [
           ex("incline-dumbbell-press", 4, "8–10", 90),
-          ex("pull-up", 4, "8–10", 90),
+          { ...ex("pull-up", 4, "8–10", 90), note: "Or close-grip lat pulldown: 4 × 8–10." },
           ex("seated-cable-row", 3, "10–12", 90),
-          ex("seated-dumbbell-shoulder-press", 3, "10", 90),
-          ex("cable-face-pull", 3, "15", 60),
-          ex("dumbbell-hammer-curl", 3, "12", 15),
-          ex("overhead-cable-triceps-extension", 3, "12", 60),
+          ex("dumbbell-lateral-raise", 3, "15", 60),
+          ex("incline-dumbbell-curl", 3, "10–12", 60),
           ex("farmers-walk", 3, "30–40 s", 60),
-          ex("reverse-barbell-curl", 3, "12", 60),
-          ex("dumbbell-wrist-curl", 3, "15", 45),
           ex("dead-hang", 2, "max", 60),
+        ],
+      },
+      {
+        title: "Thursday — Legs",
+        focus: "Quads, hamstrings, glutes & calves",
+        instructions: "Choose hip thrusts or a light Romanian deadlift for 3 sets of 10–12 reps.",
+        exercises: [
+          ex("barbell-back-squat", 3, "8–10", 120),
+          ex("leg-press", 3, "10–12", 90),
+          ex("leg-extension", 3, "12", 60),
+          ex("lying-leg-curl", 3, "12", 60),
+          { ...ex("barbell-hip-thrust", 3, "10–12", 90), note: "Or light Romanian deadlift: 3 × 10–12." },
+          ex("standing-machine-calf-raise", 4, "12–15", 60),
         ],
       },
     ],

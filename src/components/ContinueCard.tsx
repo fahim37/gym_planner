@@ -1,21 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { PROGRAMS } from "@/data/programs";
+import { PROGRAMS, programProgressKey } from "@/data/programs";
 import { useProgressMap } from "@/lib/progress";
 import { PlayIcon } from "./icons";
 
-const SLUGS = PROGRAMS.map((p) => p.slug);
+const SLUGS = PROGRAMS.map(programProgressKey);
 
 /** "Pick up where you left off": the next workout of a program that's in progress (progress lives in this browser). */
 export default function ContinueCard({ className = "" }: { className?: string }) {
   const progress = useProgressMap(SLUGS);
   const program = PROGRAMS.find((p) => {
-    const done = progress[p.slug] ?? [];
+    const done = progress[programProgressKey(p)] ?? [];
     return done.length > 0 && done.length < p.days.length;
   });
   if (!program) return null;
-  const done = progress[program.slug];
+  const done = progress[programProgressKey(program)];
   const next = program.days.findIndex((_, i) => !done.includes(i + 1));
   const day = program.days[next];
 

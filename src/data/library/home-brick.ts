@@ -41,7 +41,7 @@ export function createHomeBrickExercises(library: Exercise[]): Exercise[] {
 
   return [
     variant("barbell-romanian-deadlift", {
-      slug: "brick-romanian-deadlift", name: "Brick Romanian Deadlift (RDL)",
+      slug: "brick-romanian-deadlift", name: "Brick Romanian Deadlift",
       level: "Beginner", equipment: ["Brick"],
       summary: "A light home hip hinge for the hamstrings and glutes using a brick in each hand.",
       steps: [

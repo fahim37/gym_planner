@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import BottomSheet from "@/components/BottomSheet";
 import ExerciseThumb from "@/components/ExerciseThumb";
 import ExerciseViewer from "@/components/ExerciseViewer";
 import { CheckIcon, ChevronLeft, ChevronRight, CloseIcon, SoundOffIcon, SoundOnIcon, SwipeIcon } from "@/components/icons";
 import { getExercise } from "@/data/exercises";
-import type { Program, ProgramExercise } from "@/data/programs";
+import { programProgressKey, type Program, type ProgramExercise } from "@/data/programs";
 import { MUSCLES } from "@/lib/muscles";
 import { useProgress } from "@/lib/progress";
 import { useWakeLock } from "@/lib/wake-lock";
+import { buildWorkoutSequence } from "@/lib/workout-sequence";
 import { buzz, go as restOver, tick, unlockAudio, useSoundPref } from "@/lib/workout-feedback";
 
 type Phase = { kind: "work" } | { kind: "rest"; until: number; total: number } | { kind: "done"; seconds: number };
@@ -221,6 +222,7 @@ function Slide({ item, live, onPrev, onNext }: { item?: ProgramExercise; live: b
           <ChevronRight size={22} />
         </button>
       </div>
+      {item.note && <p className="px-12 pt-1 text-center text-xs leading-snug text-amber-200">{item.note}</p>}
     </div>
   );
 }
@@ -228,14 +230,15 @@ function Slide({ item, live, onPrev, onNext }: { item?: ProgramExercise; live: b
 export default function WorkoutPlayer({ program, day }: { program: Program; day: number }) {
   const plan = program.days[day - 1];
   const items = plan.exercises;
-  const [index, setIndex] = useState(0);
-  const [set, setSet] = useState(1);
+  const sequence = useMemo(() => buildWorkoutSequence(items), [items]);
+  const [position, setPosition] = useState(0);
+  const { exerciseIndex: index, set, restAfter } = sequence[position];
   const [phase, setPhase] = useState<Phase>({ kind: "work" });
   const [startedAt] = useState(() => Date.now());
   const [hint, setHint] = useState(true);
   const [confirmExit, setConfirmExit] = useState(false);
   const [sound, toggleSound] = useSoundPref();
-  const { markDone } = useProgress(program.slug);
+  const { markDone } = useProgress(programProgressKey(program));
   const screenOn = useWakeLock(phase.kind !== "done");
 
   const deckRef = useRef<HTMLDivElement>(null);
@@ -246,10 +249,12 @@ export default function WorkoutPlayer({ program, day }: { program: Program; day:
   );
 
   const item = items[index];
-  const totalSets = items.reduce((n, x) => n + x.sets, 0);
-  const setsDone = items.slice(0, index).reduce((n, x) => n + x.sets, 0) + set - 1;
+  const totalSets = sequence.length;
+  const setsDone = position;
+  const completedSets = items.map((_, i) => sequence.slice(0, position).filter((entry) => entry.exerciseIndex === i).length);
   const nextItem = items[index + 1];
-  const upNext = set < item.sets ? { item, set: set + 1 } : nextItem ? { item: nextItem, set: 1 } : null;
+  const nextSet = sequence[position + 1];
+  const upNext = nextSet ? { item: items[nextSet.exerciseIndex], set: nextSet.set } : null;
 
   useEffect(() => {
     const t = setTimeout(() => setHint(false), 4000);
@@ -257,10 +262,9 @@ export default function WorkoutPlayer({ program, day }: { program: Program; day:
   }, []);
 
   const jump = useCallback((to: number) => {
-    setIndex(to);
-    setSet(1);
+    setPosition(sequence.findIndex((entry) => entry.exerciseIndex === to));
     setPhase({ kind: "work" });
-  }, []);
+  }, [sequence]);
 
   // After the index changes, drop the offset: the middle slide now shows the new exercise.
   useLayoutEffect(() => {
@@ -351,23 +355,23 @@ export default function WorkoutPlayer({ program, day }: { program: Program; day:
   };
 
   const advance = () => {
-    if (set < item.sets) {
-      setSet(set + 1);
-      setPhase({ kind: "work" });
-    } else if (nextItem) slideTo(1);
-    else setPhase({ kind: "work" });
+    if (nextSet) setPosition(position + 1);
+    setPhase({ kind: "work" });
   };
 
   const completeSet = () => {
     unlockAudio(); // Tap = user gesture, so the rest countdown may beep.
-    const last = set === item.sets && !nextItem;
+    const last = !nextSet;
     if (last) {
       markDone(day);
       buzz([60, 40, 60, 40, 160]);
       setPhase({ kind: "done", seconds: Math.round((Date.now() - startedAt) / 1000) });
+    } else if (restAfter === 0) {
+      buzz(15);
+      advance();
     } else {
       buzz(15);
-      setPhase({ kind: "rest", until: Date.now() + item.rest * 1000, total: item.rest });
+      setPhase({ kind: "rest", until: Date.now() + restAfter * 1000, total: restAfter });
     }
   };
 
@@ -464,7 +468,7 @@ export default function WorkoutPlayer({ program, day }: { program: Program; day:
       {/* Progress: one segment per exercise, filled by sets done. */}
       <div className="flex shrink-0 gap-1 px-4 pb-3" aria-label={`${setsDone} of ${totalSets} sets done`}>
         {items.map((x, i) => {
-          const filled = i < index ? 1 : i === index ? (set - 1) / x.sets : 0;
+          const filled = completedSets[i] / x.sets;
           return (
             <div key={i} className={`h-1.5 flex-1 overflow-hidden rounded-full ${i === index ? "bg-white/20" : "bg-white/10"}`}>
               <div
@@ -554,12 +558,12 @@ export default function WorkoutPlayer({ program, day }: { program: Program; day:
               data-haptic="success"
               className="glass-reactive mt-4 flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-amber-300 text-lg font-black text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_10px_28px_-10px_rgba(252,211,77,0.75)] transition-transform duration-300 ease-spring hover:bg-amber-200 active:scale-95"
             >
-              {set === item.sets && !nextItem ? "Finish workout" : "Set done"}
+              {!nextSet ? "Finish workout" : "Set done"}
               <CheckIcon size={22} strokeWidth={3} />
             </button>
             <p className="mt-2.5 truncate text-center text-meta text-zinc-400">
               {upNext
-                ? `Then ${item.rest}s rest · next: ${upNext.item === item ? `set ${upNext.set}` : getExercise(upNext.item.slug)!.name}`
+                ? `${restAfter ? `Then ${restAfter}s rest · next` : "Superset · next"}: ${upNext.item === item ? `set ${upNext.set}` : getExercise(upNext.item.slug)!.name}`
                 : "Last set of the workout"}
             </p>
           </div>

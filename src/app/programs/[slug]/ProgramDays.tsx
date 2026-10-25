@@ -4,15 +4,25 @@ import Link from "next/link";
 import { CheckIcon, PlayIcon } from "@/components/icons";
 import { ExerciseCard } from "@/components/ui";
 import { getExercise } from "@/data/exercises";
-import type { Program } from "@/data/programs";
+import { programProgressKey, type Program } from "@/data/programs";
 import { useProgress } from "@/lib/progress";
 
 export default function ProgramDays({ program }: { program: Program }) {
-  const { done, reset } = useProgress(program.slug);
+  const { done, reset } = useProgress(programProgressKey(program));
   const next = program.days.findIndex((_, i) => !done.includes(i + 1));
 
   return (
     <>
+      {program.restDays && (
+        <section aria-label="Rest days" className="surface mt-6 rounded-2xl p-4 sm:p-5">
+          <h2 className="font-bold text-white">Rest days</h2>
+          <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-300">
+            {program.restDays.map((day) => (
+              <li key={day.title}><span className="font-semibold text-white">{day.title}</span> — {day.activity}</li>
+            ))}
+          </ul>
+        </section>
+      )}
       <div className="mt-6 flex min-h-11 flex-wrap items-center justify-between gap-x-3">
         <p className="text-sm text-zinc-300">
           <span className="font-bold tabular-nums text-white">{done.length}</span> of {program.days.length} workouts complete
@@ -85,8 +95,11 @@ export default function ProgramDays({ program }: { program: Program }) {
               )}
               <ol aria-label="Exercises in workout order" className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
                 {day.exercises.map((x, k) => (
-                  <li key={x.slug} className="[&>a]:shadow-none [&>a]:ring-zinc-200">
-                    <ExerciseCard exercise={getExercise(x.slug)!} index={k + 1} sets={String(x.sets)} reps={x.reps} />
+                  <li key={x.slug} className="flex flex-col gap-2">
+                    <div className="flex-1 [&>a]:shadow-none [&>a]:ring-zinc-200">
+                      <ExerciseCard exercise={getExercise(x.slug)!} index={k + 1} sets={String(x.sets)} reps={x.reps} />
+                    </div>
+                    {x.note && <p className="px-1 text-xs leading-relaxed text-zinc-600">{x.note}</p>}
                   </li>
                 ))}
               </ol>

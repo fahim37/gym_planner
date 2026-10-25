@@ -61,6 +61,7 @@ describe("gym slang and abbreviations", () => {
   it.each([
     ["ohp", "Barbell Overhead Press"],
     ["rdl", "Barbell Romanian Deadlift"],
+    ["brick rdl", "Brick Romanian Deadlift"],
     ["bss", "Bulgarian Split Squat"],
     ["skull crushers", "EZ-Bar Skull Crusher"],
     ["pullups", "Pull-Up"],
